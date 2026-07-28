@@ -1,0 +1,15 @@
+{
+  "name": "ai-security-30days",
+  "version": "0.1.0",
+  "description": "《防的不是駭客，是你自己的 AI》30 天連載的範例專案。內建每一天要修的洞。",
+  "type": "module",
+  "scripts": {
+    "dev": "node app/server/index.js",
+    "build": "node scripts/build.js",
+    "mock-provider": "node app/server/mock-provider.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
