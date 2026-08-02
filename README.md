@@ -17,8 +17,7 @@
 
 ## 現在有什麼
 
-**還沒有 recipe。** 連載 8/01 開始，recipe 隨著文章一天一天補進來，
-補一份會在下面的表格裡標出來。
+連載 8/01 開始，recipe 隨著文章一天一天補進來。
 
 `playground/` 是範例專案的種子，內建了連載會用到的洞。
 它現在還不能一行指令跑起來，那是第一件要補的事。
@@ -26,9 +25,15 @@
 | # | Recipe | 對應 | 狀態 |
 |---|---|---|---|
 | 01 | 金鑰不要放前端 | [Day 1](https://ithelp.ithome.com.tw/articles/10400931) | 未完成 |
-| 02 | `.env` 洩漏檢查 | Day 2 | 未完成 |
+| 02 | [祕密掃描的六個假通過](recipes/02-secret-scan-blind-spots/) | Day 2 | **可以跑了** |
 | 03 | 金鑰外洩處置 | Day 3 | 未完成 |
 | 04– | 隨連載加入 | Day 4–30 | 未完成 |
+
+```bash
+bash recipes/02-secret-scan-blind-spots/verify.sh
+```
+
+只需要 `git` 跟 `curl`，全部在 `mktemp -d` 裡跑，不碰你的檔案。
 
 ## 每份 recipe 長什麼樣
 
