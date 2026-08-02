@@ -30,9 +30,9 @@ if run 1; then
 hdr "1. 檔案早就被 track 了，加 .gitignore 沒有用"
 R=$WS/c1; mkdir -p "$R"; cd "$R"; G init -q .
 echo "API_KEY=sk-real-one" > .env; G add -f .env; G commit -qm init
-printf '.env*\n' > .gitignore
+printf '.env*\n' > .gitignore; G add .gitignore; G commit -qm "補 .gitignore"
 A=$(G status --short | wc -l | tr -d ' ')
-naive "加完 .gitignore 看 git status" "${A} 行改動，乾乾淨淨，看起來沒事了"
+naive "補完 .gitignore 看 git status" "${A} 行改動，乾乾淨淨，看起來沒事了"
 B=$(G check-ignore -v .env >/dev/null 2>&1; echo $?)
 fixed "git check-ignore -v .env" "exit=${B}（沒有輸出）"
 C=$(G ls-files --error-unmatch .env >/dev/null 2>&1; echo $?)
