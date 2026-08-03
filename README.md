@@ -27,12 +27,14 @@
 | 01 | [金鑰不要放前端](recipes/01-frontend-api-key/) | [Day 1](https://ithelp.ithome.com.tw/articles/10400931) | **可以跑了** |
 | 02 | [祕密掃描的六個假通過](recipes/02-secret-scan-blind-spots/) | [Day 2](https://ithelp.ithome.com.tw/articles/10401002) | **可以跑了** |
 | 03 | [處置外洩憑證時的三個假通過](recipes/03-revoke-verification/) | [Day 3](https://ithelp.ithome.com.tw/articles/10401276) | **可以跑了** |
-| 04– | 隨連載加入 | Day 4–30 | 未完成 |
+| 04 | [貼給 AI 之前的紅線檢查](recipes/04-what-not-to-paste/) | Day 4 | **可以跑了** |
+| 05– | 隨連載加入 | Day 5–30 | 未完成 |
 
 ```bash
 bash recipes/01-frontend-api-key/verify.sh
 bash recipes/02-secret-scan-blind-spots/verify.sh
 bash recipes/03-revoke-verification/verify.sh
+bash recipes/04-what-not-to-paste/verify.sh
 ```
 
 全部在 `mktemp -d` 裡跑，不碰你的檔案。02 只需要 `git` 跟 `curl`；
