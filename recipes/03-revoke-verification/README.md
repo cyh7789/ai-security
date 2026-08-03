@@ -1,6 +1,6 @@
 # 03 處置外洩憑證時的三個假通過
 
-對應 [Day 3](https://ithelp.ithome.com.tw/users/20138924/ironman/9086)。
+對應 [Day 3](https://ithelp.ithome.com.tw/articles/10401276)。
 
 ```bash
 bash verify.sh        # 跑全部三個

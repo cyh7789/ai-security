@@ -24,12 +24,13 @@
 
 | # | Recipe | 對應 | 狀態 |
 |---|---|---|---|
-| 01 | 金鑰不要放前端 | [Day 1](https://ithelp.ithome.com.tw/articles/10400931) | 未完成 |
-| 02 | [祕密掃描的六個假通過](recipes/02-secret-scan-blind-spots/) | Day 2 | **可以跑了** |
-| 03 | [處置外洩憑證時的三個假通過](recipes/03-revoke-verification/) | Day 3 | **可以跑了** |
+| 01 | [金鑰不要放前端](recipes/01-frontend-api-key/) | [Day 1](https://ithelp.ithome.com.tw/articles/10400931) | **可以跑了** |
+| 02 | [祕密掃描的六個假通過](recipes/02-secret-scan-blind-spots/) | [Day 2](https://ithelp.ithome.com.tw/articles/10401002) | **可以跑了** |
+| 03 | [處置外洩憑證時的三個假通過](recipes/03-revoke-verification/) | [Day 3](https://ithelp.ithome.com.tw/articles/10401276) | **可以跑了** |
 | 04– | 隨連載加入 | Day 4–30 | 未完成 |
 
 ```bash
+bash recipes/01-frontend-api-key/verify.sh
 bash recipes/02-secret-scan-blind-spots/verify.sh
 bash recipes/03-revoke-verification/verify.sh
 ```
@@ -42,13 +43,15 @@ bash recipes/03-revoke-verification/verify.sh
 ```bash
 cd recipes/01-frontend-api-key
 cat README.md          # 問題、為什麼會發生、怎麼修
-bash verify.sh         # 先跑一次，看它紅
-# 照 README 修 before/ 裡的東西
-bash verify.sh         # 再跑一次，看它綠
+bash verify.sh         # 跑一次，看有洞與修好的兩版並排
+bash verify.sh 2       # 只看第 2 個情境
 ```
 
-`verify.sh` 檢查的是行為，不是程式碼長相：它對 `before/` 一定失敗，
-對修好的版本一定通過。做不到這件事的題目就不會做成 recipe。
+`verify.sh` 檢查的是行為，不是程式碼長相。目前三份都是**並排對照**：
+同一支腳本裡跑「有洞的那版」與「修好的那版」，讓你看到兩者的輸出差在哪。
+只印修好那版會通過的腳本沒有價值，因為它證明不了洞是真的。
+
+想當練習題的話，改 `before/` 裡的檔案再跑一次，看第一個情境的數字有沒有掉到 0。
 
 ## 授權
 

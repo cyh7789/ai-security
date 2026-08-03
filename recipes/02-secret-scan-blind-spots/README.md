@@ -1,6 +1,6 @@
 # 02 祕密掃描的六個假通過
 
-對應 [Day 2](https://ithelp.ithome.com.tw/users/20138924/ironman/9086)。
+對應 [Day 2](https://ithelp.ithome.com.tw/articles/10401002)。
 
 ```bash
 bash verify.sh        # 跑全部六個
