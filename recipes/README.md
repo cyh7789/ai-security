@@ -26,5 +26,8 @@ NN-做什麼/
 └── verify.sh      每個情境跑兩次，naive 給你假通過，fixed 才是對的
 ```
 
-`02-secret-scan-blind-spots` 是這一型。判準沒有變：跑出來的東西要能分辨對錯，
-而不是看程式碼長相。
+`02-secret-scan-blind-spots` 與 `03-revoke-verification` 是這一型。判準沒有變：
+跑出來的東西要能分辨對錯，而不是看程式碼長相。
+
+這一型還要再過一關：**naive 那半必須真的重現假通過。**
+只有 fixed 會綠的腳本證明不了 naive 錯在哪，而那正是這種 recipe 唯一要說的事。

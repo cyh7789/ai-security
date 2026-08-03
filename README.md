@@ -26,14 +26,16 @@
 |---|---|---|---|
 | 01 | 金鑰不要放前端 | [Day 1](https://ithelp.ithome.com.tw/articles/10400931) | 未完成 |
 | 02 | [祕密掃描的六個假通過](recipes/02-secret-scan-blind-spots/) | Day 2 | **可以跑了** |
-| 03 | 金鑰外洩處置 | Day 3 | 未完成 |
+| 03 | [處置外洩憑證時的三個假通過](recipes/03-revoke-verification/) | Day 3 | **可以跑了** |
 | 04– | 隨連載加入 | Day 4–30 | 未完成 |
 
 ```bash
 bash recipes/02-secret-scan-blind-spots/verify.sh
+bash recipes/03-revoke-verification/verify.sh
 ```
 
-只需要 `git` 跟 `curl`，全部在 `mktemp -d` 裡跑，不碰你的檔案。
+全部在 `mktemp -d` 裡跑，不碰你的檔案。02 只需要 `git` 跟 `curl`；
+03 的第一個情境會自己抓一份 `gitleaks` 到暫存目錄，用完刪掉，不裝進你的系統。
 
 ## 每份 recipe 長什麼樣
 
