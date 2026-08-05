@@ -7,8 +7,8 @@
             再從輸入框打進去。不要直接打輸入框就算數，模型不一定原樣覆述，
             而且它包 markdown 圍籬也擋不住，只有它自己 escape 才會擋住
     判準：看 #answer 裡有沒有 img 元素，不要只看 alert 跳不跳
-    修之前：img 在，alert 跳
-    修之後：img 不在，畫面上出現這串字
+    修之前：img 在；頁面沒限制 inline handler 的話 alert 也會跳
+    textContent 修之後：img 不在，整串以文字顯示
     沒跳但 img 還在 = 頁面的 CSP 擋掉 onerror 而已，洞沒補
 
 02  <script>alert(1)</script>        錯誤判準的對照輸入
