@@ -20,6 +20,13 @@
 
 set -u
 ONLY="${1:-}"
+# 沒有這一段的話，`bash verify.sh 8` 一節都不會跑，然後印 0 綠 0 紅、結束碼 0。
+# 一份講假綠燈的腳本自己發假綠燈。不認得的節號是錯誤，不是「沒事」。
+case "$ONLY" in
+  ''|[1-7]) ;;
+  *) printf '不認得的節號：%s\n用法：bash verify.sh [1-7]，不給參數就全部跑\n' "$ONLY" >&2
+     exit 2 ;;
+esac
 PASS=0; FAIL=0; SKIP=0
 ok()   { printf '  [OK]   %s\n' "$1"; PASS=$((PASS+1)); }
 bad()  { printf '  [FAIL] %s\n' "$1"; FAIL=$((FAIL+1)); }
@@ -233,7 +240,9 @@ run() {  # run <目錄> <hash>；印出 RESULT 那一行，失敗時把 Chrome �
 }
 
 want() {  # want <格號> <版本> <payload> <期待的 fired> <說明> [額外要出現的字串]
-  [ -n "$ONLY" ] && [ "$ONLY" != "$1" ] && return 0
+  # 第 5 節比的是前四格的結果，所以單跑 5 的時候前四格也要跑，
+  # 否則它拿空字串去比，會紅得像有洞，其實是依賴沒備齊
+  [ -n "$ONLY" ] && [ "$ONLY" != "$1" ] && [ "$ONLY" != 5 ] && return 0
   printf '\n=== %s. %s 版 × %s ===\n' "$1" "$2" "$3"
   R=$(run "$2" "$3") || R=""
   printf '  %s\n' "${R:-（沒有結果，看上面 Chrome 說了什麼）}"
@@ -329,4 +338,10 @@ if [ -z "$ONLY" ] || [ "$ONLY" = 7 ]; then
 fi
 
 printf '\n════════ %s 綠 / %s 紅 / %s 跳過 ════════\n' "$PASS" "$FAIL" "$SKIP"
+# 跑了零項不算通過。上面那道節號檢查擋掉已知的入口，這條擋掉還沒想到的：
+# 只要有一條路徑讓所有檢查都沒執行，沒有這一行就會拿到綠燈。
+if [ $((PASS + FAIL + SKIP)) -eq 0 ]; then
+  printf '一項檢查都沒有執行，這不算通過\n' >&2
+  exit 1
+fi
 [ "$FAIL" = 0 ]
