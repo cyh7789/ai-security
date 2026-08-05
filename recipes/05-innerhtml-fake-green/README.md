@@ -3,8 +3,9 @@
 對應 [Day 5](https://ithelp.ithome.com.tw/users/20138924/ironman/9086)。
 
 ```bash
-bash verify.sh        # 跑四格加一個結論
+bash verify.sh        # 全部
 bash verify.sh 2      # 只跑第 2 格
+bash verify.sh 6      # 只跑五種模型回法那節
 ```
 
 需要 `bash`、`python3`（起一個本機靜態伺服器）、一個 Chrome 或 Chromium。
@@ -46,7 +47,7 @@ MDN 在 `Element.innerHTML` 的安全考量段寫得很清楚：
 
 有一種你可能以為安全的情況其實不安全：模型把那串字包進 markdown 的程式碼圍籬或行內反引號。
 反引號是 markdown 的語法不是 HTML 的，`innerHTML` 拿到的就只是幾個普通字元，標籤照樣被解析。
-實測五種回法（Chrome 151，跑的是 `before/render.js`）：
+實測五種回法（跑的是 `before/render.js`，`verify.sh` 第 6 節，你可以自己重跑）：
 
 | 模型怎麼回 | `fired` | `imgInDOM` |
 |---|---|---|
@@ -77,10 +78,13 @@ export async function ask(q) {
 裡真正那兩份 `render.js`：起一個本機靜態伺服器、以 ES module 載入、真的觸發 submit，
 不是把那一行抄進腳本比對字串。
 
+量的是 `fired`（事件有沒有發生）與 `imgInDOM`（那個元素在不在），
+跑在腳本自己起的乾淨頁面上，沒有 CSP：
+
 | | `<script>alert(1)</script>` | `<img src=x onerror=alert(1)>` |
 |---|---|---|
-| `before/` | 不跳（標籤進了 DOM） | **跳** |
-| `after/` | 不跳 | 不跳 |
+| `before/` | 沒發生，但 `script` 是 DOM 元素 | **發生了，`img` 在 DOM 裡** |
+| `after/` | 沒發生，`script` 不是 DOM 元素 | 沒發生，`img` 不在 DOM 裡 |
 
 要看的不是 `after/` 那一列全綠，是 **script 那一欄上下一樣**。一條在有洞與修好上
 表現相同的檢查分不出這兩種狀態，那它就不是一個驗證。
@@ -92,8 +96,9 @@ export async function ask(q) {
 
 `attack-set.md` 裡有兩條，第二條永遠不跳。
 
-留著它的理由是，哪天第一條也不跳了，你要先分得出來那是真的擋住，還是又拿到一個
-跟第二條一樣的假綠燈。**一條永遠綠的檢查證明不了任何事，但它可以證明別的檢查有沒有意義。**
+留著它的理由是，哪天第一條的 `img` 還在、事件卻沒發生，你要先分得出來那是真的擋住，
+還是又拿到一個跟第二條一樣的綠燈。**它證明不了你的程式碼有沒有問題，
+但它證明得了你的判準有沒有辨識力。**
 
 ## 修法的代價，以及一條回頭路
 
@@ -125,7 +130,9 @@ export async function ask(q) {
 **有 CSP 的頁面上，這兩條 payload 的判準會壞掉。** 如果 CSP 沒放行 inline 事件處理器，
 `<img>` 照樣進得了 DOM，`onerror` 卻被瀏覽器擋掉，於是有洞的版本跟修好的版本都不跳。
 那時候 Console 會留一行 CSP 違規訊息，那是判準壞掉的證據，不是修好了的證據。
-要分清楚：CSP 擋掉的是**這一條 payload**，不是那個洞，換一條不靠 inline handler 的就過去了。
+要分清楚：CSP 擋掉的是**這一條 payload**，不是那個洞。
+`img` 元素還在 DOM 裡就證明這一層照樣把不可信的字串解析成 HTML。
+至於換一條 payload 能不能執行，要看你完整的 CSP 與注入的上下文，那得另外測，不能從這裡推。
 這支腳本跑在自己起的乾淨頁面上，沒有 CSP，所以四格是可信的；
 搬到你有 CSP 的專案上要先確認這件事。
 
