@@ -7,6 +7,8 @@
 #              一條在有洞與修好上表現相同的檢查，不是驗證。
 #   第 6 節    同一份 before/render.js，換五種模型回法（原樣、markdown 圍籬、
 #              行內反引號、HTML escape、拒答）。圍籬擋不住，只有 escape 擋得住。
+#   第 7 節    同一段程式碼放在有 CSP 與沒有 CSP 的頁面上。被 CSP 擋掉的時候
+#              事件沒發生，但那個 img 元素還在 DOM 裡，所以判準要看元素不看事件。
 #
 # 用法：
 #   bash verify.sh          全部
@@ -152,6 +154,29 @@ addEventListener("load", () => {
 </script>
 EOF
 
+# 第 7 節用：同一段程式碼，一頁沒有 CSP、一頁有。不經過 render.js，
+# 因為要量的是瀏覽器對 inline 事件處理器的處置，不是這支應用的修法
+for v in nocsp withcsp; do
+  mkdir -p "$WS/$v"
+  cat > "$WS/$v/h.js" <<'EOF'
+window.fired = [];
+addEventListener("load", () => {
+  const box = document.getElementById("answer");
+  box.innerHTML = '<img src=x onerror="window.fired.push(\'img-onerror\')">';
+  setTimeout(() => {
+    document.getElementById("out").textContent =
+      "RESULT fired=" + (window.fired.length > 0) +
+      " imgInDOM=" + !!box.querySelector("img");
+  }, 500);
+});
+EOF
+done
+printf '<!doctype html><meta charset="utf-8">\n<div id="answer"></div><div id="out"></div><script src="./h.js"></script>\n' > "$WS/nocsp/index.html"
+{ printf '<!doctype html><meta charset="utf-8">\n'
+  printf '<meta http-equiv="Content-Security-Policy" content="default-src %s; script-src %s">\n' "'none'" "'self'"
+  printf '<div id="answer"></div><div id="out"></div><script src="./h.js"></script>\n'
+} > "$WS/withcsp/index.html"
+
 for pair in "before:before:api-echo.js" "after:after:api-echo.js" \
             "m-before:before:api-arms.js" "m-after:after:api-arms.js"; do
   d=${pair%%:*}; rest=${pair#*:}; v=${rest%%:*}; api=${rest##*:}
@@ -282,6 +307,25 @@ if [ -z "$ONLY" ] || [ "$ONLY" = 6 ]; then
   [ "$N" = 0 ] \
     && ok "圍籬與反引號都擋不住，只有 escape 與拒答不會出事；修好那版五種都擋住" \
     || bad "五種回法的結果跟 README 那張表對不上"
+fi
+
+# ── 有 CSP 的頁面上，「沒跳」為什麼不能當成修好了 ────────────
+if [ -z "$ONLY" ] || [ "$ONLY" = 7 ]; then
+  printf '\n=== 7. CSP 擋掉 onerror 的時候，img 還在不在 ===\n'
+  N=0
+  for v in nocsp withcsp; do
+    R=$(run "$v" "") || R=""
+    printf '  %-9s %s\n' "$v" "${R:-（沒有結果）}"
+    eval "C_$v=\$R"
+  done
+  printf '%s' "${C_nocsp:-}"   | grep -qF 'fired=true'  || { bad "沒有 CSP 的頁面竟然沒發生，構造有問題"; N=1; }
+  printf '%s' "${C_withcsp:-}" | grep -qF 'fired=false' || { bad "CSP 沒擋掉 onerror，這一節的前提不成立"; N=1; }
+  # 整節的重點：被擋掉的時候元素還在，所以 imgInDOM 分得出「環境擋的」與「你修好的」
+  printf '%s' "${C_withcsp:-}" | grep -qF 'imgInDOM=true' \
+    || { bad "CSP 擋掉之後 img 也不在 DOM 裡，那 README 那條 imgInDOM 判準就沒有意義"; N=1; }
+  [ "$N" = 0 ] \
+    && ok "有 CSP 時事件沒發生但 img 還在 DOM。只看事件會把環境防線讀成自己修好了" \
+    || bad "CSP 那節的結果跟 README 寫的對不上"
 fi
 
 printf '\n════════ %s 綠 / %s 紅 / %s 跳過 ════════\n' "$PASS" "$FAIL" "$SKIP"

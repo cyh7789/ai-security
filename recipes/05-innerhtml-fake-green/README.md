@@ -6,6 +6,7 @@
 bash verify.sh        # 全部
 bash verify.sh 2      # 只跑第 2 格
 bash verify.sh 6      # 只跑五種模型回法那節
+bash verify.sh 7      # 只跑 CSP 那節
 ```
 
 需要 `bash`、`python3`（起一個本機靜態伺服器）、一個 Chrome 或 Chromium。
@@ -130,6 +131,7 @@ export async function ask(q) {
 **有 CSP 的頁面上，這兩條 payload 的判準會壞掉。** 如果 CSP 沒放行 inline 事件處理器，
 `<img>` 照樣進得了 DOM，`onerror` 卻被瀏覽器擋掉，於是有洞的版本跟修好的版本都不跳。
 那時候 Console 會留一行 CSP 違規訊息，那是判準壞掉的證據，不是修好了的證據。
+`bash verify.sh 7` 把這兩種頁面並排跑給你看。
 要分清楚：CSP 擋掉的是**這一條 payload**，不是那個洞。
 `img` 元素還在 DOM 裡就證明這一層照樣把不可信的字串解析成 HTML。
 至於換一條 payload 能不能執行，要看你完整的 CSP 與注入的上下文，那得另外測，不能從這裡推。
