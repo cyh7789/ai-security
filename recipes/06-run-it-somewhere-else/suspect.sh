@@ -17,11 +17,17 @@ echo "掃過目前目錄，疑似金鑰的檔案：$n 個"
 
 echo
 echo "── 它同時做得到的事 ──"
+# 這幾條是舉例，不是清單的正確答案。改成你自己機器上真的有的東西，
+# 這支腳本才問得出有意義的問題。
+#
+# 刻意不用 ~/.config/gh/hosts.yml：gh 預設把 token 放系統鑰匙圈，
+# 那個檔案裡通常只有帳號名，拿它當「機密外洩」的例子會講錯（8/06 查證）。
+# ~/.zsh_history 反而穩：每台機器都有，而且裡面是你打過的每一行指令。
 for p in \
   "$H/.ssh/id_ed25519" \
-  "$H/.ssh/id_rsa" \
   "$H/.aws/credentials" \
-  "$H/.config/gh/hosts.yml" \
+  "$H/.npmrc" \
+  "$H/.zsh_history" \
   "$H/.gitconfig" ; do
   if [ -r "$p" ]; then echo "可讀   $p"; else echo "讀不到 $p"; fi
 done

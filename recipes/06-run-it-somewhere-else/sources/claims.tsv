@@ -1,0 +1,13 @@
+# 數字或主張 <TAB> 快照檔 <TAB> 原句 <TAB> 線上比對網址 <TAB> 正文留的片段（空白＝原句只住快照）
+network-none-只剩-loopback	docker-network-none.txt	only the loopback device is created	https://docs.docker.com/engine/network/drivers/none/	
+read-only-根檔案系統唯讀	docker-cli-run.txt	Mount the container's root filesystem as read only	https://docs.docker.com/reference/cli/docker/container/run/	
+no-new-privileges-不能再提權	docker-cli-run.txt	Disable container processes from gaining new privileges	https://docs.docker.com/reference/cli/docker/container/run/	
+cap-drop-丟掉-capability	docker-cli-run.txt	Drop Linux capabilities	https://docs.docker.com/reference/cli/docker/container/run/	
+pids-limit-限行程數	docker-cli-run.txt	Tune container pids limit (set -1 for unlimited)	https://docs.docker.com/reference/cli/docker/container/run/	
+tmpfs-掛一格暫存	docker-cli-run.txt	Mount a tmpfs directory	https://docs.docker.com/reference/cli/docker/container/run/	
+copilot-cve-標題	msrc-cve-2025-53773.txt	GitHub Copilot and Visual Studio Remote Code Execution Vulnerability	https://api.msrc.microsoft.com/cvrf/v3.0/cvrf/2025-Aug	
+copilot-cve-cvss-7.8	msrc-cve-2025-53773.txt	CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H	https://api.msrc.microsoft.com/cvrf/v3.0/cvrf/2025-Aug	
+copilot-cve-公布日	msrc-cve-2025-53773.txt	2025-08-12T07:00:00	https://api.msrc.microsoft.com/cvrf/v3.0/cvrf/2025-Aug	
+autoApprove-那一行	embracethered-copilot-cve.txt	"chat.tools.autoApprove": true	https://embracethered.com/blog/posts/2025/github-copilot-remote-code-execution-via-prompt-injection/	"chat.tools.autoApprove": true
+注入從哪裡進來	embracethered-copilot-cve.txt	prompt injection planted in a source code file, web page, GitHub issue, tool call response	https://embracethered.com/blog/posts/2025/github-copilot-remote-code-execution-via-prompt-injection/	
+隱形指令並不可靠	embracethered-copilot-cve.txt	using invisible instructions often leads to the exploit being very unreliable	https://embracethered.com/blog/posts/2025/github-copilot-remote-code-execution-via-prompt-injection/	

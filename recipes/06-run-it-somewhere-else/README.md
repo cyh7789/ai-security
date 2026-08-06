@@ -6,7 +6,12 @@
 bash verify.sh        # 全部
 bash verify.sh 1      # 只跑本機那節（不需要 docker）
 bash verify.sh 4      # 只跑「多一個 -v 就破功」那節
+bash mutations.sh     # 反過來：把隔離弄壞，看上面那支會不會抓到
 ```
+
+**跑之前先讀 `suspect.sh` 跟 `verify.sh`。** 這個 recipe 講的就是不要跑你沒讀過的東西，
+兩支加起來三百多行，`suspect.sh` 只有三十行，五分鐘讀得完。
+第 4 節會把你的家目錄**唯讀**掛進一個沒有網路的容器一次，那正是它要示範的事。
 
 需要 `bash`、`curl`，後三節需要 `docker`（`podman`、`nerdctl` 也認，但**只在 Docker 上實測過**。
 `flags.sh` 那份掛載白名單是照 Docker 量的，podman 會多 bind 一個 `/run/.containerenv`，
@@ -24,6 +29,9 @@ bash verify.sh 4      # 只跑「多一個 -v 就破功」那節
 | `flags.sh` | **唯一一份旗標清單**，加上「容器裡只准看到哪幾個掛載點」的白名單 |
 | `run-isolated.sh` | 預設全關的 `docker run`，`source flags.sh` |
 | `verify.sh` | 四節：本機／容器／唯讀與權限／多一個 `-v` 就破功，也 `source flags.sh` |
+| `mutations.sh` | **故意把隔離弄壞十三種，看 `verify.sh` 會不會紅。** 有一種沒紅就是假綠燈 |
+| `PROMPTS.md` | 文章裡那組「同一個模型問兩次」的原始提示、完整回答、工具版本 |
+| `sources/` | 每個旗標的官方原句快照與對照表，不用相信轉述 |
 
 **它會動到你機器上的兩樣東西**：第 4 節會把你的家目錄**唯讀**掛進容器一次
 （那正是它要示範的事），跑完之後留下一個約 14 MB 的映像檔。要清掉：
