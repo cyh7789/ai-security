@@ -14,6 +14,15 @@ ONLY="${1:-}"
 HERE=$(cd "$(dirname "$0")" && pwd)
 PASS=0; FAIL=0; N=0
 
+# 編號打錯的話，每一種突變都被 run_case 跳過，收尾算出「抓到 0 種 / 漏掉 0 種」
+# 然後離開碼 0。一份專門用來證明「這裡沒有假綠燈」的工具，自己就不能有這種形狀。
+# 不在這裡對照可用的種類數，因為那個數字會隨著突變增加而過期；改成收尾的時候
+# 檢查到底跑了幾種（見檔尾）。這裡只擋非數字。
+case "${ONLY}" in
+  '') ;;
+  *[!0-9]*) printf '種類編號要是數字，收到的是「%s」。\n' "${ONLY}" >&2; exit 2 ;;
+esac
+
 # run_case <說明> <節> <要改哪個檔> <perl 運算式>...
 run_case() {
   N=$((N+1))
@@ -68,6 +77,12 @@ run_case '兩邊都用浮動版本，對照消失'    4 lockfile-demo.sh \
   's{"pinned:4\.19\.2"}{"pinned:^4.19.2"}'
 run_case 'lockfile 套件數印成 1'        4 lockfile-demo.sh \
   's{\$\(deps "\$\{d\}"\)}{1}'
+
+if [ $((PASS + FAIL)) -eq 0 ]; then
+  printf '\n一種突變都沒跑到。%s可用的是 1 到 %s，或不給參數跑全部。\n' \
+    "$([ -n "${ONLY}" ] && printf '沒有第 %s 種，' "${ONLY}")" "${N}" >&2
+  exit 2
+fi
 
 printf '\n════════ 抓到 %s 種 / 漏掉 %s 種 ════════\n' "${PASS}" "${FAIL}"
 [ "${FAIL}" = 0 ]
