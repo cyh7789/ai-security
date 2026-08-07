@@ -33,7 +33,7 @@ count() {  # count <目錄> <版本範圍字串>
 resolved() { node -e 'const j=require(process.argv[1]);console.log(j.packages["node_modules/express"].version)' "${WS}/$1/package-lock.json" 2>/dev/null || echo '?'; }
 deps()     { node -e 'const j=require(process.argv[1]);console.log(Object.keys(j.packages).filter(k=>k).length)' "${WS}/$1/package-lock.json" 2>/dev/null || echo '?'; }
 
-echo "跑的日子：$(date +%F)　npm $(npm -v)"
+echo "跑的日子：$(date +%F)  npm $(npm -v)"
 echo
 
 for pair in "float:^4.19.2" "pinned:4.19.2"; do
@@ -41,10 +41,10 @@ for pair in "float:^4.19.2" "pinned:4.19.2"; do
   out=$(count "${d}" "${range}")
   set -- ${out}
   if [ "${1:-ERR}" = "ERR" ]; then
-    printf 'express "%s"　audit 跑不起來（沒網路？）\n' "${range}"
+    printf 'express "%s"  audit 跑不起來（沒網路？）\n' "${range}"
     continue
   fi
-  printf 'express "%-8s" → 實際鎖到 %-8s lockfile 裡 %s 個套件　弱點 %s 則（critical %s / high %s / moderate %s / low %s）\n' \
+  printf 'express "%-8s" → 實際鎖到 %-8s lockfile 裡 %s 個套件  弱點 %s 則（critical %s / high %s / moderate %s / low %s）\n' \
     "${range}" "$(resolved "${d}")" "$(deps "${d}")" "$1" "$2" "$3" "$4" "$5"
 done
 
