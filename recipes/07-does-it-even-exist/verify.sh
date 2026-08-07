@@ -460,7 +460,7 @@ fi
 
 # ── 5 ────────────────────────────────────────────────────
 if want 5; then
-sect "5 npm ci 沒有 lockfile 會直接失敗，這正是它跟 npm install 的差別"
+sect "5 npm ci 沒有 lockfile 會直接失敗；裝的時候不讓相依的 preinstall 跑"
 
   M=$(miss npm node)
   if [ -n "${M}" ]; then
@@ -471,19 +471,55 @@ sect "5 npm ci 沒有 lockfile 會直接失敗，這正是它跟 npm install 的
     skip "curl 在，但問不到註冊處"
   else
     TD=$(mktemp -d)
-    printf '{"name":"ci-demo","version":"1.0.0","dependencies":{"express":"^4.19.2"}}\n' > "${TD}/package.json"
-    out=$( cd "${TD}" && npm ci 2>&1 ); rc=$?
+    # 這一節是整份唯一真的把套件裝下來的地方，所以文章那句警告的現場就在這裡：
+    # npm 預設會用你的身分跑相依自帶的 preinstall／postinstall，2025 年 PhantomRaven
+    # 走的就是這條路。底下每一個會裝東西的指令都帶 --ignore-scripts，
+    # 只有正向對照那一輪故意不帶（見下面）。
+    #
+    # 探針是一顆自製的本地相依，它的 preinstall 只做一件事：
+    # 往 LIFECYCLE_MARK 指的絕對路徑寫一個檔。沒有這個痕跡的話，
+    # 「腳本沒跑」跟「腳本跑了但什麼都沒留下」在畫面上是同一件事。
+    mkdir -p "${TD}/probe-pkg" "${TD}/ctrl"
+    cat > "${TD}/probe-pkg/package.json" <<'EOT'
+{"name":"lifecycle-probe","version":"1.0.0","scripts":{"preinstall":"printf ran > \"$LIFECYCLE_MARK\""}}
+EOT
+    printf '{"name":"ci-demo","version":"1.0.0","dependencies":{"express":"^4.19.2","lifecycle-probe":"file:probe-pkg"}}\n' > "${TD}/package.json"
+    printf '{"name":"ci-demo-ctrl","version":"1.0.0","dependencies":{"lifecycle-probe":"file:../probe-pkg"}}\n' > "${TD}/ctrl/package.json"
+    MARK="${TD}/lifecycle-ran"
+    MARK_CTRL="${TD}/lifecycle-ran-ctrl"
+
+    out=$( cd "${TD}" && LIFECYCLE_MARK="${MARK}" npm ci --ignore-scripts 2>&1 ); rc=$?
     if [ "${rc}" != 0 ] && printf '%s' "${out}" | grep -qi 'lock'; then
       ok "沒有 lockfile 的時候 npm ci 失敗，而且訊息點名 lockfile"
     else
       bad "沒有 lockfile 的 npm ci 竟然成功了（rc=${rc}）：$(printf '%s' "${out}" | tail -3)"
     fi
-    ( cd "${TD}" && npm install --package-lock-only --silent >/dev/null 2>&1 )
-    out=$( cd "${TD}" && npm ci --silent 2>&1 ); rc=$?
+    ( cd "${TD}" && LIFECYCLE_MARK="${MARK}" npm install --package-lock-only --ignore-scripts --silent >/dev/null 2>&1 )
+    out=$( cd "${TD}" && LIFECYCLE_MARK="${MARK}" npm ci --ignore-scripts --silent 2>&1 ); rc=$?
     if [ "${rc}" = 0 ]; then
       ok "補上 lockfile 之後同一個指令就過了"
     else
       bad "有 lockfile 還是失敗（rc=${rc}）：$(printf '%s' "${out}" | tail -3)"
+    fi
+
+    # 正向對照：同一顆探針、同一個 npm ci，差別只有沒帶 --ignore-scripts。
+    # 這一輪要看到檔出現，下面那條「檔不在」才有意義。它沒出現的話，
+    # 「檔不在」證明的就只是這顆探針從頭到尾都不會寫檔，那條斷言永遠是綠的。
+    # 解 lockfile 那步兩邊都帶旗標，讓兩輪之間只剩一個變因。
+    ( cd "${TD}/ctrl" && LIFECYCLE_MARK="${MARK_CTRL}" npm install --package-lock-only --ignore-scripts --silent >/dev/null 2>&1 )
+    outc=$( cd "${TD}/ctrl" && LIFECYCLE_MARK="${MARK_CTRL}" npm ci --silent 2>&1 ); rcc=$?
+    if [ -e "${MARK_CTRL}" ]; then
+      ok "正向對照：不帶 --ignore-scripts 的那一輪，相依的 preinstall 真的跑了，檔寫出來了"
+    else
+      bad "正向對照沒跑出痕跡（rc=${rcc}），不帶旗標那一輪也沒寫出檔，那下面那條「檔不在」永遠會綠：$(printf '%s' "${outc}" | tail -3)"
+    fi
+
+    if [ ! -e "${MARK_CTRL}" ]; then
+      skip "正向對照沒跑出痕跡，「帶了旗標就沒跑」這條這一輪沒有結論"
+    elif [ -e "${MARK}" ]; then
+      bad "帶了 --ignore-scripts，那顆相依的 preinstall 還是跑了（檔內容是「$(cat "${MARK}")」）。這一節自己踩進了文章在警告的那件事"
+    else
+      ok "帶 --ignore-scripts 的那幾輪，相依的 preinstall 沒跑（同一顆探針在對照那輪寫得出檔）"
     fi
 
     sig=$( cd "${TD}" && npm audit signatures 2>&1 )
