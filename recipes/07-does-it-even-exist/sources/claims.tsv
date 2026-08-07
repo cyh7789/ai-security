@@ -1,0 +1,13 @@
+# 數字或主張 <TAB> 快照檔 <TAB> 原句 <TAB> 線上比對網址 <TAB> 正文留的片段（空白＝原句只住快照）
+5.2%	arxiv-2406.10279-abstract.txt	the average percentage of hallucinated packages is at least 5.2% for commercial models and 21.7% for open-source models	https://arxiv.org/abs/2406.10279
+21.7%	arxiv-2406.10279-abstract.txt	the average percentage of hallucinated packages is at least 5.2% for commercial models and 21.7% for open-source models	https://arxiv.org/abs/2406.10279
+205,474	arxiv-2406.10279-abstract.txt	including a staggering 205,474 unique examples of hallucinated package names	https://arxiv.org/abs/2406.10279	205,474 unique examples of hallucinated package names
+576,000	arxiv-2406.10279-abstract.txt	Using 16 popular LLMs for code generation and two unique prompt datasets, we generate 576,000 code samples in two programming languages that we analyze for package hallucinations.	https://arxiv.org/abs/2406.10279
+USENIX-2025	arxiv-2406.10279-abstract.txt	To appear in the 2025 USENIX Security Symposium	https://arxiv.org/abs/2406.10279
+npm-ci-要有-lockfile	npm-ci-docs.txt	The project must have an existing package-lock.json or npm-shrinkwrap.json.	https://docs.npmjs.com/cli/v11/commands/npm-ci	The project must have an existing package-lock.json or npm-shrinkwrap.json
+npm-ci-對不上就報錯	npm-ci-docs.txt	If dependencies in the package lock do not match those in package.json, npm ci will exit with an error, instead of updating the package lock.	https://docs.npmjs.com/cli/v11/commands/npm-ci	exit with an error, instead of updating the package lock
+npm-ci-安裝是凍結的	npm-ci-docs.txt	It will never write to package.json or any of the package-locks: installs are essentially frozen.	https://docs.npmjs.com/cli/v11/commands/npm-ci
+簽章驗的是下載完整性	npm-audit-signatures.txt	To ensure the integrity of packages you download from the public npm registry, or any registry that supports signatures, you can verify the registry signatures of downloaded packages using the npm CLI.	https://docs.npmjs.com/cli/v11/commands/npm-audit	the integrity of packages you download
+43%	arxiv-2406.10279-fulltext.txt	43% of hallucinated packages were repeated in all 10 queries, while 39% did not repeat at all across the 10 queries	https://arxiv.org/html/2406.10279v3	
+58%	arxiv-2406.10279-fulltext.txt	58% of the time, a hallucinated package is repeated more than once in 10 iterations, which shows that a majority of hallucinations are not simply random errors, but a repeatable phenomenon that persists across multiple iterations	https://arxiv.org/html/2406.10279v3	
+重複測試抽 500 個提問	arxiv-2406.10279-fulltext.txt	We randomly sampled 500 prompts that generated package hallucinations during our initial testing and then repeated those queries 10 times per prompt	https://arxiv.org/html/2406.10279v3	
