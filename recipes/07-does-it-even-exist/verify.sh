@@ -27,11 +27,68 @@ case "${ONLY}" in
 esac
 
 RANDNAME="npm-registry-probe-$$-$(date +%s)-zzq"
-WS=$(mktemp -d); trap 'rm -rf "${WS}"' EXIT
+WS=$(mktemp -d)
+
+# 假主機的 pid 一律登記在 ${WS}/pids，由這裡統一收。
+# kill 寫在「起得來」那條分支裡是不夠的：起不來或斷言紅了就走另一條路，
+# 那支 node 已經 disown，trap 只刪目錄不管行程，慢機器上會在讀者機器留一支還在聽的。
+cleanup() {
+  if [ -f "${WS}/pids" ]; then
+    while read -r p; do [ -n "${p}" ] && kill "${p}" 2>/dev/null; done < "${WS}/pids"
+  fi
+  rm -rf "${WS}"
+}
+trap cleanup EXIT
+trap 'cleanup; exit 130' INT TERM
+
+# 假的下載數主機。有幾種回答是真的 api.npmjs.org 不會給你的，只能自己起一台。
+#   ok   照實回答，數字問得到，當其他幾輪的基準線
+#   one  對照那顆答得出來，其他每一顆 500（整台好好的、只有這一顆問不到）
+#   yes  對任何名字都回 200 加一個數字，連不存在的名字也是（反向對照要抓的就是這種）
+#   neg  對照那顆正常，其他回負數
+#   junk 整台回 200，但給的是一頁 HTML 不是數字（代理插隊的樣子）
+# ok、one、neg 對不存在的名字回 404，才過得了反向對照。不然驗到的會是另一條路。
+# 數字寫死在這裡，這幾輪的結果才不會隨著真的 api.npmjs.org 浮動。
+dlhost() {   # dlhost <mode> → 印出 port，起不來就印空的
+  local mode="$1" f="${WS}/dlhost.$1" i=0
+  node -e '
+const http=require("http"), mode=process.argv[1];
+const known={"/express":1234,"/express-rate-limiter":1863};
+const s=http.createServer((q,r)=>{
+  const j=n=>{ r.writeHead(200,{"content-type":"application/json"}); r.end(JSON.stringify({downloads:n})) };
+  if (mode==="yes") return j(0);
+  if (mode==="junk") { r.writeHead(200,{"content-type":"text/html"}); return r.end("<html><body>proxy sign-in</body></html>") }
+  if (!(q.url in known)) { r.writeHead(404); return r.end(JSON.stringify({error:"not found"})) }
+  if (q.url==="/express") return j(known[q.url]);
+  if (mode==="ok")  return j(known[q.url]);
+  if (mode==="neg") return j(-7);
+  r.writeHead(500); r.end("nope");
+});
+s.listen(0,"127.0.0.1",()=>process.stdout.write(String(s.address().port)));' "${mode}" > "${f}" 2>/dev/null &
+  echo $! >> "${WS}/pids"
+  disown 2>/dev/null || true
+  # sleep 0.1 不是 POSIX。沒有小數秒的 sleep 時 50 圈會瞬間跑完，
+  # 明明起得來也會被判成起不來，所以退回整秒再等。
+  while [ ! -s "${f}" ] && [ "${i}" -lt 50 ]; do sleep 0.1 2>/dev/null || sleep 1; i=$((i+1)); done
+  cat "${f}" 2>/dev/null
+}
 
 # 「這台機器沒裝那個工具」跟「工具在、註冊處沒回應」要分開報：前者是這一節不適用，
 # 後者是要驗的東西壞了。折成同一個旗標的話，沒裝 node 的機器會看到滿畫面紅燈。
 miss() { local m=""; for t in "$@"; do command -v "${t}" >/dev/null 2>&1 || m="${m}${m:+、}${t}"; done; printf '%s' "${m}"; }
+
+# check-pkgs.sh 的輸出是「說明、表格、收尾」三段。收尾有沒有出聲，靠的是位置，
+# 不是收尾那句話長什麼樣，所以這裡把表格之後的部分切出來給下面比差集用。
+after_table() { awk '/^(判定|查到|沒有|錯誤)[[:space:]]/ { seen=1; next } seen && $0 !~ /^[[:space:]]*$/' "$1"; }
+
+# 把一輪輸出裡的說明拆成句子，表格那幾列不算。
+# 逐行比不夠力：同一句話搬到另一種處境底下重用，只要順手接一句別的話，
+# 整行就不相等了，逐行比會回報「這兩種分得開」，而讀者看到的是同一句。
+sentences() {
+  grep -vE '^(判定|查到|沒有|錯誤)[[:space:]]' "$1" \
+    | awk '{ gsub(/。/, "\n"); print }' \
+    | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -v '^$' | sort -u
+}
 
 HAVE_NET=0
 if [ -z "$(miss curl)" ]; then
@@ -100,85 +157,142 @@ sect "1 這支腳本分得出「註冊處說沒有」跟「我沒問到註冊處
       ok "連不到的那一輪沒有印出任何「沒有」"
     fi
 
-    # 下載數住在另一台主機。註冊處好好的、只有那台掛掉的時候，
-    # 週下載欄會變成「?」，而「停更了還有人在下載」整個判斷站在那一欄上。
-    # 對照組要蓋到兩台，不然「問不到」在那一欄上又長得像「沒人下載」。
+    # ── 下載欄的每一種處境 ──────────────────────────────
+    # 下載數住在另一台主機。註冊處好好的、只有那台出事的時候，週下載欄會失去意義，
+    # 而「停更了還有人在下載」整個判斷站在那一欄上。對照組要蓋到兩台，
+    # 不然「問不到」在那一欄上又長得像「沒人下載」。
     #
-    # 這一條跟上面兩條不一樣，它需要網路：要造出「註冊處通、只有下載那台不通」，
-    # 前一半得是真的。整台機器都不通的時候註冊處那個對照會先擋下來，
-    # 訊息是註冊處那句，這裡就會變成一顆假紅燈（實測撞到）。
+    # 這幾條需要網路：要造出「註冊處通、只有下載那台有問題」，前一半得是真的。
+    # 整台機器都不通的時候註冊處那個對照會先擋下來，訊息是註冊處那句，
+    # 這裡就會變成一顆假紅燈（實測撞到）。
+    #
+    # 每一種處境各跑一輪，都查同一顆套件，存成檔案，這樣兩輪的差別就只剩處境本身。
+    # 下面的檢查比的是這幾份輸出彼此的差集，不比對任何一句寫死的話：
+    #   good  那台正常，數字問得到，當其他幾輪的基準線
+    #   off   你自己用 NPM_DOWNLOADS=off 關掉
+    #   down  整台連不到
+    #   junk  整台回 200，但給的是一頁 HTML 不是數字
+    #   bogus 那台連不存在的名字都回 200，它給的數字是編的
+    #   one   對照過了，只有這一顆問不到
+    #   neg   對照過了，這一顆回一個負數
     if [ "${HAVE_NET}" = 0 ]; then
-      skip "問不到註冊處，造不出「只有下載那台掛掉」這個情境"
+      skip "問不到註冊處，造不出「註冊處通、只有下載那台有問題」這幾種處境"
+    elif [ -n "$(miss node)" ]; then
+      skip "沒裝 node，起不了假的下載主機，下載欄那幾種處境驗不到"
     else
-      out=$(NPM_DOWNLOADS=https://127.0.0.1:9 bash "${HERE}/check-pkgs.sh" express 2>&1); rc=$?
-      n=0
-      # 一、次要欄位不准綁架主功能：名字照樣要查得到
-      printf '%s' "${out}" | grep -q '^查到.*express$' \
-        || { bad "下載那台掛掉，連名字都查不到了：${out}"; n=1; }
-      [ "${rc}" = 0 ] || { bad "下載那台掛掉不該讓整支失敗，rc=${rc}"; n=1; }
-      # 二、那一格要看得出是「沒問到」，不是 0、不是空白、不是一個問號帶過
-      printf '%s' "${out}" | grep -qE '^查到 +錯誤 ' \
-        || { bad "那一格沒印成「錯誤」，看不出是沒問到：${out}"; n=1; }
-      printf '%s' "${out}" | grep -q '不是「沒人下載」，是我沒問到' \
-        || { bad "沒有講明「錯誤」跟「沒人下載」的差別，那還是靜默降級"; n=1; }
-      # 三、少跑的那條檢查要出聲。檢查沒跑跟檢查跑完沒事，畫面上必須長得不一樣
-      printf '%s' "${out}" | grep -q '這一項我沒幫你看' \
-        || { bad "下載數沒問到，「下載數低不低」那條就沒跑，而收尾完全沒提。這是靜默的另一種形態"; n=1; }
-      [ "${n}" = 0 ] && ok "下載那台掛掉時大聲降級：名字照樣查得到、那格印「錯誤」、收尾講明這一項沒檢查"
-    fi
-
-    # 但那個對照不能變成「次要欄位掛掉就整支拒答」：公司只把註冊處放進白名單的話，
-    # 連「這個名字在不在」都問不到就太過頭。逃生口要真的能走，而且要看得見它關了。
-    # 這兩條也要註冊處通得了：它們驗的是「下載欄降級的時候名字照樣查得到」，
-    # 而「名字查得到」本身就要問到註冊處。連不到的機器上造不出這個情境
-    if [ "${HAVE_NET}" = 0 ]; then
-      skip "問不到註冊處，驗不到「下載欄關掉／壞掉但名字照樣查得到」"
-    else
-    offout=$(NPM_DOWNLOADS=off bash "${HERE}/check-pkgs.sh" express 2>&1); rc=$?
-    n=0
-    [ "${rc}" = 0 ] || { bad "NPM_DOWNLOADS=off 應該照常跑完，rc=${rc}"; n=1; }
-    printf '%s' "${offout}" | grep -q '^查到.*express$' \
-      || { bad "關掉下載欄之後名字查不到了"; n=1; }
-    printf '%s' "${offout}" | grep -qE '^查到 +關 ' \
-      || { bad "關掉之後那一格沒印成「關」"; n=1; }
-    printf '%s' "${offout}" | grep -q '你自己關掉了下載數' \
-      || { bad "收尾沒講「這一項沒檢查是因為你自己關的」"; n=1; }
-    # 「你關的」跟「它壞了」是兩件事，訊息不能共用。
-    # 共用的話讀者分不出自己是主動放棄，還是環境有問題要去修
-    printf '%s' "${offout}" | grep -q '不是「沒人下載」，是我沒問到' \
-      && { bad "關掉的訊息跟壞掉的訊息長一樣，兩種狀態分不開"; n=1; }
-    [ "${n}" = 0 ] && ok "NPM_DOWNLOADS=off 走得通，那格印「關」，訊息跟「問不到」分得開"
-
-    # 整台好好的、只有這一顆問不到，也要印「錯誤」不能印 0。
-    # 這走的是另一條分支：上面那條是對照就失敗，這條是對照過了、個別套件才掛。
-    # 沒有這條檢查的話那條 fallback 從來沒被看過（mutations.sh 第 6 種漏掉才發現）。
-    if [ -n "$(miss node)" ] || [ "${HAVE_NET}" = 0 ]; then
-      skip "沒裝 node 或問不到註冊處，「單顆問不到」那條分支沒驗到"
-    else
-      node -e '
-const http=require("http");
-const s=http.createServer((q,r)=>{
-  // 對照問的是 /express，讓它過；其他每一顆都失敗
-  if (q.url === "/express") { r.writeHead(200,{"content-type":"application/json"}); r.end(JSON.stringify({downloads:1})); }
-  else { r.writeHead(500); r.end("nope"); }
-});
-s.listen(0,"127.0.0.1",()=>process.stdout.write(String(s.address().port)));' > "${WS}/p1.txt" &
-      echo $! > "${WS}/p1.pid"
-      disown 2>/dev/null || true
-      i=0; while [ ! -s "${WS}/p1.txt" ] && [ "${i}" -lt 50 ]; do sleep 0.1; i=$((i+1)); done
-      P1=$(cat "${WS}/p1.txt" 2>/dev/null)
-      if [ -z "${P1}" ]; then
-        bad "起不了假的下載主機，「單顆問不到」那條分支沒驗到"
+      DLPKG=express-rate-limiter
+      P_OK=$(dlhost ok);   P_ONE=$(dlhost one); P_YES=$(dlhost yes)
+      P_NEG=$(dlhost neg); P_JUNK=$(dlhost junk)
+      if [ -z "${P_OK}" ] || [ -z "${P_ONE}" ] || [ -z "${P_YES}" ] \
+         || [ -z "${P_NEG}" ] || [ -z "${P_JUNK}" ]; then
+        bad "起不了假的下載主機（ok=${P_OK} one=${P_ONE} yes=${P_YES} neg=${P_NEG} junk=${P_JUNK}），下載欄那幾種處境沒驗到"
       else
-        one=$(NPM_DOWNLOADS="http://127.0.0.1:${P1}" bash "${HERE}/check-pkgs.sh" express-rate-limiter 2>&1)
-        kill "$(cat "${WS}/p1.pid")" 2>/dev/null
-        if printf '%s' "${one}" | grep -qE '^查到 +錯誤 .*express-rate-limiter$'; then
-          ok "對照過了但這一顆的下載數問不到，那格印「錯誤」而不是 0"
+        for spec in "good=http://127.0.0.1:${P_OK}" "off=off" "down=https://127.0.0.1:9" \
+                    "junk=http://127.0.0.1:${P_JUNK}" "bogus=http://127.0.0.1:${P_YES}" \
+                    "one=http://127.0.0.1:${P_ONE}" "neg=http://127.0.0.1:${P_NEG}"; do
+          st=${spec%%=*}
+          NPM_DOWNLOADS="${spec#*=}" bash "${HERE}/check-pkgs.sh" "${DLPKG}" > "${WS}/s.${st}" 2>&1
+          printf '%s' "$?" > "${WS}/rc.${st}"
+        done
+
+        # 一、次要欄位不准綁架主功能。公司只把註冊處放進白名單的話，
+        # 連「這個名字在不在」都問不到就太過頭，逃生口要真的能走。
+        n=0
+        for st in good off down junk bogus one neg; do
+          [ "$(cat "${WS}/rc.${st}")" = 0 ] \
+            || { bad "「${st}」那一輪只是下載欄出事，整支卻跟著失敗，rc=$(cat "${WS}/rc.${st}")"; n=1; }
+          grep -q "^查到.*${DLPKG}$" "${WS}/s.${st}" \
+            || { bad "「${st}」那一輪連名字都查不到了：$(head -3 "${WS}/s.${st}" | tr '\n' ' ')"; n=1; }
+        done
+        [ "${n}" = 0 ] && ok "下載欄七種處境下名字照樣查得到、離開碼都是 0"
+
+        # 二、那一格要看得出是哪一種，不是 0、不是空白、不是一個問號帶過
+        n=0
+        grep -qE '^查到 +[0-9]+ ' "${WS}/s.good" \
+          || { bad "那台正常的時候週下載欄沒印出數字：$(grep '^查到' "${WS}/s.good")"; n=1; }
+        grep -qE '^查到 +關 ' "${WS}/s.off" \
+          || { bad "關掉之後那一格沒印成「關」：$(grep '^查到' "${WS}/s.off")"; n=1; }
+        for st in down junk bogus one neg; do
+          grep -qE '^查到 +錯誤 ' "${WS}/s.${st}" \
+            || { bad "「${st}」那一輪的週下載欄沒印成「錯誤」，那一格會被讀成真的量到的數字：$(grep '^查到' "${WS}/s.${st}")"; n=1; }
+        done
+        grep '^查到' "${WS}/s.neg" | grep -q -- '-7' \
+          && { bad "那台回一個負的下載數，這支照樣把它印出來了：$(grep '^查到' "${WS}/s.neg")"; n=1; }
+        [ "${n}" = 0 ] && ok "週下載欄：問到印數字、你關的印「關」，其餘五種（整台連不到／整台回垃圾／那台亂答／單顆問不到／負數）都印「錯誤」"
+
+        # 三、檢查沒跑跟檢查跑完沒事，畫面上必須長得不一樣。
+        # 這條不比對任何一句話，比的是位置：表格印完之後，沒量到的那幾輪要還有話講，
+        # 而且是「那台正常」那一輪沒有的話。收尾整段被拿掉就會紅，因為那幾輪的說明
+        # 全在表格之前，表格之後剩下的會跟量得到的那輪一模一樣。
+        after_table "${WS}/s.good" > "${WS}/tail.good"
+        n=0
+        for st in off down junk bogus one neg; do
+          after_table "${WS}/s.${st}" | grep -vxF -f "${WS}/tail.good" > "${WS}/tail.${st}"
+          [ -s "${WS}/tail.${st}" ] \
+            || { bad "「${st}」那一輪沒量到下載數，「下載數低不低」那條就沒跑，而表格之後印的東西跟量到的那輪一模一樣。這是靜默的另一種形態"; n=1; }
+        done
+        [ "${n}" = 0 ] && ok "沒量到下載數的那幾輪，表格之後都多出一段「這一項沒檢查」，跟量到的那輪長得不一樣"
+
+        # 四、「你自己關的」「整台連不到」「那台亂答」「只有這一顆問不到」是四種處境，
+        # 讀者要分得出自己在哪一種。這裡比的是四輪輸出的差集：
+        # 四輪都印的行不帶處境資訊（表頭、區塊標題、收尾那句通則），先扣掉；
+        # 剩下的就是每一種專屬的說明。哪一種沒有專屬的話，或者兩種撞在一起，
+        # 都代表它們在畫面上分不開。
+        # 寫死一句話去比對的版本兩個方向都會壞：只改措辭會假紅，
+        # 用新措辭把 bug 原封不動種回去會假綠（兩個方向都實測到過）。
+        # 表格那幾列不算：這幾輪的那一列除了下載欄以外一模一樣，分辨靠的是文字。
+        # neg 不進這一組：它跟 one 都是「對照過了、這一顆沒量到」，共用同一句是對的。
+        for st in off down bogus one junk; do sentences "${WS}/s.${st}" > "${WS}/all.${st}"; done
+        grep -xF -f "${WS}/all.off" "${WS}/all.down" | grep -xF -f "${WS}/all.bogus" \
+          | grep -xF -f "${WS}/all.one" > "${WS}/core"
+        for st in off down bogus one; do
+          grep -vxF -f "${WS}/core" "${WS}/all.${st}" > "${WS}/sig.${st}"
+        done
+        n=0
+        for st in off down bogus one; do
+          [ -s "${WS}/sig.${st}" ] \
+            || { bad "「${st}」這一輪沒有一句話是它專屬的，讀者看不出自己碰到的是哪一種"; n=1; }
+        done
+        for pair in off:down off:bogus off:one down:bogus down:one bogus:one; do
+          dup=$(grep -xF -f "${WS}/sig.${pair%%:*}" "${WS}/sig.${pair##*:}" | head -2)
+          [ -z "${dup}" ] && continue
+          bad "「${pair%%:*}」跟「${pair##*:}」講了同一句話，兩種處境分不開：${dup}"; n=1
+        done
+        [ "${n}" = 0 ] && ok "下載欄四種處境（你關的／整台連不到／那台亂答／只有這一顆問不到）各講各的話，沒有一句重疊"
+
+        # 五、整台回 200 但給的不是數字（代理塞一頁 HTML）的時候，對照如果只看
+        # HTTP 狀態碼就會過，收尾就走到逐顆點名那一條，把讀者導向去查個別套件，
+        # 而實際壞掉的是整台。這條要求它講整台那一組話，不是單顆那一組。
+        # 一樣不比對寫死的句子，比的是它用了誰的專屬說明。
+        n=0
+        grep -qxF -f "${WS}/sig.down" "${WS}/all.junk" \
+          || { bad "那台整台回 200 但給的不是數字，這一輪卻沒講出「整台有問題」那一組話"; n=1; }
+        hit=$(grep -xF -f "${WS}/sig.one" "${WS}/all.junk" | head -1)
+        [ -z "${hit}" ] \
+          || { bad "整台回的都是垃圾，收尾卻只點名個別套件，讀者會被導去查錯的東西：${hit}"; n=1; }
+        [ "${n}" = 0 ] && ok "整台回 200 但給的不是數字時，講的是「整台有問題」，不是逐顆點名"
+
+        # 六、dlcell 跟 repocell 補幾格是寫死的（全形字佔兩個顯示欄位，printf 的
+        # %10s 按字元數補，會讓「錯誤」那幾列短兩欄）。沒有東西在看的話，補錯了
+        # 照樣印得出一張表，只是歪的。這條量顯示寬度，不看補了幾個空白字元。
+        NPM_DOWNLOADS=off bash "${HERE}/check-pkgs.sh" express "${RANDNAME}" > "${WS}/s.rows" 2>&1
+        cat "${WS}/s.good" "${WS}/s.down" "${WS}/s.rows" \
+          | grep -E '^(判定|查到|沒有|錯誤)[[:space:]]' | sort -u > "${WS}/rows"
+        wid=$(node -e '
+const rows=require("fs").readFileSync(process.argv[1],"utf8").split("\n").filter(s=>s.length);
+// 這張表用到的全形字只有 CJK 跟全形符號，認這幾段就夠
+const wide=/[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6]/;
+const w=s=>Array.from(s).reduce((a,c)=>a+(wide.test(c)?2:1),0);
+const edge=re=>{const set={};for(const r of rows){const m=r.match(re);if(m)set[w(m[1])]=1}return Object.keys(set)};
+const dl=edge(/^(\S+\s+\S+)/), pkg=edge(/^(.*\s)\S+$/);
+console.log((dl.length===1&&pkg.length===1?"齊":"歪")+" "+rows.length+" 列，週下載欄右緣 "+dl.join("/")+"，套件欄左緣 "+pkg.join("/"));
+' "${WS}/rows")
+        if [ "${wid%% *}" = "齊" ]; then
+          ok "表格每一列的欄位落點都對得上（${wid#* }）"
         else
-          bad "單顆問不到卻沒印「錯誤」，那一格會被讀成真的數字：$(printf '%s' "${one}" | grep 'express-rate-limiter$')"
+          bad "表格歪了，各列的欄位落點對不上（${wid#* }）"
         fi
       fi
-    fi
     fi
   fi
 fi
@@ -375,6 +489,11 @@ sect "5 npm ci 沒有 lockfile 會直接失敗，這正是它跟 npm install 的
     sig=$( cd "${TD}" && npm audit signatures 2>&1 )
     if printf '%s' "${sig}" | grep -q 'verified registry signature'; then
       ok "npm audit signatures 全通過（那證明的是檔案沒被中途換掉，不是發布者可信）"
+    # npm 把註冊處的公鑰釘在自己身上，舊版釘的那一把會過期。npm 9.9.4 上實測，
+    # 每一顆都報「public key has expired 2025-01-29」。過期的是這台機器上那支 npm
+    # 的內建鑰匙，不是被驗的東西，所以這是這台不適用，不是紅燈。
+    elif printf '%s' "${sig}" | grep -q 'public key has expired'; then
+      skip "這台的 npm（$(npm -v)）內建的註冊處公鑰已經過期，簽章這條驗不了。換一支新的 npm 再跑"
     else
       bad "簽章檢查沒過或訊息變了：$(printf '%s' "${sig}" | tail -3)"
     fi

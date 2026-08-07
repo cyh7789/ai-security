@@ -10,7 +10,8 @@
 # 浮動那邊的 0 是「今天沒有」，明天同一份 package.json 可能就不是 0 了。
 #
 # 不動你的專案。用 --package-lock-only，不會下載套件本體，但註冊處的中繼資料還是會
-# 進 ~/.npm/_cacache（實測寫了一百多個檔），另外 npm 自己會留 debug log。
+# 進 ~/.npm/_cacache：把 npm_config_cache 指到空目錄實測，184 個檔約 5.6 MB，
+# 另外 npm 自己在 _logs 留 4 個 debug log。這些跑完都不會清。
 
 set -u
 command -v npm >/dev/null 2>&1 || { echo "沒有 npm，這支跑不了"; exit 2; }

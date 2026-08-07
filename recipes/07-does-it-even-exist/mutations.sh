@@ -12,7 +12,7 @@
 set -u
 ONLY="${1:-}"
 HERE=$(cd "$(dirname "$0")" && pwd)
-PASS=0; FAIL=0; UNTESTED=0; N=0
+PASS=0; FAIL=0; UNTESTED=0; N=0; RAN=0
 
 # 編號打錯的話，每一種突變都被 run_case 跳過，收尾算出「抓到 0 種 / 漏掉 0 種」
 # 然後離開碼 0。一份專門用來證明「這裡沒有假綠燈」的工具，自己就不能有這種形狀。
@@ -28,6 +28,7 @@ run_case() {
   N=$((N+1))
   desc=$1; sect=$2; file=$3; shift 3
   if [ -n "${ONLY}" ] && [ "${ONLY}" != "${N}" ]; then return 0; fi
+  RAN=$((RAN+1))
   WS=$(mktemp -d)
   cp "${HERE}"/*.sh "${WS}"/ 2>/dev/null
   for e in "$@"; do
@@ -85,11 +86,11 @@ run_case '對照跑不出來也照樣往下印'      4 lockfile-demo.sh \
 
 # 兩台主機、名字後面黏版本號
 run_case '那台掛了卻不告訴你（印問號）'  1 check-pkgs.sh \
-  's{    down\) dl=錯誤 ;;.*\n}{    down) dl="?" ;;\n}'
+  's{    down\|bogus\) dl=錯誤 ;;.*\n}{    down|bogus) dl="?" ;;\n}'
 run_case '那台掛了，收尾不出聲'          1 check-pkgs.sh \
   's{^if \[ -n "\$\{DL_MISSING\}" \]; then\n.*?\nfi$}{}ms'
 run_case '那台掛了就整支拒答'            1 check-pkgs.sh \
-  's{\[ "\$\{CTRL_DL\}" = "200" \] \|\| DL_STATE=down}{exit 2}'
+  's{^    DL_STATE=down$}{    exit 2}m'
 run_case '單顆問不到就印成 0'            1 check-pkgs.sh \
   's{\|\| dl=錯誤 ;;}{|| dl=0 ;;}'
 run_case '名字後面的版本號不切'          2 check-pkgs.sh \
@@ -101,7 +102,23 @@ run_case '逃生口失效，off 也照樣去問'    1 check-pkgs.sh \
 run_case '關掉跟壞掉共用同一句訊息'      1 check-pkgs.sh \
   's{\Qoff)  printf \E.*?\Q"api.npmjs.org" ;;\E}{off)  printf %s "「錯誤」不是「沒人下載」，是我沒問到。\\n" ;;}s'
 
-if [ $((PASS + FAIL)) -eq 0 ]; then
+# 週下載那一欄的四條路：問到數字、拿到負數、整台回垃圾、只有這一顆問不到。
+# 這幾條之前一條突變都沒打過，而「編出來的數字」跟「量到的數字」印出來一模一樣。
+run_case '問到數字也回報成「錯誤」'      1 check-pkgs.sh \
+  's{if\(Number\.isInteger\(n\)&&n>=0\)process\.stdout\.write\(String\(n\)\)}{}'
+run_case '那台回負數也照樣印出來'        1 check-pkgs.sh \
+  's{&&n>=0}{}'
+run_case '對照只看狀態碼，不看內容'      1 check-pkgs.sh \
+  's{if \[ -z "\$\(dlnum "\$\{ctrl\}"\)" \]; then}{if [ "\$\{CTRL_DL\}" != "200" ]; then}'
+run_case '單顆問不到說成整台問不到'      1 check-pkgs.sh \
+  's{\*\)     why="這幾顆的下載數沒問到" ;;}{*)     why="下載數那台問不到" ;;}'
+run_case '「關」那一格的補格數改掉'      1 check-pkgs.sh \
+  's{\x27        關\x27}{\x27  關\x27}'
+
+# 這裡數的是「跑了幾種」，不是把結果加起來。加總的版本每多一種結果分類就要記得
+# 回來改一次，而漏改的後果正好是這支要抓的形狀：第 5 種明明跑了、只是這台機器
+# 測不到，收尾卻回頭說「沒有第 5 種」，同一輪輸出前後打架。
+if [ "${RAN}" -eq 0 ]; then
   printf '\n一種突變都沒跑到。%s可用的是 1 到 %s，或不給參數跑全部。\n' \
     "$([ -n "${ONLY}" ] && printf '沒有第 %s 種，' "${ONLY}")" "${N}" >&2
   exit 2
