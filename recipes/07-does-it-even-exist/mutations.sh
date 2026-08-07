@@ -12,7 +12,7 @@
 set -u
 ONLY="${1:-}"
 HERE=$(cd "$(dirname "$0")" && pwd)
-PASS=0; FAIL=0; N=0
+PASS=0; FAIL=0; UNTESTED=0; N=0
 
 # 編號打錯的話，每一種突變都被 run_case 跳過，收尾算出「抓到 0 種 / 漏掉 0 種」
 # 然後離開碼 0。一份專門用來證明「這裡沒有假綠燈」的工具，自己就不能有這種形狀。
@@ -40,9 +40,16 @@ run_case() {
   fi
   OUT=$(cd "${WS}" && bash verify.sh "${sect}" 2>&1)
   REDS=$(printf '%s' "${OUT}" | grep -c '\[FAIL\]')
+  SKIPS=$(printf '%s' "${OUT}" | grep -c '\[SKIP\]')
   if [ "${REDS}" -gt 0 ]; then
     printf '  [抓到] %-40s 第 %s 節 %s 個紅燈\n' "${desc}" "${sect}" "${REDS}"
     PASS=$((PASS+1))
+  elif [ "${SKIPS}" -gt 0 ]; then
+    # 那一節整節被跳過（沒網路、api.npmjs.org 回 429），沒有紅燈不代表突變沒被抓到。
+    # 算成漏掉會冤枉它，算成抓到就是這支自己在造假綠燈。兩個都不對，所以單獨報。
+    printf '  [沒測到] %-38s 第 %s 節整節跳過：%s\n' "${desc}" "${sect}" \
+      "$(printf '%s' "${OUT}" | grep -m1 '\[SKIP\]' | sed 's/^ *\[SKIP\] //')"
+    UNTESTED=$((UNTESTED+1))
   else
     printf '  [漏掉] %-40s 第 %s 節 全綠，這是假綠燈\n' "${desc}" "${sect}"
     printf '%s\n' "${OUT}" | sed 's/^/         /'
@@ -68,15 +75,31 @@ run_case '-f 不剝註解行'                2 check-pkgs.sh \
 run_case '剪貼簿路徑吃掉第一行'          2 check-pkgs.sh \
   's{^(elif \[ "\$\{1:-\}" = "-" \]; then\n)}{$1  IFS= read -r _drop\n}m'
 
-# 下載數那一節
-run_case '下載數一律回報成「?」'         3 check-pkgs.sh \
-  's{^  dl=\$\{dl:-\?\}$}{  dl="?"}m'
-
 # lockfile 對照
 run_case '兩邊都用浮動版本，對照消失'    4 lockfile-demo.sh \
   's{"pinned:4\.19\.2"}{"pinned:^4.19.2"}'
 run_case 'lockfile 套件數印成 1'        4 lockfile-demo.sh \
   's{\$\(deps "\$\{d\}"\)}{1}'
+run_case '對照跑不出來也照樣往下印'      4 lockfile-demo.sh \
+  's{^if \[ "\$\{ROWS\}" = 0 \]; then\n.*?\n  exit 2\nfi$}{}ms'
+
+# 兩台主機、名字後面黏版本號
+run_case '那台掛了卻不告訴你（印問號）'  1 check-pkgs.sh \
+  's{    down\) dl=錯誤 ;;.*\n}{    down) dl="?" ;;\n}'
+run_case '那台掛了，收尾不出聲'          1 check-pkgs.sh \
+  's{^if \[ -n "\$\{DL_MISSING\}" \]; then\n.*?\nfi$}{}ms'
+run_case '那台掛了就整支拒答'            1 check-pkgs.sh \
+  's{\[ "\$\{CTRL_DL\}" = "200" \] \|\| DL_STATE=down}{exit 2}'
+run_case '單顆問不到就印成 0'            1 check-pkgs.sh \
+  's{\|\| dl=錯誤 ;;}{|| dl=0 ;;}'
+run_case '名字後面的版本號不切'          2 check-pkgs.sh \
+  's{^  case "\$\{p\}" in\n.*?\n  esac$}{}ms'
+run_case '連 scoped 開頭的 @ 也切掉'     2 check-pkgs.sh \
+  's{    \@\*\)     ;;.*\n}{}'
+run_case '逃生口失效，off 也照樣去問'    1 check-pkgs.sh \
+  's{if \[ "\$\{DL\}" = "off" \]; then}{if false; then}'
+run_case '關掉跟壞掉共用同一句訊息'      1 check-pkgs.sh \
+  's{\Qoff)  printf \E.*?\Q"api.npmjs.org" ;;\E}{off)  printf %s "「錯誤」不是「沒人下載」，是我沒問到。\\n" ;;}s'
 
 if [ $((PASS + FAIL)) -eq 0 ]; then
   printf '\n一種突變都沒跑到。%s可用的是 1 到 %s，或不給參數跑全部。\n' \
@@ -84,5 +107,6 @@ if [ $((PASS + FAIL)) -eq 0 ]; then
   exit 2
 fi
 
-printf '\n════════ 抓到 %s 種 / 漏掉 %s 種 ════════\n' "${PASS}" "${FAIL}"
-[ "${FAIL}" = 0 ]
+printf '\n════════ 抓到 %s 種 / 漏掉 %s 種 / 沒測到 %s 種 ════════\n' "${PASS}" "${FAIL}" "${UNTESTED}"
+[ "${UNTESTED}" = 0 ] || printf '沒測到的那幾種這一輪沒有結論，不要當成通過。\n'
+[ "${FAIL}" = 0 ] && [ "${UNTESTED}" = 0 ]
