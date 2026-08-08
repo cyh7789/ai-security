@@ -30,6 +30,7 @@ run_case() {
   RAN=$((RAN+1))
   WS=$(mktemp -d)
   cp "${HERE}"/*.sh "${HERE}"/*.cjs "${WS}"/ 2>/dev/null
+  cp -R "${HERE}/demo" "${WS}/demo" 2>/dev/null
   for e in "$@"; do
     perl -0pi -e "${e}" "${WS}/${file}" || {
       printf '  第 %s 種：突變寫不進去\n' "${N}"; rm -rf "${WS}"; FAIL=$((FAIL+1)); return; }
@@ -62,11 +63,11 @@ printf '\n每一種都應該被抓到。有一個「漏掉」或「無效」就�
 
 # 憑證是這一份最不能失手的地方，先打它
 run_case '把值跟著變數名一起印出來'          1 mcp-config.cjs \
-  's{Object\.keys\(s\.env\) : \[\]}{Object.entries(s.env).map(e => e[0] + "=" + e[1]) : []}'
+  's{if \(!refs\.length\) return \{ kind: "literal", shown: "\*\*\*" \};}{if (!refs.length) return \{ kind: "literal", shown: s \};}'
 run_case 'headers 底下的憑證不看'            1 mcp-config.cjs \
-  's{\.concat\(headers\)}{.concat([])}'
+  's{\n  take\(s\.headers\);}{}'
 run_case 'args 裡的 NAME=值 不算宣告變數'     1 mcp-config.cjs \
-  's{\.concat\(inArgs\)}{.concat([])}'
+  's{if \(m\) vars\.push\(declare\(m\[1\], m\[2\]\)\);}{if (false) vars.push(declare(m[1], m[2]));}'
 run_case '憑證樣式改成大小寫敏感'             1 mcp-config.cjs \
   's{const looksLikeCred = \(name\) => CRED\.test\(name\);}{const looksLikeCred = (name) => /(TOKEN|SECRET|API_KEY)/.test(name);}'
 run_case '每一台的憑證欄都印 ***'             1 mcp-config.cjs \
@@ -81,6 +82,19 @@ run_case '專案路徑整條印出來'                 1 mcp-config.cjs \
   's{"proj:" \+ path\.basename\(String\(proj\)\.replace\(/\\/\+\$/, ""\)\)}{"proj:" + String(proj)}'
 run_case '允許目錄是 / 的時候收斂成空字串'     1 mcp-config.cjs \
   's{  if \(s === "" \|\| s === "/"\) return "/ \(whole machine\)";\n}{}'
+
+# 專案範圍那一路。這一組打的是上一版真的漏掉的東西：只讀 ~/.claude.json
+# 就下「這台機器上沒有任何一台帶 -e」的結論，而 .mcp.json 裡就有一台。
+run_case '只讀 ~/.claude.json，不讀 .mcp.json'  5 inventory.sh \
+  's{^ROWS=\$\(printf.*\n}{}m'
+run_case '把 \${VAR} 展開成真值'               5 mcp-config.cjs \
+  's{return \{ kind: "var", shown: refs\.join\(""\) \};}{return \{ kind: "var", shown: refs.map((r) => process.env[r.slice(2, -1)] || r).join("") \};}'
+run_case '明文跟用變數的混為一談'              5 mcp-config.cjs \
+  's{  if \(creds\.some\(\(v\) => v\.kind === "literal"\)\) flags\.push\("credliteral"\);}{  if (creds.length) flags.push("credliteral");}'
+run_case '解不開的 .mcp.json 當成那個專案沒裝'  5 mcp-config.cjs \
+  's{^      broken\.push\(proj\);\n}{}m'
+run_case '收尾點名只印名字，不印是哪個來源'     7 mcp-config.cjs \
+  's{  const at = \(r\) => r\[0\] \+ "/" \+ r\[3\];}{  const at = (r) => r[3];}'
 
 # inventory.sh 的唯讀與離開碼
 run_case '設定檔讀不到也照樣印一張空表'        1 inventory.sh \
@@ -106,20 +120,29 @@ run_case '回印讀者的指令時不遮蔽'              2 list-tools.sh \
   's{ \| node "\$\{HERE\}/mcp-config\.cjs" mask\)}{)}'
 
 # 掃描器
-run_case '命中了也回離開碼 0'                 3 scan-descriptions.sh \
+run_case '命中了也回離開碼 0'                 3 desc-scan.cjs \
   's{  process\.exitCode = 1;}{  process.exitCode = 0;}'
-run_case '乾淨的也回離開碼 1'                 3 scan-descriptions.sh \
+run_case '乾淨的也回離開碼 1'                 3 desc-scan.cjs \
   's{    process\.exitCode = 0;}{    process.exitCode = 1;}'
-run_case '樣式改成大小寫敏感'                 3 scan-descriptions.sh \
+run_case '樣式改成大小寫敏感'                 3 desc-scan.cjs \
   's{new RegExp\(r, "i"\)}{new RegExp(r)}'
-run_case '拿掉「隱瞞」那一類樣式'              3 scan-descriptions.sh \
-  's{^    \["隱瞞".*\n}{}m'
-run_case '拿掉「路徑」那一類樣式'              3 scan-descriptions.sh \
-  's{^    \["路徑".*\n}{}m'
-run_case '抓到第一條就收工'                   3 scan-descriptions.sh \
-  's{      hits\.push\(\[tool, g, found\[0\], around\]\);}{      if (!hits.length) hits.push([tool, g, found[0], around]);}'
+run_case '拿掉「隱瞞」那一類樣式'              3 desc-scan.cjs \
+  's{^  \["隱瞞".*\n}{}m'
+run_case '拿掉「路徑」那一類樣式'              3 desc-scan.cjs \
+  's{^  \["路徑".*\n}{}m'
+run_case '抓到第一條就收工'                   3 desc-scan.cjs \
+  's{      hits\.push\(\[where\(i\), g, found\[0\], around\]\);}{      if (!hits.length) hits.push([where(i), g, found[0], around]);}'
 run_case '沒問到當成乾淨'                     3 scan-descriptions.sh \
   's{  printf .沒問到就沒有掃到，離開碼 2。這不是「乾淨」。\\n.\n  exit 2}{  exit 0}'
+
+# 樣式表只有一份，所以拿掉一類的時候，MCP 那一路跟 --files 那一路要一起紅。
+# 兩份寫的話，補了一邊漏了另一邊，而畫面上只會看到一邊變綠。
+run_case '拿掉「標籤」那一類樣式（掃指示檔那一路）' 6 desc-scan.cjs \
+  's{^  \["標籤".*\n}{}m'
+run_case '掃指示檔的時候不點出是哪一個檔'      6 desc-scan.cjs \
+  's{f \+ ":" \+ \(i \+ 1\)}{"(某個指示檔)"}'
+run_case '路徑底下沒有 markdown 也回離開碼 0'  6 desc-scan.cjs \
+  's{  if \(!files\.length\) \{}{  if (false) \{}'
 
 # 探針
 run_case 'PROBE_ROOT 的 /tmp 守衛拿掉'        4 probe.sh \
