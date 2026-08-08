@@ -99,10 +99,22 @@ const looksLikePath = (a) => /^[/~]/.test(String(a));
 // 這張表要長，唯一的加法是去讀那台 server 的文件、確認它的位置參數真的是
 // allowed directory，然後把它加進來。加之前先問：這台 server 有沒有可能在
 // 這些路徑以外的地方讀寫？答不出來就不要加。
+const FS_PKG = /@modelcontextprotocol\/server-filesystem(@|$)/;
+
 const KNOWN_SCOPE_ARGS = [
-  // 官方 filesystem server：位置參數就是 allowed directories，README 明講
-  // `Specify Allowed directories when starting the server`。
-  { match: /@modelcontextprotocol\/server-filesystem(@|$)/, kind: "positional" },
+  {
+    // 官方 filesystem server：套件名後面的位置參數就是 allowed directories，
+    // README 明講 `Specify Allowed directories when starting the server`。
+    match: FS_PKG,
+    // 每台自己帶抽取器，不共用一個「看起來像路徑就算」的通則。
+    // command 一律不參與：`/opt/homebrew/bin/npx` 是執行檔位置，
+    // 把它算進範圍就會印出一個看起來很精準的假邊界。
+    extract: function (command, args) {
+      const i = args.findIndex((a) => FS_PKG.test(String(a)));
+      if (i < 0) return [];
+      return args.slice(i + 1).map(String).filter(looksLikePath).map(collapsePath);
+    },
+  },
 ];
 
 function pathsInArgs(args) {
@@ -116,31 +128,16 @@ function pathsInArgs(args) {
   return hits;
 }
 
-// 位置參數 = 不是旗標、也不是旗標的值、也不是 NAME=VALUE 的那些
-function positionalPaths(args) {
-  const hits = [];
-  let skipNext = false;
-  for (const raw of args) {
-    const a = String(raw);
-    if (skipNext) { skipNext = false; continue; }
-    if (a.startsWith("-")) { skipNext = !a.includes("="); continue; }
-    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(a)) continue;
-    if (looksLikePath(a)) hits.push(collapsePath(a));
-  }
-  return hits;
-}
-
-// 回傳 { scope, argPaths }。scope 只在認得那台 server 的時候才填。
-function scopeFromArgs(args) {
-  const all = args.map(String);
+// 回傳 { scope, argPaths }。
+// scope 只在認得那台 server 的時候才填，而且只由那台自己的抽取器決定。
+// argPaths 是「命令列上出現過的路徑」，含 command，那一欄不叫範圍。
+function scopeFromArgs(command, args) {
+  const all = [].concat(command == null ? [] : command, args).map(String);
   const argPaths = pathsInArgs(all);
   const known = KNOWN_SCOPE_ARGS.find((k) => all.some((a) => k.match.test(a)));
-  if (!known) {
-    return { scope: "unknown", argPaths: argPaths };
-  }
-  // 認得的那台：位置參數才是它宣告的範圍。第一個位置參數是套件名，跳過。
-  const pos = positionalPaths(all);
-  return { scope: pos.length ? pos.join(" ") : "unknown", argPaths: argPaths };
+  if (!known) return { scope: "unknown", argPaths: argPaths };
+  const dirs = known.extract(command == null ? "" : String(command), args.map(String));
+  return { scope: dirs.length ? dirs.join(" ") : "unknown", argPaths: argPaths };
 }
 
 const isWide = (scope) => /whole machine|whole home/.test(scope);
@@ -196,7 +193,7 @@ function serverRow(source, name, s) {
   let transport = String(s.type || "").toLowerCase();
   if (!transport) transport = s.command ? "stdio" : (s.url ? "http" : "unknown");
 
-  const sc = s.command ? scopeFromArgs([].concat(s.command, args))
+  const sc = s.command ? scopeFromArgs(s.command, args)
     : { scope: (s.url ? "remote" : "unknown"), argPaths: [] };
 
   return row({
@@ -317,8 +314,8 @@ function fromCli() {
         vars: vars,
         credUnknown: false,
         name: name,
-        scope: scopeFromArgs(parts).scope,
-        argPaths: scopeFromArgs(parts).argPaths,
+        scope: scopeFromArgs(parts[0], parts.slice(1)).scope,
+        argPaths: scopeFromArgs(parts[0], parts.slice(1)).argPaths,
       }));
     } else {
       // CLI 這一路對遠端那幾台只印 URL。設定檔裡 headers 底下的憑證它不印，

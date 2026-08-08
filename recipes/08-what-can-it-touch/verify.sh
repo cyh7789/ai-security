@@ -168,6 +168,8 @@ const cfg = { mcpServers: {}, projects: {
     "demo-c": { type: "stdio", command: "node", args: ["srv.js"], env: { "demo_c_secret": C } },
     // 認得的那台宣告了整台機器：這是「寬範圍」警告該響的唯一情況。
     "demo-d": { command: "npx", args: ["-y", "@modelcontextprotocol/server-filesystem@2026.7.10", "/"] },
+    // 用絕對路徑叫 npx。執行檔位置不是允許目錄，不准進範圍欄。
+    "demo-abs": { command: "/opt/homebrew/bin/npx", args: ["-y", "@modelcontextprotocol/server-filesystem@2026.7.10", "/srv/allowed"] },
     // 不認得的那台，命令列上有程式檔與設定檔路徑：範圍必須是 unknown，
     // 路徑只能出現在「啟動參數裡的路徑」那一欄。
     "notes-index": { command: "node", args: ["/opt/notes-mcp/server.js", "--config", "/opt/notes-mcp/config.json"] },
@@ -180,10 +182,10 @@ fs.writeFileSync(process.argv[4], JSON.stringify(cfg));
 
     out=$(MCP_CONFIG="${WS}/cfg-projects.json" MCP_ROOTS="${NOROOTS}" bash "${HERE}/inventory.sh" 2>&1); rc=$?
     n=0
-    for name in demo-a demo-b demo-c demo-d demo-e notes-index; do
+    for name in demo-a demo-b demo-c demo-d demo-e demo-abs notes-index; do
       printf '%s' "${out}" | grep -q "${name}" || { bad "專案級的 ${name} 沒被列出來。只讀全域 mcpServers 的話這一輪會是零台"; n=1; }
     done
-    [ "${n}" = 0 ] && ok "全域是空的、六台都住在專案底下，六台全部列出來了"
+    [ "${n}" = 0 ] && ok "全域是空的、七台都住在專案底下，七台全部列出來了"
 
     # 負對照：不是每一列都印 ***。整欄寫死 *** 的腳本上面那幾條照樣會綠。
     printf '%s' "${out}" | grep -E '^proj:demo-proj-two +sse +no +demo-e' >/dev/null \
@@ -240,6 +242,23 @@ fs.writeFileSync(process.argv[4], JSON.stringify(cfg));
         && ok "它命令列上的路徑仍然看得到，只是放在「啟動參數裡的路徑」那一欄" \
         || bad "路徑資訊整個不見了，那是另一種漏報：${unkline}"
     fi
+    # 執行檔的位置不是允許目錄。用絕對路徑叫 npx 是完全正常的設定，
+    # 而 /opt/homebrew/bin/npx 一旦進了範圍欄，那一格就是假的。
+    absline=$(printf '%s' "${out}" | grep 'demo-abs' || true)
+    if [ -z "${absline}" ]; then
+      bad "找不到用絕對路徑叫 npx 的那台（demo-abs）"
+    else
+      printf '%s' "${absline}" | sed 's/  */ /g' | cut -d' ' -f5- | cut -d' ' -f1 | grep -q 'npx' \
+        && bad "執行檔路徑跑進範圍欄了：${absline}" \
+        || ok "執行檔路徑沒有進範圍欄（絕對路徑的 npx 不算允許目錄）"
+      printf '%s' "${absline}" | grep -q 'allowed' \
+        && ok "它真正的允許目錄還是填得出來" \
+        || bad "連真正的允許目錄都沒填：${absline}"
+      printf '%s' "${absline}" | grep -q 'npx' \
+        && ok "執行檔路徑仍看得到，在「啟動參數裡的路徑」那一欄" \
+        || bad "執行檔路徑整個不見了，那是另一種漏報：${absline}"
+    fi
+
     # 正對照：認得參數語意的那台，範圍還是要填得出來。
     # 少了這條，「一律印 unknown」也會讓上面兩條通過，那是把判別力修掉。
     printf '%s' "${out}" | grep -qE 'demo-d[[:space:]]+unknown[[:space:]]' \

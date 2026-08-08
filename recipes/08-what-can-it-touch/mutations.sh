@@ -67,6 +67,8 @@ run_case '把值跟著變數名一起印出來'          1 mcp-config.cjs \
 run_case '任何像路徑的參數都當成權限範圍'      1 mcp-config.cjs \
   's{  const known = KNOWN_SCOPE_ARGS\.find\(\(k\) => all\.some\(\(a\) => k\.match\.test\(a\)\)\);}{  const known = true;}' \
   's{  const pos = positionalPaths\(all\);}{  const pos = argPaths;}'
+run_case '執行檔路徑也算進允許目錄'            1 mcp-config.cjs \
+  's{      const i = args\.findIndex\(\(a\) => FS_PKG\.test\(String\(a\)\)\);\n      if \(i < 0\) return \[\];\n      return args\.slice\(i \+ 1\)}{      const i = -1;\n      if (false) return [];\n      return [command].concat(args)}'
 run_case '認得的 server 也一律印 unknown'       1 mcp-config.cjs \
   's{const KNOWN_SCOPE_ARGS = \[}{const KNOWN_SCOPE_ARGS = []; const _UNUSED = [}'
 run_case 'headers 底下的憑證不看'            1 mcp-config.cjs \
