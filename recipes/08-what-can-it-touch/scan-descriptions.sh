@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# 掃「會整段進到模型上下文的別人寫的字」有沒有在對模型下指令。兩個入口：
+# 掃「別人寫的、會被送進模型上下文的字」有沒有在對模型下指令。兩個入口：
 #
-#   bash scan-descriptions.sh npx -y @modelcontextprotocol/server-filesystem /tmp/somewhere
+#   bash scan-descriptions.sh npx -y @modelcontextprotocol/server-filesystem@2026.7.10 /tmp/somewhere
 #   bash scan-descriptions.sh --files ~/.claude/skills
 #
 # 第一個入口問一台 MCP server 要工具描述，第二個入口讀 SKILL.md 這類 markdown 指示檔。
-# 兩批都是別人寫的字、都整段進模型的上下文、都是你在畫面上只看到一個名字的東西，
+# 兩批都是別人寫的字、都會被送進模型的上下文、都是你在畫面上只看到一個名字的東西，
 # 所以同一份樣式表要對兩批各掃一次。樣式表住在 desc-scan.cjs，只有一份。
 #
 # 離開碼分三種，因為「乾淨」跟「我沒掃到」不能混在一起：

@@ -1,4 +1,4 @@
-// 掃「會整段進到模型上下文的別人寫的字」有沒有在對模型下指令。兩個入口：
+// 掃「別人寫的、會被送進模型上下文的字」有沒有在對模型下指令。兩個入口：
 //   node desc-scan.cjs tools            讀 stdin 上 list-tools.sh 的輸出，逐行掃
 //   node desc-scan.cjs files <路徑...>   掃目錄或檔案裡的 markdown 指示檔（SKILL.md 這類）
 //
@@ -69,7 +69,7 @@ function fromTools() {
     return tool;
   });
   report(scan(lines, (i) => owner[i]),
-    "這幾條是寫在工具描述裡的，模型每一輪都會收到，而你在 UI 上只看到工具名字。");
+    "這幾條是寫在工具描述裡的，是這台 server 備好要餵給模型的內容，而你在 UI 上只看到工具名字。");
 }
 
 // ── files 模式 ────────────────────────────────────────────

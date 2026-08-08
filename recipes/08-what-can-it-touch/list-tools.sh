@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 起一台本地 stdio MCP server，問它有哪些工具，把每個工具的完整描述原樣印出來。
 #
-#   bash list-tools.sh npx -y @modelcontextprotocol/server-filesystem /tmp/somewhere
+#   bash list-tools.sh npx -y @modelcontextprotocol/server-filesystem@2026.7.10 /tmp/somewhere
 #   bash list-tools.sh docker run -i --rm some/mcp-image
 #
 # 這支只讀不寫：不改設定、不建檔案。但它會啟動你給的那個指令，
@@ -54,5 +54,6 @@ if [ "${NTOOLS}" = 0 ]; then
 fi
 
 printf '\n════════ %s 個工具，描述合計 %s 字元 ════════\n' "${NTOOLS}" "${NCHARS}"
-printf '你在 UI 上挑的是那 %s 個名字，模型每一輪收到的是這 %s 個字元。\n' "${NTOOLS}" "${NCHARS}"
+printf '你在 UI 上挑的是那 %s 個名字，這台 server 備好要餵給模型的是這 %s 個字元。\n' "${NTOOLS}" "${NCHARS}"
+printf '什麼時候進上下文、進多少由客戶端決定（Claude Code 預設 tool search 是按需載入）。\n'
 printf '這些字元是 server 作者寫的，它更新一次就換一份，你這邊沒有人審過。\n'

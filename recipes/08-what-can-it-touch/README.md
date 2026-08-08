@@ -5,8 +5,8 @@
 ```bash
 bash inventory.sh                         清點本機所有 MCP server 設定，印成一張表
 MCP_ROOTS=~/work/a:~/work/b bash inventory.sh   換掉要找 .mcp.json 的那幾個目錄
-bash list-tools.sh npx -y @modelcontextprotocol/server-filesystem /tmp/x   問它有哪些工具，印完整描述
-bash scan-descriptions.sh npx -y @modelcontextprotocol/server-filesystem /tmp/x   掃描述裡有沒有在對模型下指令
+bash list-tools.sh npx -y @modelcontextprotocol/server-filesystem@2026.7.10 /tmp/x   問它有哪些工具，印完整描述
+bash scan-descriptions.sh npx -y @modelcontextprotocol/server-filesystem@2026.7.10 /tmp/x   掃描述裡有沒有在對模型下指令
 bash scan-descriptions.sh --files ~/.claude/skills   同一批樣式掃 SKILL.md 這類指示檔
 bash probe.sh                             收窄範圍之前後各讀一次同一個檔，證明收窄真的生效
 bash verify.sh                            全部
@@ -204,7 +204,7 @@ CommonJS。`.cjs` 兩種情況都是 CommonJS。
 `list-tools.sh` 對官方的 filesystem server 問一次，2026-08-08 實測：
 **14 個工具，描述合計 4108 字元。** 最長的一個是 `read_text_file` 的 457 字元。
 
-你在 UI 上挑的是那 14 個名字。模型每一輪收到的是那 4108 個字元，
+你在 UI 上挑的是那 14 個名字。這台 server 備好要餵給模型的是那 4108 個字元，
 而那些字元是 server 作者寫的，它更新一次就換一份，你這邊沒有人審過。
 `npx -y ...@latest` 那個 `@latest` 的意思就是「每次都拿最新的那一份」。
 
@@ -237,7 +237,7 @@ server 起不來、逾時、`initialize` 被拒絕都走那一條。
 
 ### 同一批樣式要掃第二次：skill 的指示檔
 
-工具描述不是唯一一批「別人寫的字，整段進模型的上下文」。skill 是另一批：
+工具描述不是唯一一批「別人寫的字，會被送進模型的上下文」。skill 是另一批：
 你在畫面上看到一個名字跟一行描述，載進來的是整份 `SKILL.md`。同一批樣式該掃兩次。
 
 ```bash

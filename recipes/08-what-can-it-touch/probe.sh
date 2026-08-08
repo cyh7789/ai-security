@@ -31,7 +31,7 @@ ROOT=${PROBE_ROOT:-/tmp/mcp-probe}
 # 少了這個接縫，那兩條離開碼只能靠改原始碼去驗，而那驗到的是另一份腳本。
 WIDE=${PROBE_WIDE:-${ROOT}}
 NARROW=${PROBE_NARROW:-${ROOT}/allowed}
-FSPKG=${PROBE_FS_PKG:-@modelcontextprotocol/server-filesystem}
+FSPKG=${PROBE_FS_PKG:-@modelcontextprotocol/server-filesystem@2026.7.10}
 REGISTRY=${PROBE_REGISTRY:-https://registry.npmjs.org}
 CANARY=mcp-probe-canary-do-not-copy
 
@@ -61,7 +61,10 @@ for t in node npx curl; do
     exit 2; }
 done
 
-code=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "${REGISTRY}/${FSPKG}" 2>/dev/null)
+# 套件名帶了版本（釘死才可重現），但註冊處的 metadata 端點吃的是不帶版本的名字，
+# 接上去會 404，然後這支會誤報成「連不到外網」。
+FSNAME=${FSPKG%@*}
+code=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "${REGISTRY}/${FSNAME}" 2>/dev/null)
 if [ "${code}" != "200" ]; then
   conclude
   printf '前置條件不到位：問不到 %s（HTTP %s）。\n' "${REGISTRY}" "${code}"

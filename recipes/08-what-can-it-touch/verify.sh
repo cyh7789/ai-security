@@ -642,7 +642,7 @@ sect "6 scan-descriptions.sh --files 掃得到 skill 那一批指示檔"
     skip "沒裝 ${M}，scan-descriptions.sh 跑不起來，這一節整節不適用"
   else
     # skill 的指示檔跟工具描述是同一件事的兩個入口：都是別人寫的字，
-    # 都會整段進到模型的上下文，而你在畫面上只看到一個名字。
+    # 都會被送進模型的上下文，而你在畫面上只看到一個名字。
     mkdir -p "${WS}/skills/clean-skill" "${WS}/skills/poisoned-skill"
     cat > "${WS}/skills/clean-skill/SKILL.md" <<'CLEANEOF'
 ---
