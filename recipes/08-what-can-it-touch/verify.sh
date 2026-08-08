@@ -251,9 +251,12 @@ fs.writeFileSync(process.argv[4], JSON.stringify(cfg));
       printf '%s' "${absline}" | sed 's/  */ /g' | cut -d' ' -f5- | cut -d' ' -f1 | grep -q 'npx' \
         && bad "執行檔路徑跑進範圍欄了：${absline}" \
         || ok "執行檔路徑沒有進範圍欄（絕對路徑的 npx 不算允許目錄）"
-      printf '%s' "${absline}" | grep -q 'allowed' \
-        && ok "它真正的允許目錄還是填得出來" \
-        || bad "連真正的允許目錄都沒填：${absline}"
+      # 要驗的是「allowed 出現在範圍欄」，不是「這一列有 allowed 這個字」。
+      # 掃整列的話，scope 就算變成 unknown 也會綠，因為 /srv/allowed 在
+      # 「啟動參數裡的路徑」那一欄照樣在。實測過那條會假綠。
+      printf '%s' "${absline}" | grep -qE 'demo-abs[[:space:]]+\.\.\./allowed[[:space:]]' \
+        && ok "它真正的允許目錄填在範圍欄裡" \
+        || bad "範圍欄沒有填到真正的允許目錄：${absline}"
       printf '%s' "${absline}" | grep -q 'npx' \
         && ok "執行檔路徑仍看得到，在「啟動參數裡的路徑」那一欄" \
         || bad "執行檔路徑整個不見了，那是另一種漏報：${absline}"
@@ -505,15 +508,20 @@ sect "4 probe.sh 的四種結束碼分得開，而且收窄真的擋得住"
       fi
     fi
 
+    # 守衛要看的註冊處，必須跟 probe.sh 實際會用的那個是同一個。
+    # 原本這裡寫死 registry.npmjs.org，而 probe.sh 吃 PROBE_REGISTRY，
+    # 於是用 PROBE_REGISTRY 指到一個連不到的位址時，守衛照樣說「問得到」，
+    # 整節不跳過，然後六條測試一起紅。紅的是量測方式不是程式。
+    REG_UNDER_TEST=${PROBE_REGISTRY:-https://registry.npmjs.org}
     HAVE_FS=0
     if [ -z "$(miss npx)" ]; then
-      [ "$(curl -s -o /dev/null -w '%{http_code}' -m 20 https://registry.npmjs.org/@modelcontextprotocol/server-filesystem 2>/dev/null)" = "200" ] && HAVE_FS=1
+      [ "$(curl -s -o /dev/null -w '%{http_code}' -m 20 "${REG_UNDER_TEST}/@modelcontextprotocol/server-filesystem" 2>/dev/null)" = "200" ] && HAVE_FS=1
     fi
 
     if [ -n "$(miss npx)" ]; then
       skip "沒裝 npx，抓不到 filesystem server，後面幾條要真的起一台"
     elif [ "${HAVE_FS}" = 0 ]; then
-      skip "問不到 registry.npmjs.org 上的 filesystem server，後面幾條要真的起一台"
+      skip "問不到 ${REG_UNDER_TEST} 上的 filesystem server，後面幾條要真的起一台"
     else
       out=$(bash "${HERE}/probe.sh" 2>&1); rc=$?
       printf '%s' "${out}" > "${WS}/p.ok"
