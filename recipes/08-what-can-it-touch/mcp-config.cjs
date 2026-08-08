@@ -1,18 +1,20 @@
-// 清點用的解析器。三種模式，都只讀不寫：
+// 清點用的解析器。五種模式，都只讀不寫：
 //   node mcp-config.cjs file    讀 MCP_CONFIG 指的 JSON，吐出 TSV 列
+//   node mcp-config.cjs roots   讀 MCP_ROOTS 每個目錄底下的 .mcp.json，吐出 TSV 列
 //   node mcp-config.cjs cli     讀 stdin 上 `claude mcp list` 的輸出，吐出 TSV 列
 //   node mcp-config.cjs table   讀 stdin 上的 TSV 列，排版成表格加註記
 //   node mcp-config.cjs mask    讀 stdin 的自由文字，把 NAME=值 的值換成 ***
 //
 // 副檔名是 .cjs 的理由跟 mcp-rpc.cjs 一樣，見那支的檔頭。
 //
-// 遮蔽只寫在這一支裡。file 與 cli 兩路都不把值搬到輸出上，而 list-tools.sh 要把
+// 遮蔽只寫在這一支裡。file、roots 與 cli 三路都不把值搬到輸出上，而 list-tools.sh 要把
 // 讀者打的那串指令回印一次（裡面可能有 -e FOO=值），它走 mask 模式。
 // 分兩份寫的話，補了一邊漏了另一邊的時候畫面上看不出來，而漏的那一邊就是憑證外流。
 //
 // TSV 的欄位：來源 \t 傳輸 \t 憑證 \t 名稱 \t 範圍 \t 旗標
 // 旗標是給註記用的，逗號分隔：cred（帶憑證）remote（範圍看不出來）
 // wide（範圍是整台或整個家目錄）credunknown（這個來源看不到憑證）
+// credliteral（憑證的值明文寫在檔案裡）credvar（憑證用 ${VAR}，值不在檔案裡）
 
 const fs = require("fs");
 const os = require("os");
@@ -40,6 +42,31 @@ function maskInline(text) {
 
 const CRED = /(TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|API[-_]?KEY|_KEY$|^KEY$|KEYS?$|AUTH|BEARER|SESSION|COOKIE|PRIVATE|SIGNATURE)/i;
 const looksLikeCred = (name) => CRED.test(name);
+
+// ── 值是明文還是一個 ${VAR} 參照 ──────────────────────────
+// 官方在 .mcp.json（還有 ~/.claude.json）支援 ${VAR} 與 ${VAR:-預設} 展開，
+// 而這支從來不展開它：展開等於把環境變數的值搬到輸出上，那正是這裡不做的事。
+//
+// 這兩種要分得開，因為它們的後果不一樣。.mcp.json 預設要進版本庫，
+// 明文那一種會跟著 git 走出去，${VAR} 那一種留在讀者自己的環境裡。
+// 混為一談的話，一份安全的設定跟一份會外流的設定在表上長得一樣。
+//
+// ${VAR:-預設} 算在明文那一邊：那個預設值是真的寫在檔案裡的，所以它也不印。
+// 判不出來的時候一律往嚴的算（明文），因為反過來的失手成本是漏報一個真的外流。
+const VARREF = /\$\{[^}]*\}/g;
+function classifyValue(value) {
+  const s = String(value);
+  const refs = s.match(VARREF) || [];
+  if (!refs.length) return { kind: "literal", shown: "***" };
+  if (refs.some((r) => r.indexOf(":-") >= 0)) return { kind: "literal", shown: "***" };
+  // ${...} 以外還剩字母數字的話，值有一部分是寫死在檔案裡的。
+  // Authorization 那一格的 Bearer／Basic／token 是傳輸前綴，不是值。
+  const rest = s.replace(VARREF, "").replace(/\b(Bearer|Basic|token)\b/gi, "");
+  if (/[A-Za-z0-9]/.test(rest)) return { kind: "literal", shown: "***" };
+  return { kind: "var", shown: refs.join("") };
+}
+
+const declare = (name, value) => Object.assign({ name: name }, classifyValue(value));
 
 // ── 路徑 ──────────────────────────────────────────────────
 // 讀者的目錄樹不印出來，只留最後一段。但「整台」跟「整個家目錄」這兩種要看得出來，
@@ -75,21 +102,68 @@ function scopeFromArgs(args) {
 
 const isWide = (scope) => /whole machine|whole home/.test(scope);
 
-// 憑證欄：宣告過的變數名全部列出來，看起來像憑證的後面補 =***。
-// 值沒有一個會被印出來，=*** 的意思是「這裡有個值，我判定它是憑證，不給你看」，
+// 憑證欄：宣告過的變數名全部列出來，看起來像憑證的後面補值的形狀。
+// 值沒有一個會被印出來。=*** 的意思是「這裡有個值，我判定它是憑證，不給你看」，
+// =${VAR} 的意思是「這裡是一個變數參照，值不在這個檔案裡」，
 // 光禿禿的名字是「宣告了這個變數，值一樣不給你看」。
-// 沒列出來就等於沒宣告，所以樣式沒中的變數不會消失，只是少一個 =***。
+// 沒列出來就等於沒宣告，所以樣式沒中的變數不會消失，只是少一個提醒。
+const credText = (v) => (looksLikeCred(v.name) ? v.name + "=" + v.shown : v.name);
+
 function row(o) {
   const flags = [];
-  const creds = o.vars.filter(looksLikeCred);
+  const creds = o.vars.filter((v) => looksLikeCred(v.name));
   if (creds.length) flags.push("cred");
   if (o.credUnknown) flags.push("credunknown");
   if (o.scope === "remote") flags.push("remote");
   if (isWide(o.scope)) flags.push("wide");
+  if (creds.some((v) => v.kind === "literal")) flags.push("credliteral");
+  if (creds.some((v) => v.kind === "var")) flags.push("credvar");
   const credCell = o.credUnknown ? "?"
-    : (o.vars.length ? o.vars.map((n) => (looksLikeCred(n) ? n + "=***" : n)).join(",") : "no");
+    : (o.vars.length ? o.vars.map(credText).join(",") : "no");
   return [o.source, o.transport, credCell, o.name, o.scope, flags.join(",")].join("\t");
 }
+
+// ── 一台 server 的設定長什麼樣 ────────────────────────────
+// file 與 roots 兩路吃的是同一種物件（~/.claude.json 與 .mcp.json 的 mcpServers
+// 底下是同一個格式），所以解析只寫一份。分兩份寫的話，補了一邊漏了另一邊，
+// 而漏的那一邊會靜靜地少報幾個變數。
+function serverRow(source, name, s) {
+  const vars = [];
+  const take = (obj) => {
+    if (!obj || typeof obj !== "object") return;
+    for (const [k, v] of Object.entries(obj)) vars.push(declare(k, v));
+  };
+  take(s.env);
+  take(s.headers);
+
+  const args = Array.isArray(s.args) ? s.args : [];
+  // args 裡的 NAME=VALUE 也算宣告變數（docker run -e FOO=bar 就是這種）。
+  // 只看 env 欄位會漏掉這一整類，而它們是真的會傳進 server 的。
+  for (const a of args) {
+    const m = String(a).match(/^([A-Za-z_][A-Za-z0-9_]*)=([\s\S]*)$/);
+    if (m) vars.push(declare(m[1], m[2]));
+  }
+
+  // type 欄位可以不寫。有 command 就是 stdio，這是實測到的形狀：
+  // 同一份設定裡有一台只有 command 跟 args、沒有 type。
+  // 用 type === "stdio" 判斷的話那一台會被算成 unknown，然後它的範圍不會被推。
+  let transport = String(s.type || "").toLowerCase();
+  if (!transport) transport = s.command ? "stdio" : (s.url ? "http" : "unknown");
+
+  const scope = s.command ? scopeFromArgs([].concat(s.command, args))
+    : (s.url ? "remote" : "unknown");
+
+  return row({
+    source: source,
+    transport: transport,
+    vars: vars,
+    credUnknown: false,
+    name: name,
+    scope: scope,
+  });
+}
+
+const serversOf = (j) => (j && typeof j.mcpServers === "object" && j.mcpServers ? j.mcpServers : {});
 
 // ── file 模式 ─────────────────────────────────────────────
 function fromFile() {
@@ -101,37 +175,9 @@ function fromFile() {
     die("讀不到或解不開 " + p + "：" + e.message + "\n", 2);
   }
   const out = [];
-  const emit = (source, name, s) => {
-    const env = s.env && typeof s.env === "object" ? Object.keys(s.env) : [];
-    const headers = s.headers && typeof s.headers === "object" ? Object.keys(s.headers) : [];
-    const args = Array.isArray(s.args) ? s.args : [];
-    // args 裡的 NAME=VALUE 也算宣告變數（docker run -e FOO=bar 就是這種）。
-    // 只看 env 欄位會漏掉這一整類，而它們是真的會傳進 server 的。
-    const inArgs = args.map((a) => String(a).match(/^([A-Za-z_][A-Za-z0-9_]*)=/))
-      .filter(Boolean).map((m) => m[1]);
-    const names = env.concat(headers).concat(inArgs);
 
-    // type 欄位可以不寫。有 command 就是 stdio，這是實測到的形狀：
-    // 同一份設定裡有一台只有 command 跟 args、沒有 type。
-    // 用 type === "stdio" 判斷的話那一台會被算成 unknown，然後它的範圍不會被推。
-    let transport = String(s.type || "").toLowerCase();
-    if (!transport) transport = s.command ? "stdio" : (s.url ? "http" : "unknown");
-
-    const scope = s.command ? scopeFromArgs([].concat(s.command, args))
-      : (s.url ? "remote" : "unknown");
-
-    out.push(row({
-      source: source,
-      transport: transport,
-      vars: names,
-      credUnknown: false,
-      name: name,
-      scope: scope,
-    }));
-  };
-
-  const global = j.mcpServers && typeof j.mcpServers === "object" ? j.mcpServers : {};
-  for (const [name, s] of Object.entries(global)) emit("global", name, s);
+  const global = serversOf(j);
+  for (const [name, s] of Object.entries(global)) out.push(serverRow("global", name, s));
 
   // 這一段是這支腳本存在的理由。全域那一份可以是空的，而每個專案各自帶一份設定，
   // 那些設定只出現在 projects.<路徑>.mcpServers 底下。
@@ -141,8 +187,52 @@ function fromFile() {
     const ms = v && typeof v === "object" && v.mcpServers && typeof v.mcpServers === "object" ? v.mcpServers : null;
     if (!ms) continue;
     const tag = "proj:" + path.basename(String(proj).replace(/\/+$/, ""));
-    for (const [name, s] of Object.entries(ms)) emit(tag, name, s);
+    for (const [name, s] of Object.entries(ms)) out.push(serverRow(tag, name, s));
   }
+  process.stdout.write(out.map((r) => r + "\n").join(""));
+}
+
+// ── roots 模式 ────────────────────────────────────────────
+// 第三個來源：專案根目錄的 .mcp.json。官方講的三個安裝範圍（local／project／user）
+// 裡的 project 那一路，設計上就是要進版本庫跟團隊共享的那一份。
+// ~/.claude.json 讀到的是 local 與 user，這一路完全在那份檔案之外。
+//
+// MCP_ROOTS 是冒號分隔的目錄清單，一個目錄看一份 .mcp.json。
+// 第一行是 ROOTS<TAB>看了幾個<TAB>找到幾份<TAB>解不開幾份<TAB>解不開的專案名，
+// 給 inventory.sh 印那段訊息用，不進表格。
+// 那一行存在的理由是「看了沒找到」跟「根本沒看」在畫面上必須長得不一樣。
+function fromRoots() {
+  const spec = process.env.MCP_ROOTS || process.cwd();
+  const dirs = spec.split(":").map((s) => s.trim()).filter((s) => s.length);
+  const out = [];
+  const broken = [];
+  let found = 0;
+
+  for (const d of dirs) {
+    // 專案名只留最後一段。整條路徑印出來的話，一張清點表就把目錄樹交出去了。
+    const proj = path.basename(path.resolve(d)) || "/";
+    let raw;
+    try {
+      raw = fs.readFileSync(path.join(d, ".mcp.json"), "utf8");
+    } catch (e) {
+      // 沒有那個檔是一個答案（這個專案沒有專案級設定），讀不到是另一件事。
+      if (e.code !== "ENOENT") broken.push(proj);
+      continue;
+    }
+    let j;
+    try {
+      j = JSON.parse(raw);
+    } catch (e) {
+      broken.push(proj);
+      continue;
+    }
+    found++;
+    for (const [name, s] of Object.entries(serversOf(j))) {
+      out.push(serverRow("mcp.json:" + proj, name, s));
+    }
+  }
+
+  process.stdout.write(["ROOTS", dirs.length, found, broken.length, broken.join(" ")].join("\t") + "\n");
   process.stdout.write(out.map((r) => r + "\n").join(""));
 }
 
@@ -169,12 +259,15 @@ function fromCli() {
 
     if (transport === "stdio") {
       const parts = rest.split(/\s+/);
-      const names = parts.map((a) => a.match(/^([A-Za-z_][A-Za-z0-9_]*)=/))
-        .filter(Boolean).map((x) => x[1]);
+      const vars = [];
+      for (const a of parts) {
+        const kv = a.match(/^([A-Za-z_][A-Za-z0-9_]*)=([\s\S]*)$/);
+        if (kv) vars.push(declare(kv[1], kv[2]));
+      }
       out.push(row({
         source: "cli",
         transport: transport,
-        vars: names,
+        vars: vars,
         credUnknown: false,
         name: name,
         scope: scopeFromArgs(parts),
@@ -215,24 +308,45 @@ function table() {
   const w = head.map((h, i) => Math.max(dispWidth(h), ...rows.map((r) => dispWidth(r[i] || ""))));
   const render = (cells) => cells.slice(0, cols).map((c, i) =>
     (i === cols - 1 ? String(c) : pad(c, w[i]))).join("  ");
+  process.stdout.write("來源欄：global 與 proj: 來自 ~/.claude.json，mcp.json: 來自專案根目錄的 .mcp.json。\n");
   process.stdout.write("憑證欄：看起來像憑證的變數印成「名字=***」，其餘只印名字，值一律不印。\n");
+  process.stdout.write("        名字=${VAR} 是值不在檔案裡、指向一個環境變數，原樣印出來不展開。\n");
   process.stdout.write("        no 是沒宣告變數，? 是這個來源看不到（不等於沒有）。\n");
   process.stdout.write("範圍欄：remote 是遠端那一台，unknown 是啟動參數裡推不出路徑。兩種都不是「碰不到」。\n\n");
   process.stdout.write(render(head) + "\n");
   for (const r of rows) process.stdout.write(render(r) + "\n");
 
-  // 註記。表格印得出東西不代表你看懂了，所以把三件事單獨講一次。
+  // 註記。表格印得出東西不代表你看懂了，所以把幾件事單獨講一次。
+  // 點名一律印「來源/名稱」，不是光禿禿的名字：server 的名字在來源之間不是唯一的
+  // （同一個 files 可以在兩個專案裡各有一份，允許目錄還不一樣），
+  // 只印名字的話收尾那幾段會指不出是哪一列，而範圍最寬的那一台正好最需要指得準。
   const has = (r, f) => (r[5] || "").split(",").indexOf(f) >= 0;
-  const names = (f) => rows.filter((r) => has(r, f)).map((r) => r[3]);
+  const at = (r) => r[0] + "/" + r[3];
+  const names = (f) => rows.filter((r) => has(r, f)).map(at);
   const cred = names("cred");
   const unknownCred = names("credunknown");
   const remote = names("remote");
   const wide = names("wide");
-  const noscope = rows.filter((r) => r[4] === "unknown").map((r) => r[3]);
+  const noscope = rows.filter((r) => r[4] === "unknown").map(at);
+  // 明文那一段只算 .mcp.json 那一路：那個檔案預設要進版本庫，
+  // 所以「值寫在裡面」的後果跟寫在 ~/.claude.json 裡不是同一件事。
+  const inMcpJson = (r) => /^mcp\.json:/.test(r[0] || "");
+  const literalInFile = rows.filter((r) => inMcpJson(r) && has(r, "credliteral")).map(at);
+  const varInFile = rows.filter((r) => inMcpJson(r) && has(r, "credvar")).map(at);
 
   if (cred.length) {
     process.stdout.write("\n── 這幾台帶著憑證 ──\n" + cred.join(" ") + "\n");
     process.stdout.write("憑證欄印的是變數名，值一個字都沒印。要看值請自己開設定檔。\n");
+  }
+  if (literalInFile.length) {
+    process.stdout.write("\n── 這幾台的憑證是明文寫在 .mcp.json 裡 ──\n" + literalInFile.join(" ") + "\n");
+    process.stdout.write(".mcp.json 是專案範圍那一份，設計上要進版本庫跟團隊共享。\n");
+    process.stdout.write("值寫在裡面的意思是它會跟著 git 走出去，而且 git 的歷史刪不掉。\n");
+    process.stdout.write("改成 ${VAR} 之後，檔案裡留的是變數名，值留在每個人自己的環境裡。\n");
+  }
+  if (varInFile.length) {
+    process.stdout.write("\n── 這幾台的憑證用 ${VAR}，值不在 .mcp.json 裡 ──\n" + varInFile.join(" ") + "\n");
+    process.stdout.write("這是上面那一類的安全寫法。這支不展開它，所以表上印的是變數名不是值。\n");
   }
   if (wide.length) {
     process.stdout.write("\n── 這幾台的宣告範圍是整台或整個家目錄 ──\n" + wide.join(" ") + "\n");
@@ -251,7 +365,8 @@ function table() {
 }
 
 if (mode === "file") fromFile();
+else if (mode === "roots") fromRoots();
 else if (mode === "cli") fromCli();
 else if (mode === "table") table();
 else if (mode === "mask") process.stdout.write(maskInline(fs.readFileSync(0, "utf8")));
-else die("用法：node mcp-config.cjs file|cli|table|mask\n", 2);
+else die("用法：node mcp-config.cjs file|roots|cli|table|mask\n", 2);
