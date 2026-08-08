@@ -11,7 +11,7 @@
 #      同一個呼叫 → 必須被拒。
 #   4  跑完把 /tmp/mcp-probe 清掉
 #
-# 離開碼分四種，因為這四件事的處理方式不一樣：
+# 結束碼分四種，因為這四件事的處理方式不一樣：
 #   0  兩步都符合預期
 #   1  第 3 步失敗：收窄之後它還是讀到了。降權沒生效，去修設定
 #   2  前置條件不到位（沒有 npx／沒有 curl／連不到外網）。什麼都還沒驗到
@@ -28,7 +28,7 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 
 ROOT=${PROBE_ROOT:-/tmp/mcp-probe}
 # 這兩個是給 verify.sh 用的：把寬的那邊收窄可以逼出 rc=3，把窄的那邊放寬可以逼出 rc=1。
-# 少了這個接縫，那兩條離開碼只能靠改原始碼去驗，而那驗到的是另一份腳本。
+# 少了這個接縫，那兩條結束碼只能靠改原始碼去驗，而那驗到的是另一份腳本。
 WIDE=${PROBE_WIDE:-${ROOT}}
 NARROW=${PROBE_NARROW:-${ROOT}/allowed}
 FSPKG=${PROBE_FS_PKG:-@modelcontextprotocol/server-filesystem@2026.7.10}
@@ -51,13 +51,13 @@ trap cleanup EXIT
 trap 'cleanup; exit 130' INT TERM
 
 # ── 前置條件 ──────────────────────────────────────────────
-# 少了任何一項就是「這一輪什麼都沒驗到」，不是「降權沒生效」，所以離開碼跟那個分開。
+# 少了任何一項就是「這一輪什麼都沒驗到」，不是「降權沒生效」，所以結束碼跟那個分開。
 # 靜默跳過是這一份最反對的形狀：畫面上會跟通過長得一樣。
 for t in node npx curl; do
   command -v "${t}" >/dev/null 2>&1 || {
     conclude
     printf '前置條件不到位：沒有 %s。\n' "${t}"
-    printf '這支要用 npx 抓 filesystem server、用 curl 量連不連得到外網，缺一個就什麼都沒驗到。離開碼 2。\n'
+    printf '這支要用 npx 抓 filesystem server、用 curl 量連不連得到外網，缺一個就什麼都沒驗到。結束碼 2。\n'
     exit 2; }
 done
 
@@ -68,7 +68,7 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "${REGISTRY}/${FSNAME}" 2>/d
 if [ "${code}" != "200" ]; then
   conclude
   printf '前置條件不到位：問不到 %s（HTTP %s）。\n' "${REGISTRY}" "${code}"
-  printf 'npx 抓不到 filesystem server 就起不了探針，這一輪什麼都沒驗到。離開碼 2。\n'
+  printf 'npx 抓不到 filesystem server 就起不了探針，這一輪什麼都沒驗到。結束碼 2。\n'
   exit 2
 fi
 
@@ -102,7 +102,7 @@ if ! printf '%s' "${body}" | grep -q "${CANARY}"; then
   conclude
   printf '探針壞了：寬範圍也讀不到那個記號字串。\n'
   printf '這一輪沒有驗到「收窄有沒有效」：寬的讀不到，窄的當然也讀不到，第 3 步會假通過。\n'
-  printf '先修環境（npx 抓不到套件、允許目錄給錯、檔案沒建起來都會走到這裡）。離開碼 3。\n'
+  printf '先修環境（npx 抓不到套件、允許目錄給錯、檔案沒建起來都會走到這裡）。結束碼 3。\n'
   exit 3
 fi
 printf '正對照成立：寬範圍讀到了那個記號字串。\n\n'
@@ -122,17 +122,17 @@ printf '%s\n' "${body}" | head -3
 if printf '%s' "${body}" | grep -q "${CANARY}"; then
   conclude
   printf '降權沒生效：允許目錄只給了 %s，它還是把 %s 讀出來了。\n' "${NARROW}" "${TARGET}"
-  printf '設定改了不等於範圍收窄了。去看那台是不是還吃著舊的允許目錄。離開碼 1。\n'
+  printf '設定改了不等於範圍收窄了。去看那台是不是還吃著舊的允許目錄。結束碼 1。\n'
   exit 1
 fi
 
 if [ "${verdict}" != "VERDICT=TOOLERR" ]; then
   conclude
   printf '探針壞了：收窄那一輪連問都沒問成（%s），不是被拒絕。\n' "${verdict}"
-  printf '沒讀到不代表擋住了，這一輪一樣沒有結論。離開碼 3。\n'
+  printf '沒讀到不代表擋住了，這一輪一樣沒有結論。結束碼 3。\n'
   exit 3
 fi
 
 conclude
 printf '收窄生效：同一個呼叫被擋下來了，而且上面那句拒絕的原文是 server 自己講的。\n'
-printf '兩步都符合預期。離開碼 0。\n'
+printf '兩步都符合預期。結束碼 0。\n'

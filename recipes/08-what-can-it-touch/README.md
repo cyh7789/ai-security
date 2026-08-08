@@ -10,7 +10,7 @@ bash scan-descriptions.sh npx -y @modelcontextprotocol/server-filesystem@2026.7.
 bash scan-descriptions.sh --files ~/.claude/skills   同一批樣式掃 SKILL.md 這類指示檔
 bash probe.sh                             收窄範圍之前後各讀一次同一個檔，證明收窄真的生效
 bash verify.sh                            全部
-bash verify.sh 4                          只跑「probe.sh 的離開碼分得開」那節
+bash verify.sh 4                          只跑「probe.sh 的結束碼分得開」那節
 bash mutations.sh                         反過來：把腳本弄壞 41 種，看上面那支會不會抓到
 ```
 
@@ -57,7 +57,7 @@ internal-wiki: http://mcp-gw-7.dept-internal.invalid:8443/mcp (HTTP) - ✘ Faile
 `verify.sh` 每一條都在 `mktemp -d` 裡自己造一份假設定。
 
 `probe.sh` 要用 `npx` 抓官方的 filesystem server，所以它會連外網、會寫 npm 快取。
-它開頭先量 `npx` 在不在、註冊處問不問得到，缺了就印明確訊息並停在離開碼 2，
+它開頭先量 `npx` 在不在、註冊處問不問得到，缺了就印明確訊息並停在結束碼 2，
 不靜默跳過。
 
 需要 `bash`、`node`，`probe.sh` 另外需要 `npx` 與 `curl`。
@@ -66,22 +66,22 @@ internal-wiki: http://mcp-gw-7.dept-internal.invalid:8443/mcp (HTTP) - ✘ Faile
 
 | 情況 | verify.sh 的反應 |
 |---|---|
-| 什麼都有 | 68 綠 / 0 紅 / 0 跳過，離開碼 0 |
-| 沒有 `node` | 1 綠 / 0 紅 / 7 跳過，離開碼 1 |
-| 沒有 `npx` | 59 綠 / 0 紅 / 3 跳過，離開碼 1。第 1、2、3、5、6、7 節照跑 |
-| 沒有 `curl` | 57 綠 / 0 紅 / 1 跳過，離開碼 1。第 4 節整節不適用 |
-| `curl` 在，但問不到註冊處 | 61 綠 / 0 紅 / 1 跳過，離開碼 1 |
+| 什麼都有 | 68 綠 / 0 紅 / 0 跳過，結束碼 0 |
+| 沒有 `node` | 1 綠 / 0 紅 / 7 跳過，結束碼 1 |
+| 沒有 `npx` | 59 綠 / 0 紅 / 3 跳過，結束碼 1。第 1、2、3、5、6、7 節照跑 |
+| 沒有 `curl` | 57 綠 / 0 紅 / 1 跳過，結束碼 1。第 4 節整節不適用 |
+| `curl` 在，但問不到註冊處 | 61 綠 / 0 紅 / 1 跳過，結束碼 1 |
 
 沒有任何一種缺法會印出紅燈：**紅燈的意思是你要驗的東西壞了，不是這台機器不適用。**
-反過來說跳過也不算通過，所以它把離開碼推到 1。
+反過來說跳過也不算通過，所以它把結束碼推到 1。
 `bash verify.sh && echo 通過` 不該在一台連 `node` 都沒有的機器上印出那句話。
 
 四種缺法下都還綠著的只有第 1 節那條把 `PATH` 清空、看 `inventory.sh` 會不會當場停在
-離開碼 2 的檢查。它不需要任何工具在，所以少了什麼都驗得到。
+結束碼 2 的檢查。它不需要任何工具在，所以少了什麼都驗得到。
 
-打錯節號會直接停：`bash verify.sh 9` 印「沒有第 9 節」、離開碼 2。
-不擋的話那會是 0 綠 0 紅 0 跳過然後離開碼 0，也就是這一份最想抓的那種假綠燈。
-`bash mutations.sh 99` 同理，印「一種突變都沒跑到。沒有第 99 種，可用的是 1 到 41」、離開碼 2。
+打錯節號會直接停：`bash verify.sh 9` 印「沒有第 9 節」、結束碼 2。
+不擋的話那會是 0 綠 0 紅 0 跳過然後結束碼 0，也就是這一份最想抓的那種假綠燈。
+`bash mutations.sh 99` 同理，印「一種突變都沒跑到。沒有第 99 種，可用的是 1 到 41」、結束碼 2。
 
 ## 這裡面有什麼
 
@@ -95,7 +95,7 @@ internal-wiki: http://mcp-gw-7.dept-internal.invalid:8443/mcp (HTTP) - ✘ Faile
 | `mcp-config.cjs` | 共用：設定解析與遮蔽。**遮蔽只寫在這一支裡** |
 | `desc-scan.cjs` | 共用：四類樣式表與掃描。**樣式表只有這一份**，兩個入口共用 |
 | `demo/` | 全部是編的假設定，用來重現文章裡的示範輸出。裡面沒有一個真的東西 |
-| `verify.sh` | 七節：清點與遮蔽／描述沒被截斷／掃描器的正反對照／探針的四種離開碼／`.mcp.json` 那一路／掃指示檔那一路／`demo/` 跑得動 |
+| `verify.sh` | 七節：清點與遮蔽／描述沒被截斷／掃描器的正反對照／探針的四種結束碼／`.mcp.json` 那一路／掃指示檔那一路／`demo/` 跑得動 |
 | `mutations.sh` | **故意把腳本弄壞四十一種，看 `verify.sh` 會不會紅。** 有一種沒紅就是假綠燈 |
 
 三支 `.cjs` 是共用的，複製這一份出去的時候要一起帶走。副檔名不是 `.js`：
@@ -229,7 +229,7 @@ CommonJS。`.cjs` 兩種情況都是 CommonJS。
 一支一律回 1 的腳本在「四類都抓得到」那幾條上全部會過關。
 官方那台 filesystem server 實測 rc=0。
 
-離開碼有三種，因為「乾淨」跟「我沒問到」不能混在一起：問不到的時候是 2 不是 0。
+結束碼有三種，因為「乾淨」跟「我沒問到」不能混在一起：問不到的時候是 2 不是 0。
 server 起不來、逾時、`initialize` 被拒絕都走那一條。
 
 樣式命中不等於那台有惡意，沒中也不等於它安全。這四類是已經公開過的手法的形狀，
@@ -245,7 +245,7 @@ bash scan-descriptions.sh --files ~/.claude/skills   # 目錄，往下找 markdo
 bash scan-descriptions.sh --files some-skill/SKILL.md   # 直接指名一個檔
 ```
 
-離開碼跟另一個入口同一套：命中 1、乾淨 0、**沒東西可掃 2**。
+結束碼跟另一個入口同一套：命中 1、乾淨 0、**沒東西可掃 2**。
 路徑打錯是 2，目錄底下一份 markdown 都沒有也是 2，因為那兩種的意思都是「我什麼都沒掃」，
 而 0 會被讀成「掃過了、沒問題」。
 
@@ -287,7 +287,7 @@ bash demo/fake-claude-cli.sh
 bash scan-descriptions.sh node demo/poisoned-stub.cjs
 ```
 
-離開碼 1，命中 4 條，每一條點得出是哪一個工具（`lookup_order`）跟哪一類。
+結束碼 1，命中 4 條，每一條點得出是哪一個工具（`lookup_order`）跟哪一類。
 
 **四、同一批樣式掃指示檔：**
 
@@ -295,7 +295,7 @@ bash scan-descriptions.sh node demo/poisoned-stub.cjs
 bash scan-descriptions.sh --files demo/poisoned-skill.md
 ```
 
-離開碼 1，命中 4 條，每一條帶檔名跟行號。
+結束碼 1，命中 4 條，每一條帶檔名跟行號。
 
 那份檔故意不叫 `SKILL.md`：它裡面是一整段植入的指示，而會自己去找 `**/SKILL.md`
 的工具不少，換個名字它們就不會把它當成一個 skill 載進去。
@@ -314,9 +314,9 @@ bash scan-descriptions.sh --files demo/poisoned-skill.md
 3. **收窄後**（允許目錄只給 `/tmp/mcp-probe/allowed`）起同一台，同一個呼叫 → 必須被拒
 4. 跑完清掉 `/tmp/mcp-probe`
 
-離開碼分四種，而**第 2 步失敗跟第 3 步失敗一定要分開**：
+結束碼分四種，而**第 2 步失敗跟第 3 步失敗一定要分開**：
 
-| 離開碼 | 意思 | 你要修什麼 |
+| 結束碼 | 意思 | 你要修什麼 |
 |---|---|---|
 | 0 | 兩步都符合預期 | 沒事 |
 | 1 | 第 3 步失敗：收窄之後它還是讀到了 | 降權沒生效，去修設定 |

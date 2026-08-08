@@ -7,7 +7,7 @@
 //
 // 副檔名是 .cjs 的理由跟 mcp-rpc.cjs 一樣，見那支的檔頭。
 //
-// 離開碼三種，因為「乾淨」跟「我沒掃到」不能混在一起：
+// 結束碼三種，因為「乾淨」跟「我沒掃到」不能混在一起：
 //   0  掃過了，四類樣式一個都沒中
 //   1  掃過了，命中，逐條點名
 //   2  沒東西可掃（路徑讀不到、底下沒有 markdown、沒給路徑）。這不是乾淨。
@@ -120,13 +120,13 @@ function fromFiles(targets) {
   // 「我什麼都沒掃」，而讀者會把它讀成「這批指示檔沒問題」。
   if (missing.length) {
     process.stdout.write("讀不到這個路徑：" + missing.join(" ") + "\n");
-    process.stdout.write("沒東西可掃就沒有掃到，離開碼 2。這不是「乾淨」。\n");
+    process.stdout.write("沒東西可掃就沒有掃到，結束碼 2。這不是「乾淨」。\n");
     process.exitCode = 2;
     return;
   }
   if (!files.length) {
     process.stdout.write("這幾個路徑底下找不到 markdown 指示檔：" + targets.join(" ") + "\n");
-    process.stdout.write("沒東西可掃就沒有掃到，離開碼 2。這不是「乾淨」。\n");
+    process.stdout.write("沒東西可掃就沒有掃到，結束碼 2。這不是「乾淨」。\n");
     process.exitCode = 2;
     return;
   }

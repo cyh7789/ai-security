@@ -21,7 +21,7 @@ skip() { printf '  [SKIP] %s\n' "$1"; SKIP=$((SKIP+1)); }
 sect() { printf '\n── %s ──\n' "$1"; }
 want() { [ -z "${ONLY}" ] || [ "${ONLY}" = "$1" ]; }
 
-# 節號打錯的話下面每一節都不跑，收尾算出 0 綠 0 紅 0 跳過然後離開碼 0。
+# 節號打錯的話下面每一節都不跑，收尾算出 0 綠 0 紅 0 跳過然後結束碼 0。
 # 一份講假綠燈的東西最不能留的就是這種形狀。
 case "${ONLY}" in
   ''|1|2|3|4|5|6|7) ;;
@@ -143,7 +143,7 @@ FAKEEOF
     printf '%s' "${out}" | grep -q "${FAKE_A}" && { bad "inventory.sh 把 CLI 那一路的 token 整串印出來了"; n=1; }
     printf '%s' "${out}" | grep -q 'DEMO_A_TOKEN=\*\*\*' || { bad "沒看到 DEMO_A_TOKEN=***，遮蔽之後變數名也不見了，讀者不知道那台帶著憑證"; n=1; }
     printf '%s' "${out}" | grep -q 'demo-a' || { bad "CLI 那一路的 demo-a 沒被列出來，那這一輪根本沒讀到那個來源"; n=1; }
-    [ "${rc}" = 0 ] || { bad "CLI 那一路跑出非零離開碼 ${rc}"; n=1; }
+    [ "${rc}" = 0 ] || { bad "CLI 那一路跑出非零結束碼 ${rc}"; n=1; }
     [ "${n}" = 0 ] && ok "同一個來源經過 inventory.sh 之後：token 不見了，變數名跟 server 名字還在"
 
     # 遠端那幾台的 headers 憑證 CLI 不印，所以那一欄要是「?」不是「no」。
@@ -166,7 +166,11 @@ const cfg = { mcpServers: {}, projects: {
   } },
   "/tmp/verify-fake/outer/middle/demo-proj-two": { mcpServers: {
     "demo-c": { type: "stdio", command: "node", args: ["srv.js"], env: { "demo_c_secret": C } },
-    "demo-d": { command: "node", args: ["/"] },
+    // 認得的那台宣告了整台機器：這是「寬範圍」警告該響的唯一情況。
+    "demo-d": { command: "npx", args: ["-y", "@modelcontextprotocol/server-filesystem@2026.7.10", "/"] },
+    // 不認得的那台，命令列上有程式檔與設定檔路徑：範圍必須是 unknown，
+    // 路徑只能出現在「啟動參數裡的路徑」那一欄。
+    "notes-index": { command: "node", args: ["/opt/notes-mcp/server.js", "--config", "/opt/notes-mcp/config.json"] },
     "demo-e": { type: "sse", url: "https://example.invalid/sse" },
   } },
   "/tmp/verify-fake/outer/middle/demo-proj-three": { other: 1 },
@@ -176,10 +180,10 @@ fs.writeFileSync(process.argv[4], JSON.stringify(cfg));
 
     out=$(MCP_CONFIG="${WS}/cfg-projects.json" MCP_ROOTS="${NOROOTS}" bash "${HERE}/inventory.sh" 2>&1); rc=$?
     n=0
-    for name in demo-a demo-b demo-c demo-d demo-e; do
+    for name in demo-a demo-b demo-c demo-d demo-e notes-index; do
       printf '%s' "${out}" | grep -q "${name}" || { bad "專案級的 ${name} 沒被列出來。只讀全域 mcpServers 的話這一輪會是零台"; n=1; }
     done
-    [ "${n}" = 0 ] && ok "全域是空的、五台都住在專案底下，五台全部列出來了"
+    [ "${n}" = 0 ] && ok "全域是空的、六台都住在專案底下，六台全部列出來了"
 
     # 負對照：不是每一列都印 ***。整欄寫死 *** 的腳本上面那幾條照樣會綠。
     printf '%s' "${out}" | grep -E '^proj:demo-proj-two +sse +no +demo-e' >/dev/null \
@@ -220,6 +224,28 @@ fs.writeFileSync(process.argv[4], JSON.stringify(cfg));
       && ok "允許目錄給 / 的那台印出「整台機器」，沒有被 basename 吃成空的" \
       || bad "允許目錄是 / 的那台沒有印出整台機器的意思：$(printf '%s' "${out}" | grep demo-d)"
 
+    # ── 範圍欄不准把「命令列上的路徑」當成權限邊界 ──────
+    # 這是外部審查抓到的實作漏洞。第一版只要參數看起來像路徑就拿來當範圍，
+    # 於是 `node /x/server.js --config /x/c.json` 會印出一個看起來很精準的範圍，
+    # 而那兩個只是程式檔跟設定檔。讀者會拿到一張假的權限表，
+    # 那正好是這份 recipe 最反對的東西。
+    unkline=$(printf '%s' "${out}" | grep 'notes-index' || true)
+    if [ -z "${unkline}" ]; then
+      bad "找不到那台不認識的 stdio server（demo 的 notes-index），這條驗不到"
+    else
+      printf '%s' "${unkline}" | grep -qE 'notes-index[[:space:]]+unknown[[:space:]]' \
+        && ok "不認識的 stdio server 範圍印 unknown，沒有拿程式檔路徑當權限邊界" \
+        || bad "notes-index 的範圍不是 unknown：${unkline}"
+      printf '%s' "${unkline}" | grep -q 'server.js' \
+        && ok "它命令列上的路徑仍然看得到，只是放在「啟動參數裡的路徑」那一欄" \
+        || bad "路徑資訊整個不見了，那是另一種漏報：${unkline}"
+    fi
+    # 正對照：認得參數語意的那台，範圍還是要填得出來。
+    # 少了這條，「一律印 unknown」也會讓上面兩條通過，那是把判別力修掉。
+    printf '%s' "${out}" | grep -qE 'demo-d[[:space:]]+unknown[[:space:]]' \
+      && bad "認得的 filesystem server 也印 unknown 了，這條修過頭" \
+      || ok "認得的 filesystem server 範圍照樣填得出來，不是整欄變 unknown 了事"
+
     # ── 只讀不寫 ────────────────────────────────────
     # 「只讀」不是註解裡寫一句就算，要量。跑之前跑之後對整棵假家目錄比一次。
     mkdir -p "${WS}/home"
@@ -253,14 +279,14 @@ fs.writeFileSync(process.argv[4], JSON.stringify(cfg));
     # 設定檔讀不到跟設定檔裡一台都沒有是兩件事。
     out=$(MCP_CONFIG="${WS}/no-such-file.json" bash "${HERE}/inventory.sh" 2>&1); rc=$?
     if [ "${rc}" = 2 ] && printf '%s' "${out}" | grep -q '不是「你沒裝'; then
-      ok "設定檔讀不到的時候離開碼 2，而且明講這不等於你沒裝 server"
+      ok "設定檔讀不到的時候結束碼 2，而且明講這不等於你沒裝 server"
     else
       bad "設定檔讀不到卻沒有分開報（rc=${rc}）：${out}"
     fi
 
     out=$(MCP_CONFIG="${WS}/cfg-empty.json" MCP_ROOTS="${NOROOTS}" bash "${HERE}/inventory.sh" 2>&1); rc=$?
     if [ "${rc}" = 0 ] && printf '%s' "${out}" | grep -q '一台都沒有清點到'; then
-      ok "設定檔在、裡面真的一台都沒有的時候離開碼 0，講的是另一句話"
+      ok "設定檔在、裡面真的一台都沒有的時候結束碼 0，講的是另一句話"
     else
       bad "空設定沒有走到「一台都沒有」那條路（rc=${rc}）：${out}"
     fi
@@ -276,11 +302,11 @@ sect "2 list-tools.sh 印的是完整描述，不是 UI 上那幾個名字"
     skip "沒裝 ${M}，list-tools.sh 與測試樁都跑不起來"
   else
     out=$(bash "${HERE}/list-tools.sh" 2>&1); rc=$?
-    [ "${rc}" = 2 ] && ok "沒給啟動指令的時候離開碼 2" || bad "沒給指令卻回 ${rc}：${out}"
+    [ "${rc}" = 2 ] && ok "沒給啟動指令的時候結束碼 2" || bad "沒給指令卻回 ${rc}：${out}"
 
     out=$(bash "${HERE}/list-tools.sh" /nonexistent-binary-xyz 2>&1); rc=$?
     if [ "${rc}" != 0 ] && printf '%s' "${out}" | grep -q '不是「它沒有工具」'; then
-      ok "server 起不來的時候離開碼非零，而且明講這不等於它沒有工具"
+      ok "server 起不來的時候結束碼非零，而且明講這不等於它沒有工具"
     else
       bad "server 起不來卻沒分開報（rc=${rc}）：${out}"
     fi
@@ -362,7 +388,7 @@ sect "3 scan-descriptions.sh 對植入的描述紅、對乾淨的綠"
     # 正對照。少了它，一支一律回 1 的腳本在下面每一條都會過關。
     out=$(STUB_TAINT=clean bash "${HERE}/scan-descriptions.sh" node "${WS}/stub-server.cjs" 2>&1); rc=$?
     if [ "${rc}" = 0 ] && printf '%s' "${out}" | grep -q '一個都沒中'; then
-      ok "正對照：乾淨的測試樁離開碼 0"
+      ok "正對照：乾淨的測試樁結束碼 0"
     else
       bad "乾淨的測試樁沒給 0（rc=${rc}）：${out}"
     fi
@@ -392,16 +418,16 @@ sect "3 scan-descriptions.sh 對植入的描述紅、對乾淨的綠"
     # 「沒問到」不能算成「乾淨」。這條要求它跟 0、1 都不同。
     out=$(bash "${HERE}/scan-descriptions.sh" /nonexistent-binary-xyz 2>&1); rc=$?
     if [ "${rc}" = 2 ] && printf '%s' "${out}" | grep -q '這不是「乾淨」'; then
-      ok "server 起不來的時候離開碼 2，跟「乾淨」的 0 與「命中」的 1 都分得開"
+      ok "server 起不來的時候結束碼 2，跟「乾淨」的 0 與「命中」的 1 都分得開"
     else
-      bad "沒問到卻沒有走第三種離開碼（rc=${rc}）：${out}"
+      bad "沒問到卻沒有走第三種結束碼（rc=${rc}）：${out}"
     fi
   fi
 fi
 
 # ── 4 ────────────────────────────────────────────────────
 if want 4; then
-sect "4 probe.sh 的四種離開碼分得開，而且收窄真的擋得住"
+sect "4 probe.sh 的四種結束碼分得開，而且收窄真的擋得住"
 
   M=$(miss node curl)
   if [ -n "${M}" ]; then
@@ -431,7 +457,7 @@ sect "4 probe.sh 的四種離開碼分得開，而且收窄真的擋得住"
     out=$(PATH="${WS}/shadow" bash "${HERE}/probe.sh" 2>&1); rc=$?
     printf '%s' "${out}" > "${WS}/p.nonpx"
     if [ "${rc}" = 2 ] && concl "${WS}/p.nonpx" | grep -q '沒有 npx'; then
-      ok "npx 不在的時候離開碼 2，而且點名 npx"
+      ok "npx 不在的時候結束碼 2，而且點名 npx"
     else
       bad "npx 不在卻沒回 2 或沒點名（rc=${rc}）：${out}"
     fi
@@ -445,7 +471,7 @@ sect "4 probe.sh 的四種離開碼分得開，而且收窄真的擋得住"
       out=$(PROBE_REGISTRY=https://127.0.0.1:9 bash "${HERE}/probe.sh" 2>&1); rc=$?
       printf '%s' "${out}" > "${WS}/p.nonet"
       if [ "${rc}" = 2 ] && concl "${WS}/p.nonet" | grep -q '問不到'; then
-        ok "連不到註冊處的時候離開碼 2，而且講的是問不到，不是缺工具"
+        ok "連不到註冊處的時候結束碼 2，而且講的是問不到，不是缺工具"
       else
         bad "連不到卻沒回 2（rc=${rc}）：${out}"
       fi
@@ -473,7 +499,7 @@ sect "4 probe.sh 的四種離開碼分得開，而且收窄真的擋得住"
       out=$(bash "${HERE}/probe.sh" 2>&1); rc=$?
       printf '%s' "${out}" > "${WS}/p.ok"
       if [ "${rc}" = 0 ]; then
-        ok "正常那一輪離開碼 0：寬範圍讀到、收窄之後被擋"
+        ok "正常那一輪結束碼 0：寬範圍讀到、收窄之後被擋"
       else
         bad "正常那一輪沒給 0（rc=${rc}）：$(printf '%s' "${out}" | tail -4)"
       fi
@@ -498,15 +524,15 @@ sect "4 probe.sh 的四種離開碼分得開，而且收窄真的擋得住"
       out=$(PROBE_WIDE=/tmp/mcp-probe/allowed bash "${HERE}/probe.sh" 2>&1); rc=$?
       printf '%s' "${out}" > "${WS}/p.broken"
       [ "${rc}" = 3 ] \
-        && ok "寬範圍也讀不到的時候離開碼 3（探針壞了），不是 0 也不是 1" \
-        || bad "探針壞掉那一輪的離開碼是 ${rc}，該是 3"
+        && ok "寬範圍也讀不到的時候結束碼 3（探針壞了），不是 0 也不是 1" \
+        || bad "探針壞掉那一輪的結束碼是 ${rc}，該是 3"
 
       # 降權沒生效：把窄的那邊放寬，同一個呼叫就會讀到。
       out=$(PROBE_NARROW=/tmp/mcp-probe bash "${HERE}/probe.sh" 2>&1); rc=$?
       printf '%s' "${out}" > "${WS}/p.leak"
       [ "${rc}" = 1 ] \
-        && ok "收窄之後還讀得到的時候離開碼 1（降權沒生效）" \
-        || bad "降權沒生效那一輪的離開碼是 ${rc}，該是 1"
+        && ok "收窄之後還讀得到的時候結束碼 1（降權沒生效）" \
+        || bad "降權沒生效那一輪的結束碼是 ${rc}，該是 1"
 
       # 兩種失敗的訊息不能重疊。這裡不比寫死的句子，比的是兩段結論的差集：
       # 一邊有、另一邊沒有的話才代表讀者分得出自己碰到的是哪一種。
@@ -570,7 +596,7 @@ VAREOF
     printf '%s' "${out}" > "${WS}/inv.roots"
 
     n=0
-    [ "${rc}" = 0 ] || { bad "讀 .mcp.json 那一輪的離開碼是 ${rc}，該是 0"; n=1; }
+    [ "${rc}" = 0 ] || { bad "讀 .mcp.json 那一輪的結束碼是 ${rc}，該是 0"; n=1; }
     grep -q 'mcp.json:demo-proj-plain' "${WS}/inv.roots" || { bad "來源欄看不到 mcp.json:demo-proj-plain，這一路沒被讀到"; n=1; }
     grep -q 'mcp.json:demo-proj-var' "${WS}/inv.roots" || { bad "來源欄看不到 mcp.json:demo-proj-var"; n=1; }
     grep -q 'demo-f' "${WS}/inv.roots" || { bad ".mcp.json 裡的 demo-f 沒被列出來。只讀 ~/.claude.json 的話這一路整批不見"; n=1; }
@@ -674,7 +700,7 @@ POISONEOF
     # 負對照先跑。少了它，一支一律回 1 的實作在下面每一條上都會過關。
     out=$(bash "${HERE}/scan-descriptions.sh" --files "${WS}/skills/clean-skill" 2>&1); rc=$?
     if [ "${rc}" = 0 ] && printf '%s' "${out}" | grep -q '一個都沒中'; then
-      ok "負對照：乾淨的 SKILL.md 離開碼 0"
+      ok "負對照：乾淨的 SKILL.md 結束碼 0"
     else
       bad "乾淨的 SKILL.md 沒給 0（rc=${rc}）：${out}"
     fi
@@ -697,26 +723,26 @@ POISONEOF
     [ "${n}" = 0 ] && ok "給目錄的時候往下找 markdown，只點名真的命中的那一份"
 
     # 「路徑不存在」不能算成「乾淨」。這條要求它跟 0、1 都分得開，而且要講出
-    # 檔案那一路自己的話：只看離開碼的話，--files 被當成啟動指令的時候也是 2。
+    # 檔案那一路自己的話：只看結束碼的話，--files 被當成啟動指令的時候也是 2。
     out=$(bash "${HERE}/scan-descriptions.sh" --files "${WS}/no-such-dir" 2>&1); rc=$?
     n=0
-    [ "${rc}" = 2 ] || { bad "路徑不存在卻沒走第三種離開碼（rc=${rc}）：${out}"; n=1; }
+    [ "${rc}" = 2 ] || { bad "路徑不存在卻沒走第三種結束碼（rc=${rc}）：${out}"; n=1; }
     printf '%s' "${out}" | grep -q '讀不到這個路徑' || { bad "路徑不存在的時候沒講是路徑讀不到：${out}"; n=1; }
     printf '%s' "${out}" | grep -q '這不是「乾淨」' || { bad "路徑不存在的時候沒把它跟「乾淨」分開講"; n=1; }
-    [ "${n}" = 0 ] && ok "路徑不存在的時候離開碼 2，而且講的是路徑讀不到，不是乾淨"
+    [ "${n}" = 0 ] && ok "路徑不存在的時候結束碼 2，而且講的是路徑讀不到，不是乾淨"
 
     # 目錄在、裡面一份 markdown 都沒有：這也是「沒東西可掃」，不是「乾淨」。
     mkdir -p "${WS}/skills-empty"
     out=$(bash "${HERE}/scan-descriptions.sh" --files "${WS}/skills-empty" 2>&1); rc=$?
     [ "${rc}" = 2 ] \
-      && ok "目錄裡一份 markdown 都沒有的時候離開碼 2，不是綠燈" \
+      && ok "目錄裡一份 markdown 都沒有的時候結束碼 2，不是綠燈" \
       || bad "空目錄回了 ${rc}，那顆綠燈的意思會被讀成「掃過了、乾淨」：${out}"
 
     out=$(bash "${HERE}/scan-descriptions.sh" --files 2>&1); rc=$?
     n=0
     [ "${rc}" = 2 ] || { bad "--files 後面沒給路徑卻回 ${rc}：${out}"; n=1; }
     printf '%s' "${out}" | grep -q '要給至少一個路徑' || { bad "--files 後面沒給路徑的時候沒講用法：${out}"; n=1; }
-    [ "${n}" = 0 ] && ok "--files 後面什麼都沒給的時候離開碼 2，而且講得出用法"
+    [ "${n}" = 0 ] && ok "--files 後面什麼都沒給的時候結束碼 2，而且講得出用法"
   fi
 fi
 
@@ -736,7 +762,7 @@ sect "7 demo/ 那批假設定跑得動（README 那一節的示範輸出就是�
     printf '%s' "${out}" > "${WS}/demo.inv"
 
     n=0
-    [ "${rc}" = 0 ] || { bad "demo 那一輪的離開碼是 ${rc}，該是 0"; n=1; }
+    [ "${rc}" = 0 ] || { bad "demo 那一輪的結束碼是 ${rc}，該是 0"; n=1; }
     for name in tracker shop-db notes shop-api search internal-wiki; do
       grep -q "${name}" "${WS}/demo.inv" || { bad "demo 的 ${name} 沒被列出來"; n=1; }
     done
@@ -779,12 +805,12 @@ sect "7 demo/ 那批假設定跑得動（README 那一節的示範輸出就是�
     out=$(bash "${HERE}/scan-descriptions.sh" node "${HERE}/demo/poisoned-stub.cjs" 2>&1); rc=$?
     hits=$(printf '%s' "${out}" | grep -c '抓到')
     [ "${rc}" = 1 ] && [ "${hits}" = 4 ] \
-      && ok "demo/poisoned-stub.cjs 四類都命中，離開碼 1" \
+      && ok "demo/poisoned-stub.cjs 四類都命中，結束碼 1" \
       || bad "demo/poisoned-stub.cjs 只命中 ${hits} 條（rc=${rc}）"
 
     out=$(bash "${HERE}/scan-descriptions.sh" --files "${HERE}/demo/poisoned-skill.md" 2>&1); rc=$?
     [ "${rc}" = 1 ] \
-      && ok "demo/poisoned-skill.md 被抓到，離開碼 1" \
+      && ok "demo/poisoned-skill.md 被抓到，結束碼 1" \
       || bad "demo/poisoned-skill.md 沒被抓到（rc=${rc}）：${out}"
   fi
 fi
@@ -792,6 +818,6 @@ fi
 # ── 收 ───────────────────────────────────────────────────
 printf '\n════════ %s 綠 / %s 紅 / %s 跳過 ════════\n' "${PASS}" "${FAIL}" "${SKIP}"
 if [ "${SKIP}" != 0 ]; then
-  printf '有跳過的節，離開碼不會是 0。跳過不等於通過。\n'
+  printf '有跳過的節，結束碼不會是 0。跳過不等於通過。\n'
 fi
 [ "${FAIL}" = 0 ] && [ "${SKIP}" = 0 ]

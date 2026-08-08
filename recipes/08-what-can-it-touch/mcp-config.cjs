@@ -86,10 +86,26 @@ function collapsePath(p) {
 
 const looksLikePath = (a) => /^[/~]/.test(String(a));
 
-// stdio 的檔案系統範圍只能從啟動參數裡的路徑推。推不到不等於它碰不到東西：
-// 一台不吃路徑參數的 server 可能自己寫死了範圍，也可能整台都能碰。
-// 所以推不到的時候印 unknown，不印「無」。
-function scopeFromArgs(args) {
+// 啟動參數裡的路徑，跟「這台 server 碰得到哪裡」是兩件事。
+//
+// 第一版把任何看起來像路徑的參數都當成範圍，那是錯的，而且錯得剛好是這份 recipe
+// 最反對的那種：`node /home/me/mcp/server.js --config /home/me/mcp/c.json` 會印出
+// 一個看起來很精準的「範圍」，但那兩個只是程式檔跟設定檔，跟它讀得到哪裡無關。
+// 讀者會拿到一張看似精確、實際把執行檔路徑當權限邊界的表。
+//
+// 現在的規則：**只有已知參數語意的 server 才填範圍，其他一律 unknown。**
+// 路徑資訊沒有丟掉，改放在另一欄，那一欄叫「啟動參數裡的路徑」不叫範圍。
+//
+// 這張表要長，唯一的加法是去讀那台 server 的文件、確認它的位置參數真的是
+// allowed directory，然後把它加進來。加之前先問：這台 server 有沒有可能在
+// 這些路徑以外的地方讀寫？答不出來就不要加。
+const KNOWN_SCOPE_ARGS = [
+  // 官方 filesystem server：位置參數就是 allowed directories，README 明講
+  // `Specify Allowed directories when starting the server`。
+  { match: /@modelcontextprotocol\/server-filesystem(@|$)/, kind: "positional" },
+];
+
+function pathsInArgs(args) {
   const hits = [];
   for (const raw of args) {
     const a = String(raw);
@@ -97,7 +113,34 @@ function scopeFromArgs(args) {
     const cand = a.startsWith("--") && eq > 0 ? a.slice(eq + 1) : a;
     if (looksLikePath(cand)) hits.push(collapsePath(cand));
   }
-  return hits.length ? hits.join(" ") : "unknown";
+  return hits;
+}
+
+// 位置參數 = 不是旗標、也不是旗標的值、也不是 NAME=VALUE 的那些
+function positionalPaths(args) {
+  const hits = [];
+  let skipNext = false;
+  for (const raw of args) {
+    const a = String(raw);
+    if (skipNext) { skipNext = false; continue; }
+    if (a.startsWith("-")) { skipNext = !a.includes("="); continue; }
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(a)) continue;
+    if (looksLikePath(a)) hits.push(collapsePath(a));
+  }
+  return hits;
+}
+
+// 回傳 { scope, argPaths }。scope 只在認得那台 server 的時候才填。
+function scopeFromArgs(args) {
+  const all = args.map(String);
+  const argPaths = pathsInArgs(all);
+  const known = KNOWN_SCOPE_ARGS.find((k) => all.some((a) => k.match.test(a)));
+  if (!known) {
+    return { scope: "unknown", argPaths: argPaths };
+  }
+  // 認得的那台：位置參數才是它宣告的範圍。第一個位置參數是套件名，跳過。
+  const pos = positionalPaths(all);
+  return { scope: pos.length ? pos.join(" ") : "unknown", argPaths: argPaths };
 }
 
 const isWide = (scope) => /whole machine|whole home/.test(scope);
@@ -120,7 +163,10 @@ function row(o) {
   if (creds.some((v) => v.kind === "var")) flags.push("credvar");
   const credCell = o.credUnknown ? "?"
     : (o.vars.length ? o.vars.map(credText).join(",") : "no");
-  return [o.source, o.transport, credCell, o.name, o.scope, flags.join(",")].join("\t");
+  // 範圍與「啟動參數裡的路徑」分兩欄，因為它們是兩件事：
+  // 前者是這台 server 宣告它會碰哪裡，後者只是命令列上出現過的路徑。
+  const argPathCell = (o.argPaths && o.argPaths.length) ? o.argPaths.join(" ") : "-";
+  return [o.source, o.transport, credCell, o.name, o.scope, argPathCell, flags.join(",")].join("\t");
 }
 
 // ── 一台 server 的設定長什麼樣 ────────────────────────────
@@ -150,8 +196,8 @@ function serverRow(source, name, s) {
   let transport = String(s.type || "").toLowerCase();
   if (!transport) transport = s.command ? "stdio" : (s.url ? "http" : "unknown");
 
-  const scope = s.command ? scopeFromArgs([].concat(s.command, args))
-    : (s.url ? "remote" : "unknown");
+  const sc = s.command ? scopeFromArgs([].concat(s.command, args))
+    : { scope: (s.url ? "remote" : "unknown"), argPaths: [] };
 
   return row({
     source: source,
@@ -159,7 +205,8 @@ function serverRow(source, name, s) {
     vars: vars,
     credUnknown: false,
     name: name,
-    scope: scope,
+    scope: sc.scope,
+    argPaths: sc.argPaths,
   });
 }
 
@@ -246,7 +293,7 @@ function fromCli() {
   for (const line0 of text.split("\n")) {
     const line = line0.replace(/\s+$/, "");
     if (!line) continue;
-    // 這幾行不是 server：健康檢查的抬頭、什麼都沒設定的提示、離開碼。
+    // 這幾行不是 server：健康檢查的抬頭、什麼都沒設定的提示、結束碼。
     if (/^(Checking MCP server health|No MCP servers configured|EXIT=)/.test(line)) continue;
     const m = line.match(/^(.+?): (.*?)(?: - [^ ].*)?$/);
     if (!m) continue;
@@ -270,7 +317,8 @@ function fromCli() {
         vars: vars,
         credUnknown: false,
         name: name,
-        scope: scopeFromArgs(parts),
+        scope: scopeFromArgs(parts).scope,
+        argPaths: scopeFromArgs(parts).argPaths,
       }));
     } else {
       // CLI 這一路對遠端那幾台只印 URL。設定檔裡 headers 底下的憑證它不印，
@@ -298,7 +346,7 @@ const pad = (s, w) => String(s) + " ".repeat(Math.max(0, w - dispWidth(s)));
 function table() {
   const text = fs.readFileSync(0, "utf8");
   const rows = text.split("\n").filter((s) => s.length).map((s) => s.split("\t"));
-  const head = ["來源", "傳輸", "憑證", "名稱", "範圍"];
+  const head = ["來源", "傳輸", "憑證", "名稱", "範圍", "啟動參數裡的路徑"];
   if (!rows.length) {
     process.stdout.write("一台都沒有清點到。\n");
     process.stdout.write("那不一定代表你沒裝：設定可能在別的地方，或者這一路的來源沒打開。\n");
@@ -312,7 +360,9 @@ function table() {
   process.stdout.write("憑證欄：看起來像憑證的變數印成「名字=***」，其餘只印名字，值一律不印。\n");
   process.stdout.write("        名字=${VAR} 是值不在檔案裡、指向一個環境變數，原樣印出來不展開。\n");
   process.stdout.write("        no 是沒宣告變數，? 是這個來源看不到（不等於沒有）。\n");
-  process.stdout.write("範圍欄：remote 是遠端那一台，unknown 是啟動參數裡推不出路徑。兩種都不是「碰不到」。\n\n");
+  process.stdout.write("範圍欄：只有這支認得參數語意的 server 才填（目前只有官方 filesystem server）。\n");
+  process.stdout.write("        remote 是遠端那一台，unknown 是「我不知道」，兩種都不是「碰不到」。\n");
+  process.stdout.write("最後一欄：命令列上出現過的路徑。那不是權限範圍，多數只是程式檔或設定檔的位置。\n\n");
   process.stdout.write(render(head) + "\n");
   for (const r of rows) process.stdout.write(render(r) + "\n");
 
@@ -320,7 +370,7 @@ function table() {
   // 點名一律印「來源/名稱」，不是光禿禿的名字：server 的名字在來源之間不是唯一的
   // （同一個 files 可以在兩個專案裡各有一份，允許目錄還不一樣），
   // 只印名字的話收尾那幾段會指不出是哪一列，而範圍最寬的那一台正好最需要指得準。
-  const has = (r, f) => (r[5] || "").split(",").indexOf(f) >= 0;
+  const has = (r, f) => (r[6] || "").split(",").indexOf(f) >= 0;
   const at = (r) => r[0] + "/" + r[3];
   const names = (f) => rows.filter((r) => has(r, f)).map(at);
   const cred = names("cred");

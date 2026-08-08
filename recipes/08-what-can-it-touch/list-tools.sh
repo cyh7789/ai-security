@@ -32,7 +32,7 @@ OUT=$(node "${HERE}/mcp-rpc.cjs" tools -- "$@" 2>&1); rc=$?
 if [ "${rc}" != 0 ]; then
   printf '問不到這台：%s\n' "${CMDLINE% }"
   printf '%s\n' "${OUT}"
-  printf '這不是「它沒有工具」，是我沒問到。離開碼 %s。\n' "${rc}"
+  printf '這不是「它沒有工具」，是我沒問到。結束碼 %s。\n' "${rc}"
   exit "${rc}"
 fi
 
