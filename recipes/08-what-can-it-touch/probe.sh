@@ -77,7 +77,7 @@ printf '%s\n' "${CANARY}" > "${ROOT}/denied/secret.txt"
 TARGET="${ROOT}/denied/secret.txt"
 
 ask() {   # ask <允許目錄> → 印出 mcp-rpc 的輸出
-  node "${HERE}/mcp-rpc.cjs" call read_file "{\"path\":\"${TARGET}\"}" -- \
+  node "${HERE}/mcp-rpc.cjs" call read_text_file "{\"path\":\"${TARGET}\"}" -- \
     npx -y "${FSPKG}" "$1" 2>&1
 }
 
