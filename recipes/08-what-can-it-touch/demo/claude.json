@@ -1,0 +1,39 @@
+{
+  "mcpServers": {},
+  "projects": {
+    "/Users/you/work/web-shop": {
+      "mcpServers": {
+        "files": {
+          "type": "stdio",
+          "command": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/you/work/web-shop/docs"]
+        },
+        "tracker": {
+          "type": "http",
+          "url": "https://tracker.example.invalid/mcp",
+          "headers": { "Authorization": "Bearer ${TRACKER_TOKEN}" }
+        }
+      }
+    },
+    "/Users/you/work/demo-a": {
+      "mcpServers": {
+        "files": {
+          "command": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-filesystem", "~"]
+        },
+        "shop-db": {
+          "type": "stdio",
+          "command": "docker",
+          "args": ["run", "-i", "--rm", "-e", "DB_PASSWORD=FAKEdemo-db-pw-4c81e0a9f37b", "postgres-mcp", "--dsn", "postgres://demo@db.example.invalid:5432/shop"]
+        },
+        "team-notes": {
+          "type": "sse",
+          "url": "https://notes.example.invalid/sse"
+        }
+      }
+    },
+    "/Users/you/work/no-servers-here": {
+      "allowedTools": []
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "shop-api": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "-e", "SHOP_API_TOKEN=FAKEdemo-shop-tok-9f3b27d5a01e", "shop-api-mcp", "serve"]
+    },
+    "search": {
+      "type": "http",
+      "url": "https://search.example.invalid/mcp",
+      "headers": { "Authorization": "Bearer ${SEARCH_TOKEN}" }
+    }
+  }
+}
