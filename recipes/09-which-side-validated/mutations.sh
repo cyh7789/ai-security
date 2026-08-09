@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # verify.sh 全綠只證明現在這份是對的，不證明它在事情壞掉的時候會轉紅。
-# 這支把十一種壞法各做一次，每一種都必須讓 verify.sh 變紅。
+# 這支跑十一種變化：十種是故障，必須讓 verify.sh 轉紅；
+# 一種是共用來源的反向對照，它必須照舊綠，不然那個共用只是宣稱。
 # 前四種是原本就有的；後兩種是審查實測 verify.sh 抓不到才補的，補完才抓得到。
 # 用法：bash mutations.sh（會用副本，不動你目錄裡的原檔）
 set -u
 cd "$(dirname "$0")"
 
-CAUGHT=0; MISSED=0
+CAUGHT=0; MISSED=0; HELD=0
 run() { # run <說明> <sed 表達式> <目標檔>
   local work; work=$(mktemp -d)
   cp -R ./* "$work/" 2>/dev/null
@@ -40,7 +41,7 @@ p.write_text(s)" "$work/$2"
   # 第四個參數是 NEG 的時候，期望反過來：這種改動「不該」讓 verify 轉紅。
   if bash "$work/verify.sh" > /dev/null 2>&1; then
     if [ "${4:-}" = NEG ]; then
-      CAUGHT=$((CAUGHT+1)); printf '  \033[32m照舊綠\033[0m %s\n' "$1"
+      HELD=$((HELD+1)); printf '  \033[32m照舊綠\033[0m %s\n' "$1"
     else
       MISSED=$((MISSED+1)); printf '  \033[31m漏掉\033[0m %s\n' "$1"
     fi
@@ -95,5 +96,5 @@ run "before 只改端點界線，表單那份沒跟上"  's/body.quantity > 10/b
 runtable "說謊的 PATCH：先存進去再回 400" 's/    if (body.quantity !== undefined) {/    if (body.quantity !== undefined) { order.quantity = body.quantity; return json(res, 400, { error: "quantity must be between 1 and 10" }); } if (false) {/' after/server.mjs '值進去了'
 
 echo
-printf '════ %s 種抓到 %s 種漏掉 ════\n' "$CAUGHT" "$MISSED"
+printf '════ 故障 %s 種轉紅、反向對照 %s 種照舊綠，不符 %s 種 ════\n' "$CAUGHT" "$HELD" "$MISSED"
 [ "$MISSED" -eq 0 ]

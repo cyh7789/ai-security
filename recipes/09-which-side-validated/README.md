@@ -6,7 +6,7 @@
 bash verify.sh              # 十七條檢查
 bash probe-table.sh before  # 產「欄位 × 驗證位置」對照表
 bash probe-table.sh after   # 修好之後的同一張表
-bash mutations.sh           # 把十一種壞法各做一次，確認 verify.sh 會轉紅
+bash mutations.sh           # 十一種變化：十種該轉紅，一種反向對照該照舊綠
 ```
 
 只需要 `node` 與 `curl`，**不下載任何套件**。兩台 server 都綁 `127.0.0.1` 的隨機埠，
@@ -97,7 +97,7 @@ if (body.quantity !== undefined) order.quantity = body.quantity;
 
 ## mutations.sh 驗的是 verify.sh
 
-全綠只代表現在這份是對的，不代表它在事情壞掉的時候會轉紅。十一種壞法：
+全綠只代表現在這份是對的，不代表它在事情壞掉的時候會轉紅。十一種變化，其中十種是故障、必須轉紅，一種是反向對照、必須照舊綠：
 
 | 壞法 | 應該轉紅的原因 |
 |---|---|
@@ -113,7 +113,10 @@ if (body.quantity !== undefined) order.quantity = body.quantity;
 | `before` 只改端點界線 | 表單那份沒跟上，宣告與實際切的位置走散 |
 | 說謊的 PATCH（打 `probe-table`） | 那張表要印「值進去了」，不是靠 400 就說擋住了 |
 
-十一種都要被抓到，一種漏掉就代表 verify.sh 有一格是假的。
+十種故障都要轉紅、那一種反向對照要照舊綠，任何一項不符就代表 verify.sh 有一格是假的。
+
+反向那條自己也要能翻臉：把 `after` 的表單改回自己寫死（共用斷掉），它必須印「不該紅」。
+不會翻臉的反向對照，跟一個永遠印綠的假閘門沒有分別。
 
 **有一種故意沒放進來。** 把 `after` 兩支端點各自抄一份行內檢查，
 行為跟現在這份完全相同，`verify.sh` 一條都不會紅，而且它永遠不會紅。
