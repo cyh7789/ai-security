@@ -91,7 +91,11 @@ chk "PATCH quantity=-5 被擋" \
   "$(code -X PATCH -H 'content-type: application/json' -d '{"quantity":-5}' "http://127.0.0.1:$AP/orders/1")" 400
 
 # 擋下來還不夠，要擋在對的原因上。500 或 404 也是「沒改成」，但那是壞掉不是驗證。
-if printf '%s' "$PATCH_BODY" | grep -q 'quantity must be between 1 and 10'; then
+# 界線的數字從表單讀，不要硬寫：改掉 rules.mjs 的界線時訊息會跟著變，
+# 硬寫 1 和 10 會讓「共用來源確實生效」的改動看起來像壞掉。
+A_MIN=$(curl -s "http://127.0.0.1:$AP/" | grep -o 'min="[0-9]*"' | head -1 | tr -dc '0-9')
+A_MAX=$(curl -s "http://127.0.0.1:$AP/" | grep -o 'max="[0-9]*"' | head -1 | tr -dc '0-9')
+if printf '%s' "$PATCH_BODY" | grep -q "quantity must be between ${A_MIN} and ${A_MAX}"; then
   ok "擋下來的原因是值域檢查，不是伺服器壞了"
 else
   no "擋下來了，但原因不是值域檢查：$PATCH_BODY"

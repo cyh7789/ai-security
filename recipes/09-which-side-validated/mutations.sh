@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # verify.sh 全綠只證明現在這份是對的，不證明它在事情壞掉的時候會轉紅。
-# 這支把八種壞法各做一次，每一種都必須讓 verify.sh 變紅。
+# 這支把十一種壞法各做一次，每一種都必須讓 verify.sh 變紅。
 # 前四種是原本就有的；後兩種是審查實測 verify.sh 抓不到才補的，補完才抓得到。
 # 用法：bash mutations.sh（會用副本，不動你目錄裡的原檔）
 set -u
@@ -37,10 +37,20 @@ p.write_text(s)" "$work/$2"
     MISSED=$((MISSED+1)); printf '  \033[31m壞了\033[0m %s（突變沒套用進去，這條沒測到）\n' "$1"
     rm -rf "$work"; return
   fi
+  # 第四個參數是 NEG 的時候，期望反過來：這種改動「不該」讓 verify 轉紅。
   if bash "$work/verify.sh" > /dev/null 2>&1; then
-    MISSED=$((MISSED+1)); printf '  \033[31m漏掉\033[0m %s\n' "$1"
+    if [ "${4:-}" = NEG ]; then
+      CAUGHT=$((CAUGHT+1)); printf '  \033[32m照舊綠\033[0m %s\n' "$1"
+    else
+      MISSED=$((MISSED+1)); printf '  \033[31m漏掉\033[0m %s\n' "$1"
+    fi
   else
-    CAUGHT=$((CAUGHT+1)); printf '  \033[32m抓到\033[0m %s\n' "$1"
+    if [ "${4:-}" = NEG ]; then
+      MISSED=$((MISSED+1)); printf '  \033[31m不該紅\033[0m %s\n' "$1"
+      bash "$work/verify.sh" 2>&1 | grep '紅' | head -2
+    else
+      CAUGHT=$((CAUGHT+1)); printf '  \033[32m抓到\033[0m %s\n' "$1"
+    fi
   fi
   rm -rf "$work"
 }
