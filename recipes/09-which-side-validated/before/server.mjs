@@ -30,7 +30,10 @@ const server = http.createServer(async (req, res) => {
   // 表單要供得出來，讀者才驗得到「瀏覽器會擋」那一段。
   // 只 grep form.html 有沒有那兩個屬性，證明的是檔案裡有那兩串字，不是瀏覽器會擋。
   if (req.method === "GET" && (req.url === "/" || req.url === "/form.html")) {
-    const html = fs.readFileSync(new URL("../form.html", import.meta.url), "utf8");
+    // 表單的上下界在這裡又寫了一次。跟下面 POST 那段的 1 與 10 是兩份，
+    // 改一邊不會動到另一邊，這就是文章講的「兩份會分岔」。
+    const html = fs.readFileSync(new URL("../form.html", import.meta.url), "utf8")
+      .replace("__MIN__", "1").replace("__MAX__", "10");
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     return res.end(html);
   }

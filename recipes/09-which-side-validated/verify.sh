@@ -55,9 +55,9 @@ BP=$PORT
 # 「瀏覽器真的會擋」還是要你自己打開那一頁看，這條只證明送到瀏覽器的那份宣告了什麼。
 FORM=$(curl -s "http://127.0.0.1:$BP/")
 if printf '%s' "$FORM" | grep -q 'type="number"' \
-   && printf '%s' "$FORM" | grep -q 'min="1"' \
-   && printf '%s' "$FORM" | grep -q 'max="10"'; then
-  ok "server 供得出表單，而且它宣告了 type=number min=1 max=10"
+   && printf '%s' "$FORM" | grep -qE 'min="[0-9]+"' \
+   && printf '%s' "$FORM" | grep -qE 'max="[0-9]+"'; then
+  ok "server 供得出表單，而且它宣告了 type=number 與上下界"
 else
   no "表單抓不到，或少了 type=number／min／max，後面的對照就沒有意義"
 fi
@@ -113,6 +113,33 @@ if [ -n "$OK_ID" ]; then
 else
   no "合法的 POST 沒有建出訂單：$OK_BODY"
 fi
+
+echo
+echo "── 宣告出去的界線，跟實際切的位置是同一個嗎 ──"
+declared_max() { curl -s "http://127.0.0.1:$1/" | grep -o 'max="[0-9]*"' | head -1 | tr -dc '0-9'; }
+edge_check() {  # edge_check <說明> <port> <POST|PATCH>
+  local m over c
+  m=$(declared_max "$2")
+  if [ -z "$m" ]; then no "$1：表單上讀不到 max，這條檢查沒有意義"; return; fi
+  over=$((m + 1))
+  if [ "$3" = POST ]; then
+    c=$(code -X POST -H 'content-type: application/json' \
+          -d "{\"itemId\":\"sku-1\",\"quantity\":${over}}" "http://127.0.0.1:$2/orders")
+  else
+    c=$(code -X PATCH -H 'content-type: application/json' \
+          -d "{\"quantity\":${over}}" "http://127.0.0.1:$2/orders/1")
+  fi
+  if [ "$c" = "400" ]; then
+    ok "$1：表單說 max=${m}，$3 也剛好切在 ${m}"
+  else
+    no "$1：表單說 max=${m}，$3 卻收下了 ${over}（回 ${c}），兩份走散了"
+  fi
+}
+# before 的表單數字是另外寫死的第二份，現在剛好跟它的 POST 對得起來。
+# 「剛好對得起來」跟「不會走散」是兩件事，差別要靠突變才看得出來：
+# 改掉 before 的 POST 界線，表單不會跟；改掉 after 的 rules.mjs，表單會跟。
+edge_check "before（表單那份是另外寫死的）" "$BP" POST
+edge_check "after（表單與端點共用 rules.mjs）" "$AP" PATCH
 
 echo
 echo "── 收尾：這支腳本自己有沒有收乾淨 ──"

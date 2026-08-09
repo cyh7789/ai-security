@@ -3,10 +3,10 @@
 對應 [Day 9](https://ithelp.ithome.com.tw/articles/)。
 
 ```bash
-bash verify.sh              # 十三條檢查
+bash verify.sh              # 十七條檢查
 bash probe-table.sh before  # 產「欄位 × 驗證位置」對照表
 bash probe-table.sh after   # 修好之後的同一張表
-bash mutations.sh           # 把六種壞法各做一次，確認 verify.sh 會轉紅
+bash mutations.sh           # 把十一種壞法各做一次，確認 verify.sh 會轉紅
 ```
 
 只需要 `node` 與 `curl`，**不下載任何套件**。兩台 server 都綁 `127.0.0.1` 的隨機埠，
@@ -35,13 +35,21 @@ if (!Number.isInteger(body.quantity) || body.quantity < 1 || body.quantity > 10)
 if (body.quantity !== undefined) order.quantity = body.quantity;
 ```
 
-建立那半驗了，編輯那半沒有。`form.html` 上有 `min="1" max="10"`，所以從畫面上操作
-永遠碰不到這個洞，而一行 `curl` 就繞過去了。
+建立那半驗了，編輯那半沒有。送到瀏覽器的那張表單上有 `min="1" max="10"`，所以從畫面上
+操作永遠碰不到這個洞，而一行 `curl` 就繞過去了。
 
 這不是為了示範捏出來的形狀，是從一個真實專案量出來的：六個資源，六次都是建立那半
 檢查欄位內容、編輯那半只檢查「你要改哪一筆」。這裡縮成一個欄位方便打。
 
-`after/server.mjs` 的差別只有一件事，`checkQuantity()` 被抽出來，兩支端點都去問它。
+`after/` 的差別是規則搬進了 `after/rules.mjs`，而且**去問它的不只兩支端點，還有那張表單**。
+`server.mjs` 送 HTML 出去的時候，把 `form.html` 裡的 `__MIN__`／`__MAX__` 用 `rules.mjs`
+的數字填掉。`before/` 也會填，但填的是它自己另外寫死的一份。
+
+這一組差異有對應的檢查（`verify.sh` 那組「宣告出去的界線，跟實際切的位置是同一個嗎」）：
+拿表單上的 `max` 去打，那個值要收、`max+1` 要擋。兩台現在都是綠的，因為 `before` 的兩份
+數字剛好還一樣。**「剛好一樣」跟「不會走散」是兩件事**，差別要靠突變才看得出來：
+改 `after/rules.mjs` 的界線，表單會跟著變，檢查照樣綠；改 `before/server.mjs` 的界線，
+表單那份不會跟，檢查就紅了。
 
 ## probe-table.sh 為什麼要讀回來
 
@@ -58,7 +66,7 @@ if (body.quantity !== undefined) order.quantity = body.quantity;
 
 ## verify.sh 驗什麼
 
-十三條，分成三組。**每一組都有正對照**，這是這支腳本唯一值得抄的地方。
+十七條，分成四組。**每一組都有正對照**，這是這支腳本唯一值得抄的地方。
 
 `before` 那組要證明「繞過成立」：
 
@@ -89,18 +97,23 @@ if (body.quantity !== undefined) order.quantity = body.quantity;
 
 ## mutations.sh 驗的是 verify.sh
 
-全綠只代表現在這份是對的，不代表它在事情壞掉的時候會轉紅。六種壞法：
+全綠只代表現在這份是對的，不代表它在事情壞掉的時候會轉紅。十一種壞法：
 
 | 壞法 | 應該轉紅的原因 |
 |---|---|
 | `after` 的 PATCH 把驗證拿掉 | 洞又回來了 |
 | `after` 改成什麼都擋 | 正對照那條會紅，這是「全擋」偽裝成「安全」 |
-| `before` 的 PATCH 補上驗證 | 沒洞可繞，示範本身失效 |
-| 表單的 `min` 被拿掉 | 「前端有驗」這個前提不成立 |
-| 表單的 `type` 換成 `text` | `min`／`max` 對 text 不生效，屬性字串還在，前端那道其實已經死了 |
 | 值域差一個等號 | 合法的 1 跟 10 被誤擋，功能壞了但「有擋住」還是成立 |
+| `before` 的 PATCH 補上驗證 | 沒洞可繞，示範本身失效 |
+| 表單的 `min` 佔位被拿掉 | 「前端有宣告」這個前提不成立 |
+| 表單的 `type` 換成 `text` | `min`／`max` 對 text 不生效，屬性還在，前端那道其實已經死了 |
+| `after` 的 POST 先存進去再回 400 | 狀態碼說擋了，值進去了 |
+| `after` 的 POST 一律拒絕 | POST 那邊的正對照會紅 |
+| **`after` 的界線改成 1 到 20** | **這一條反過來，它不該紅**：表單跟端點都問 `rules.mjs`，一起變就還是一致 |
+| `before` 只改端點界線 | 表單那份沒跟上，宣告與實際切的位置走散 |
+| 說謊的 PATCH（打 `probe-table`） | 那張表要印「值進去了」，不是靠 400 就說擋住了 |
 
-六種都要被抓到，一種漏掉就代表 verify.sh 有一格是假的。
+十一種都要被抓到，一種漏掉就代表 verify.sh 有一格是假的。
 
 **有一種故意沒放進來。** 把 `after` 兩支端點各自抄一份行內檢查，
 行為跟現在這份完全相同，`verify.sh` 一條都不會紅，而且它永遠不會紅。

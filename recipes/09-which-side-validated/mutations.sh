@@ -45,24 +45,44 @@ p.write_text(s)" "$work/$2"
   rm -rf "$work"
 }
 
+# 專門打 probe-table：verify.sh 綠不綠不算數，要看那張表印出什麼。
+runtable() { # runtable <說明> <sed 表達式> <目標檔> <表上該出現的字>
+  local work; work=$(mktemp -d)
+  cp -R ./* "$work/" 2>/dev/null
+  sed -i '' "$2" "$work/$3" 2>/dev/null || sed -i "$2" "$work/$3"
+  if cmp -s "./$3" "$work/$3"; then
+    MISSED=$((MISSED+1)); printf '  \033[31m壞了\033[0m %s（突變沒套用進去）\n' "$1"
+    rm -rf "$work"; return
+  fi
+  if bash "$work/probe-table.sh" after 2>/dev/null | grep -q "$4"; then
+    CAUGHT=$((CAUGHT+1)); printf '  \033[32m抓到\033[0m %s\n' "$1"
+  else
+    MISSED=$((MISSED+1)); printf '  \033[31m漏掉\033[0m %s（表上沒有出現「%s」）\n' "$1" "$4"
+  fi
+  rm -rf "$work"
+}
+
 echo
 run "after 的 PATCH 把驗證拿掉"      's/if (body.quantity !== undefined) {/if (body.quantity !== undefined) { order.quantity = body.quantity; return json(res, 200, order); } if (false) {/' after/server.mjs
-run "after 改成什麼都擋（含合法值）"  's/if (value < 1 || value > 10)/if (true)/'                                    after/server.mjs
+run "after 改成什麼都擋（含合法值）"  's/if (value < QUANTITY_MIN || value > QUANTITY_MAX)/if (true)/'                after/rules.mjs
+run "值域差一個等號（1 跟 10 被誤擋）" 's/value < QUANTITY_MIN || value > QUANTITY_MAX/value <= QUANTITY_MIN || value >= QUANTITY_MAX/' after/rules.mjs
 run "before 的 PATCH 補上驗證"        's/if (body.quantity !== undefined) order.quantity = body.quantity;/if (body.quantity !== undefined) { if (body.quantity < 1) return json(res, 400, { error: "bad" }); order.quantity = body.quantity; }/' before/server.mjs
-run "表單的 min 被拿掉"               's/min="1" //'                                                                  form.html
+run "表單的 min 佔位被拿掉"           's/min="__MIN__" //'                                                            form.html
 run "表單的 type 被換成 text"         's/type="number"/type="text"/'                                                  form.html
-run "值域差一個等號（1 跟 10 被誤擋）" 's/if (value < 1 || value > 10)/if (value <= 1 || value >= 10)/'                after/server.mjs
 runpy "after 的 POST 先存進去再回 400" after/server.mjs '
 s = s.replace("    if (bad) return json(res, 400, { error: bad });\n    const newId", "    const newId")
 s = s.replace("    return json(res, 201, order);", "    if (bad) return json(res, 400, { error: bad });\n    return json(res, 201, order);")
-' 
+'
 run "after 的 POST 一律拒絕"          's/    if (bad) return json(res, 400, { error: bad });/    if (true) return json(res, 400, { error: bad || "nope" });/' after/server.mjs
 
-# 第七種試過，故意不放進來：把 after 的兩支端點各自抄一份行內檢查，
-# 行為跟現在這份逐位元相同，所以 verify.sh 一條都不會紅，而且它永遠不會紅。
-# 那不是 verify.sh 的缺陷，是打一遍這個方法的邊界：
-# 它量得到「這個值有沒有被擋」，量不到「規則有沒有一個落點」。
-# 後者要用讀的。把它寫成一條會漏掉的突變，等於假裝那是個可以補起來的洞。
+# 這一對是「共用來源」那個主張的證據，兩條要一起看。
+runpy "after 把界線改成 1 到 20（表單會跟著變，所以不該紅）" after/rules.mjs '
+s = s.replace("export const QUANTITY_MAX = 10;", "export const QUANTITY_MAX = 20;")
+' NEG
+run "before 只改端點界線，表單那份沒跟上"  's/body.quantity > 10/body.quantity > 20/'                                  before/server.mjs
+
+# 這一條打的是 probe-table 自己，不是 verify.sh
+runtable "說謊的 PATCH：先存進去再回 400" 's/    if (body.quantity !== undefined) {/    if (body.quantity !== undefined) { order.quantity = body.quantity; return json(res, 400, { error: "quantity must be between 1 and 10" }); } if (false) {/' after/server.mjs '值進去了'
 
 echo
 printf '════ %s 種抓到 %s 種漏掉 ════\n' "$CAUGHT" "$MISSED"

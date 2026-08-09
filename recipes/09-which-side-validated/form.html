@@ -1,11 +1,13 @@
 <!doctype html>
 <!-- 前端這一份沒有壞掉，也不該拿掉。它做的是把錯誤當場講給使用者聽，
-     而不是等一趟往返之後才說「數量不對」。它不做的是決定資料進不進得去。 -->
+     而不是等一趟往返之後才說「數量不對」。它不做的是決定資料進不進得去。
+     min/max 是佔位，由 server 送出去的時候填。填的人是誰，決定了這份宣告
+     會不會跟後端走散：before 那台自己寫死一份，after 那台去問 rules.mjs。 -->
 <meta charset="utf-8">
 <title>改數量</title>
 <form id="f">
   <label>數量
-    <input id="quantity" type="number" min="1" max="10" step="1" required value="2">
+    <input id="quantity" type="number" min="__MIN__" max="__MAX__" step="1" required value="2">
   </label>
   <button>送出</button>
 </form>

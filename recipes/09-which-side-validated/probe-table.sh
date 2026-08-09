@@ -35,7 +35,7 @@ patch_verdict() {
 }
 
 post_verdict() {
-  local body code id
+  local body code id nxt
   body=$(curl -s -w '\n%{http_code}' -X POST -H 'content-type: application/json' \
            -d "{\"itemId\":\"sku-1\",\"quantity\":${BAD}}" "http://127.0.0.1:$PORT/orders")
   code=$(printf '%s' "${body}" | tail -1)
@@ -45,22 +45,34 @@ post_verdict() {
   # 分不出來就要說分不出來，這張表上「我沒查到」跟「沒有」不能印成同一格。
   if [ -n "${id}" ]; then
     if [ "$(qty "${id}")" = "${BAD}" ]; then echo "值進去了 (${code})"; else echo "值沒進去 (${code})"; fi
-  elif [ "${code}" = "400" ] || [ "${code}" = "422" ]; then
+    return
+  fi
+  # 回應沒給 id 的時候不能拿狀態碼下結論。400 也可能是「存好了才回 400」。
+  # 這台 server 一開始有一筆訂單，所以建成功的下一個 id 是 2，直接去問它。
+  local nxt; nxt=$(qty 2)
+  if [ "${nxt}" = "${BAD}" ]; then
+    echo "值進去了 (${code})"
+  elif [ -z "${nxt}" ]; then
     echo "值沒進去 (${code})"
   else
     echo "查不到 (${code})"
   fi
 }
 
-front() { # 前端那一份是宣告在 HTML 上的，直接讀屬性
-  # 連 type 一起看。min/max 對 type="text" 不生效，只 grep 那兩個屬性
-  # 會在前端那道已經死掉的時候照樣印出一個很像有在擋的字串。
-  local f; f=$(grep -o 'type="[a-z]*" min="[0-9]*" max="[0-9]*"' form.html | head -1 | tr -d '"' | tr -s ' ')
-  case "${f}" in
-    "type=number"*) printf '%s' "${f#type=number }" ;;
-    "") printf '沒宣告' ;;
-    *)  printf '%s（min/max 對這個 type 不生效）' "${f}" ;;
-  esac
+front() {
+  # 讀 server 實際送出去的那份，不是磁碟上的原檔。
+  # 原檔裡是 __MIN__／__MAX__ 佔位，誰把它填掉、填什麼，正是這張表要看的事。
+  local html t mn mx
+  html=$(curl -s "http://127.0.0.1:$PORT/")
+  t=$(printf '%s' "${html}" | grep -o 'type="[a-z]*"' | head -1 | tr -dc 'a-z=')
+  mn=$(printf '%s' "${html}" | grep -o 'min="[0-9]*"' | head -1 | tr -dc '0-9')
+  mx=$(printf '%s' "${html}" | grep -o 'max="[0-9]*"' | head -1 | tr -dc '0-9')
+  if [ -z "${mn}" ] || [ -z "${mx}" ]; then printf '沒宣告'; return; fi
+  if [ "${t}" = "type=number" ]; then
+    printf 'min=%s max=%s' "${mn}" "${mx}"
+  else
+    printf 'min=%s max=%s（對 %s 不生效）' "${mn}" "${mx}" "${t}"
+  fi
 }
 
 printf '\n%s 的對照表（送進去的值：quantity = %s，每一格都讀回來確認過）\n\n' "$DIR" "$BAD"
