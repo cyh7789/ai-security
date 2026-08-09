@@ -1,6 +1,6 @@
 # 09 前端擋得住的，後端擋不擋得住
 
-對應 Day 9（發表後補直接連結，先放[系列頁](https://ithelp.ithome.com.tw/users/20138924/ironman/9086)）。
+對應 [Day 9](https://ithelp.ithome.com.tw/articles/10402200)。
 
 ```bash
 bash verify.sh              # 十七條檢查
