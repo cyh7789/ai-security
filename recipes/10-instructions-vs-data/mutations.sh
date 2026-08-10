@@ -64,7 +64,10 @@ run "沒接模型的時候不拒跑，改印空表" 紅 \
   run-attacks.sh '  exit 2' '  MODEL_CMD="bash fake-model.sh"'
 
 run "把存活對照拿掉" 紅 \
-  run-attacks.sh '  *OK-LIVE*) ;;' '  *) ;;'
+  run-attacks.sh '    *OK-LIVE*) ;;' '    *) ;;'
+
+run "只留開跑那一發，收尾不對照" 紅 \
+  run-attacks.sh 'probe 收尾' ':'
 
 run "show-payload 的字數改成寫死" 紅 \
   show-payload.mjs 'console.log(`外來的  ${userText.length} 字`);' \
