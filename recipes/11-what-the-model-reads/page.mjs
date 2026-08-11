@@ -12,8 +12,10 @@ export const HIDING_LABEL = {
   plain: "沒藏，寫在看得到的地方",
 };
 
-// Unicode Tags 區塊（U+E0000 起）：每個 ASCII 字元對應一個碼點，
-// 絕大多數字型畫不出東西，所以整段字在畫面上不佔位置。
+// Unicode Tags 區塊是 U+E0000..U+E007F。其中 U+E0020 到 U+E007F 這 96 個有定義，
+// 前 95 個跟可列印 ASCII（0x20 到 0x7E）一一對上，最後那個 CANCEL TAG 不對應可見字元。
+// 它們在畫面上不佔位置不是因為字型沒收，是 Unicode 給了整段 Default_Ignorable_Code_Point
+// 這個屬性，符合規範的排版引擎照規矩就不該畫它。所以換字型不會讓它現形。
 // 這個編碼放在這裡是為了讓你在自己的頁面上造測試素材，
 // 要看見它請用 reveal.mjs，那支才是這個 recipe 要你帶走的東西。
 const TAG_BASE = 0xe0000;
