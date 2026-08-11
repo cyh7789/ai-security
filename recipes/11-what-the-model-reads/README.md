@@ -1,6 +1,6 @@
 # 11 你看到的那一頁，跟模型讀到的那一頁
 
-對應 Day 11（發表後補直接連結，先放[系列頁](https://ithelp.ithome.com.tw/users/20138924/ironman/9086)）。
+對應 [Day 11｜間接提示注入：你看見的網頁，不是模型讀到的那一份](https://ithelp.ithome.com.tw/articles/10402496)。
 
 ```bash
 node page-cli.mjs comment | node extract.mjs        # 同一份內容，四種讀法
