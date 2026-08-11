@@ -10,7 +10,7 @@
 // 在這份受控素材裡它剛好等於畫面上的文字，換一份素材就不一定。
 //
 // visible 是示範用的簡化版：只看行內 style、只認葉節點，不算繼承也不跑排版。
-// 真的要判準，要嘛開一顆瀏覽器，要嘛承認你判不準。
+// 真的要判準，要嘛啟動瀏覽器，要嘛承認你判不準。
 
 export const TAG_BASE = 0xe0000;
 export const isGhost = (p) => p >= TAG_BASE && p <= TAG_BASE + 0x7f;

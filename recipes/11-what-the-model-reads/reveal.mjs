@@ -3,8 +3,10 @@
 //   node page-cli.mjs invisible | node extract.mjs --show human | node reveal.mjs
 //   node page-cli.mjs invisible | node extract.mjs --show visible | node reveal.mjs
 //
-// 兩行的差別就是這一天要看的：人眼那一層乾淨，抽取程式那一層不乾淨，
+// 兩行的差別就是這一天要看的：移除 Tags 碼點那一層乾淨，抽取程式那一層不乾淨，
 // 而它們在畫面上逐字相同。
+// 注意這支只認 Tags 區塊，剩下的碼點裡還有換行這種本來就不顯示的東西，
+// 所以「剩下幾個」不等於「畫面上看得到幾個」。
 
 const TAG_BASE = 0xe0000;
 const isGhost = (p) => p >= TAG_BASE && p <= TAG_BASE + 0x7f;
@@ -14,7 +16,7 @@ process.stdin.on("data", (c) => (s += c));
 process.stdin.on("end", () => {
   const cps = [...s].map((c) => c.codePointAt(0));
   const ghosts = cps.filter(isGhost);
-  console.log(`收到 ${cps.length} 個碼點，畫面上看得到的 ${cps.length - ghosts.length} 個。`);
+  console.log(`收到 ${cps.length} 個碼點，移除 Tags 碼點後剩下 ${cps.length - ghosts.length} 個。`);
   if (!ghosts.length) {
     console.log("沒有不佔位置的碼點。");
     return;

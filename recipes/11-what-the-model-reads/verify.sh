@@ -55,7 +55,7 @@ COLLIDE=$(node -e '
     const L = X.layers(P.buildPage("invisible", "RS-8830", ""));
     console.log([X.stripInvisible(L.visible) === L.human, L.visible !== L.human].join(" "));
   })')
-chk "抽取程式那一版拿掉不佔位置的碼點之後，跟人眼那一版逐字相同，而兩版不同" "$COLLIDE" "true true"
+chk "抽取程式那一版拿掉不佔位置的碼點之後，跟「再移除 Tags 碼點」那一版逐字相同，而兩版不同" "$COLLIDE" "true true"
 
 # 清點不能用寫的。隱形碼點的個數要等於那句 ASCII 的長度，不多不少。
 chk "隱形碼點的個數等於被藏的那句話的長度" \

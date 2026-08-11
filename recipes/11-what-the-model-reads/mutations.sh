@@ -50,7 +50,7 @@ run "照樣式篩過那層不再篩掉 display:none" 紅 \
   layers.mjs 'HIDDEN_STYLE.test(m.slice(0, m.indexOf(">") + 1)) ? " " : m,' \
   'm,'
 
-run "人眼那層不再拿掉隱形碼點" 紅 \
+run "最後那層不再拿掉隱形碼點" 紅 \
   layers.mjs 'human: stripInvisible(visible) };' 'human: visible };'
 
 run "隱形編碼漏掉最後一個字元" 紅 \
