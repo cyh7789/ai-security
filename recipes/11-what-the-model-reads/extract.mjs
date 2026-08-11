@@ -34,7 +34,7 @@ process.stdin.on("end", () => {
     const has = mark ? carries(L[n]) : "（這一頁沒有標記）";
     // 數碼點不數 UTF-16 單位：隱形碼點在補充平面，一個算兩單位，數錯會少報一半。
     const cps = [...L[n]].length;
-    console.log(`${pad(LABEL[n], 12)}${String(cps).padStart(5)} 碼點   ${mark ?? ""} ${has}`);
+    console.log(`${pad(LABEL[n], 18)}${String(cps).padStart(5)} 碼點   ${mark ?? ""} ${has}`);
   }
   const ghosts = [...L.visible].filter((c) => isGhost(c.codePointAt(0))).length;
   console.log("");

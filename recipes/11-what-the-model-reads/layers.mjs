@@ -1,9 +1,13 @@
 // 同一份內容的四種「讀法」。這支是純字串運算，沒有副作用，所以驗得動。
 //
 //   raw     原始檔直接進 prompt（README、原始碼、Markdown、貼上來的整份 HTML）
-//   text    去標籤（大多數抓取程式停在這裡）
-//   visible 照樣式把畫面上不顯示的丟掉（已經比多數專案講究）
-//   human   人真的看得到的字（再拿掉不佔位置的碼點）
+//   text    去標籤
+//   visible 照樣式把畫面上不顯示的丟掉
+//   human   再移除 Unicode Tags 區塊的碼點
+//
+// ⚠ 最後那一層不是「人眼可見文字」的通用判定。它只拿掉 U+E0000..U+E007F，
+// 零寬空格、軟連字號、其他控制碼點它一律看不到，也沒有跑排版。
+// 在這份受控素材裡它剛好等於畫面上的文字，換一份素材就不一定。
 //
 // visible 是示範用的簡化版：只看行內 style、只認葉節點，不算繼承也不跑排版。
 // 真的要判準，要嘛開一顆瀏覽器，要嘛承認你判不準。
@@ -35,7 +39,7 @@ const dropTags = (h) => tidy(unescape(h.replace(/<[^>]+>/g, "\n")));
 const HIDDEN_STYLE = /style="[^"]*(display\s*:\s*none|visibility\s*:\s*hidden|color\s*:\s*#f{3,6}\b)/i;
 
 export const NAMES = ["raw", "text", "visible", "human"];
-export const LABEL = { raw: "原始檔", text: "去標籤", visible: "照樣式篩過", human: "人眼看得到" };
+export const LABEL = { raw: "原始檔", text: "去標籤", visible: "照樣式篩過", human: "再移除 Tags 碼點" };
 
 export function layers(html) {
   const noScript = html.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, " ");
