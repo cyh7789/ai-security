@@ -128,6 +128,31 @@ m_embed_ignored() {
 }
 try "--embed 收下但還是走字面" "13" m_embed_ignored
 
+m_skip_silently() {
+  sub rank-probe.cjs '  if (skipped.length) {
+    console.log(`\n這次跳過了 ${skipped.length} 個路徑，所以這份排名不完整。（結束碼 2）`);
+    process.exit(2);
+  }' '  // 跳過就跳過，照樣回 0'
+}
+try "跳過路徑照樣回 0（Day 12 那個洞）" "15" m_skip_silently
+
+m_no_dim_check() {
+  sub rank-probe.cjs '    if (!Array.isArray(v) || v.length !== dim || v.some((x) => typeof x !== "number" || !Number.isFinite(x))) {' '    if (false) {'
+}
+try "不檢查向量維度" "14" m_no_dim_check
+
+m_stdin_fallback() {
+  sub kb-sources.cjs 'raw = fs.readFileSync(file === "-" ? 0 : file, "utf8");' 'raw = fs.readFileSync(file === "-" ? "demo/kb.jsonl" : file, "utf8");'
+}
+try "stdin 壞掉之後偷偷改讀示範檔" "6" m_stdin_fallback
+
+m_first_bad_line_only() {
+  sub kb-sources.cjs '    unreadable += 1;
+    continue;' '    if (unreadable === 0) unreadable = 1;
+    continue;'
+}
+try "壞行只記第一個" "4" m_first_bad_line_only
+
 # 反向對照：改一句不影響行為的說明文字。
 m_cosmetic() {
   sub rank-probe.cjs '名次是相對的：' '名次是比出來的：'

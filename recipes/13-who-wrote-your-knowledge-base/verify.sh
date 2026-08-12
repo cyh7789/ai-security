@@ -65,11 +65,15 @@ fi
 
 # ── 4 ────────────────────────────────────────────────────
 # 讀不出來的行要單獨講，不能靜靜跳過。這是 Day 12 那個洞的同一個形狀。
+# 壞行數當場生成，而且要兩行以上：寫死「1 行」的話，只記第一個錯誤的實作照樣綠。
 if run 4; then
-  echo "=== 4 壞掉的行要被數出來 ==="
-  OUT=$(node kb-sources.cjs demo/kb-nosource.jsonl --prefix :)
+  echo "=== 4 壞掉的行要被數出來，而且不只第一行 ==="
+  cp demo/kb.jsonl "${TMP}/two-bad.jsonl"
+  printf '{ 壞的第一行\n{ 壞的第二行\n' >> "${TMP}/two-bad.jsonl"
+  OUT=$(node kb-sources.cjs "${TMP}/two-bad.jsonl" --prefix :)
   N=$(printf '%s\n' "${OUT}" | sed -n 's/^讀不出來的行：\([0-9]*\) 行.*/\1/p')
-  [ "${N}" = 1 ] && ok "報出 1 行讀不出來" || bad "報出「${N}」，示範檔裡故意放了 1 行壞的"
+  M=$(node kb-sources.cjs demo/kb-nosource.jsonl --prefix : | sed -n 's/^讀不出來的行：\([0-9]*\) 行.*/\1/p')
+  [ "${N}" = 2 ] && [ "${M}" = 1 ] && ok "兩行壞的報 2、一行壞的報 1" || bad "兩行壞的報「${N}」、一行壞的報「${M}」"
 fi
 
 # ── 5 ────────────────────────────────────────────────────
@@ -83,10 +87,17 @@ fi
 
 # ── 6 ────────────────────────────────────────────────────
 if run 6; then
-  echo "=== 6 stdin 進來的結果跟給檔名一樣 ==="
+  # 只比「同一個檔的兩種餵法一樣」會漏掉「stdin 壞掉之後永遠去讀 demo/kb.jsonl」
+  # 這種寫法，所以再餵一個內容不同的檔進 stdin，結果必須跟著變。
+  echo "=== 6 stdin 讀的是真的送進來的那份 ==="
   A=$(node kb-sources.cjs demo/kb.jsonl --prefix :)
   B=$(node kb-sources.cjs - --prefix : < demo/kb.jsonl)
-  [ "${A}" = "${B}" ] && ok "兩種餵法輸出逐字相同" || bad "兩種餵法輸出不同"
+  head -3 demo/kb.jsonl > "${TMP}/three.jsonl"
+  C=$(node kb-sources.cjs - --prefix : < "${TMP}/three.jsonl" | head -1)
+  D=$(node kb-sources.cjs "${TMP}/three.jsonl" --prefix : | head -1)
+  [ "${A}" = "${B}" ] && [ "${C}" = "${D}" ] && [ "${C}" != "$(printf '%s\n' "${A}" | head -1)" ] \
+    && ok "同一份兩種餵法相同，換一份 stdin 結果跟著變（${C}）" \
+    || bad "stdin 沒有跟著換：三行那份標題是「${C}」，九行那份是「$(printf '%s\n' "${A}" | head -1)」"
 fi
 
 # ── 7 ────────────────────────────────────────────────────
@@ -107,10 +118,15 @@ fi
 # 空對照：機制不存在的時候這個數字會是多少？問一個語料裡沒有的題目，
 # 投毒那份不該還是第一名。沒有這一條，第 7 條的「第 1 名」可能只是它字最多。
 if run 8; then
-  echo "=== 8 問不相干的問題，投毒那份不會還是第一 ==="
+  # 報出來的名次要跟排名表上的位置一致，不能只要求「大於 1」：
+  # 把名次固定寫成第 2 名的實作，在只比大小的條件下照樣綠。
+  echo "=== 8 問不相干的問題，報出來的名次等於它在表上的位置 ==="
   OUT=$(node rank-probe.cjs demo/corpus --ask "值班交接要確認哪些事" --poison demo/poison.txt --top 9)
   R=$(printf '%s\n' "${OUT}" | sed -n 's/^你造的那份排第 \([0-9]*\) 名.*/\1/p')
-  [ -n "${R}" ] && [ "${R}" -gt 1 ] && ok "換個問題它掉到第 ${R} 名" || bad "換個問題它還是第 ${R} 名"
+  ROW=$(printf '%s\n' "${OUT}" | awk '/★你造的那份/{gsub(/\./,"",$1); print $1}')
+  [ -n "${R}" ] && [ "${R}" -gt 1 ] && [ "${R}" = "${ROW}" ] \
+    && ok "換個問題它掉到第 ${R} 名，表上那一列也是第 ${ROW}" \
+    || bad "宣稱第 ${R} 名、表上第 ${ROW} 名"
 fi
 
 # ── 9 ────────────────────────────────────────────────────
@@ -187,10 +203,16 @@ JS
   for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "${TMP}/port" ] && break; sleep 0.3; done
   if [ -s "${TMP}/port" ]; then
     P=$(cat "${TMP}/port")
-    TOPDOC=$(node rank-probe.cjs demo/corpus --ask "值班交接要確認哪些事" --poison demo/poison.txt --top 1 \
-             --embed "http://127.0.0.1:${P}/v1/embeddings" | awk '/^ *1\./{print $3}')
-    [ "${TOPDOC}" = "poison.txt" ] \
-      && ok "假端點讓最後一份贏，排第一的就是它" || bad "排第一的是 ${TOPDOC}，假端點指定的是 poison.txt"
+    EOUT=$(node rank-probe.cjs demo/corpus --ask "值班交接要確認哪些事" --poison demo/poison.txt --top 1 \
+             --embed "http://127.0.0.1:${P}/v1/embeddings")
+    TOPDOC=$(printf '%s\n' "${EOUT}" | awk '/^ *1\./{print $3}')
+    # 同一次順便驗那句「不是語意」的警語：走端點的時候它不該出現，
+    # 字面那一路才該出現。這樣它盯的是分支行為，不是一個字串在不在。
+    SAY_E=$(printf '%s\n' "${EOUT}" | grep -c "不是語意")
+    SAY_L=$(node rank-probe.cjs demo/corpus --ask "${ASK}" | grep -c "不是語意")
+    [ "${TOPDOC}" = "poison.txt" ] && [ "${SAY_E}" = 0 ] && [ "${SAY_L}" = 1 ] \
+      && ok "假端點讓最後一份贏，排第一的就是它；警語只出現在字面那一路" \
+      || bad "排第一的是 ${TOPDOC}（該是 poison.txt），警語 端點路 ${SAY_E} 次、字面路 ${SAY_L} 次"
   else
     bad "假的 embedding 端點沒起來"
   fi
@@ -198,17 +220,22 @@ JS
 fi
 
 # ── 14 ───────────────────────────────────────────────────
-# 端點少回一筆會讓分數整排錯位，而排名照樣印得出來，這正是最危險的失敗。
+# 端點回的東西壞掉有兩種形狀，兩種都會讓排名照樣印得出來：
+# 少一筆讓分數整排錯位，維度不一致讓餘弦只算到短的那一截。
 if run 14; then
-  echo "=== 14 端點回的筆數對不上就要停 ==="
+  echo "=== 14 端點回的筆數或維度不對就要停 ==="
   node - "${TMP}" <<'JS' &
 const http = require("http");
+// MODE 從網址帶進來：short 少回一筆，dim 回長短不一的向量。
 const s = http.createServer((req, res) => {
   let b = "";
   req.on("data", (c) => (b += c));
   req.on("end", () => {
     const { input } = JSON.parse(b);
-    const data = input.slice(1).map(() => ({ embedding: [1, 0] })); // 故意少一筆
+    const mode = req.url.includes("dim") ? "dim" : "short";
+    const data = mode === "short"
+      ? input.slice(1).map(() => ({ embedding: [1, 0] }))
+      : input.map((_, i) => ({ embedding: i === 2 ? [1, 0, 0] : [1, 0] }));
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ data }));
   });
@@ -220,9 +247,12 @@ JS
   for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "${TMP}/port2" ] && break; sleep 0.3; done
   P=$(cat "${TMP}/port2" 2>/dev/null || echo "")
   if [ -n "${P}" ]; then
-    OUT=$(node rank-probe.cjs demo/corpus --ask "${ASK}" --embed "http://127.0.0.1:${P}/v1/embeddings" 2>&1); RC=$?
-    printf '%s' "${OUT}" | grep -q "筆數\|回了" && [ "${RC}" != 0 ] \
-      && ok "少一筆就停下來喊，結束碼 ${RC}" || bad "結束碼 ${RC}，輸出：$(printf '%s' "${OUT}" | head -2)"
+    O1=$(node rank-probe.cjs demo/corpus --ask "${ASK}" --embed "http://127.0.0.1:${P}/short" 2>&1); R1=$?
+    O2=$(node rank-probe.cjs demo/corpus --ask "${ASK}" --embed "http://127.0.0.1:${P}/dim" 2>&1); R2=$?
+    printf '%s' "${O1}" | grep -q "回了" && [ "${R1}" != 0 ] \
+      && printf '%s' "${O2}" | grep -q "維" && [ "${R2}" != 0 ] \
+      && ok "少一筆停（碼 ${R1}）、維度不一致也停（碼 ${R2}）" \
+      || bad "少一筆：碼 ${R1}／$(printf '%s' "${O1}" | head -1)；維度：碼 ${R2}／$(printf '%s' "${O2}" | head -1)"
   else
     bad "假的 embedding 端點沒起來"
   fi
@@ -230,12 +260,18 @@ JS
 fi
 
 # ── 15 ───────────────────────────────────────────────────
-# 這支不是語意檢索，它自己要講出來。這條盯的是「別人把警語拿掉」，
-# 不是盯字串：把 --embed 接上去的時候那句話反而不該出現。
+# 跳過了東西就不是一次完整的排名。Day 12 整篇的結論就是「沒走到」不能算「乾淨」，
+# 這支要是印完一份漂亮的排名再回 0，它自己就是那個例子。
 if run 15; then
-  echo "=== 15 沒接 --embed 的時候要自己說它不是語意 ==="
-  A=$(node rank-probe.cjs demo/corpus --ask "${ASK}" | grep -c "不是語意")
-  [ "${A}" = 1 ] && ok "字面那一路有講" || bad "字面那一路講了 ${A} 次"
+  echo "=== 15 走訪跳過任何路徑就要非 0 結束 ==="
+  mkdir -p "${TMP}/skip"
+  cp demo/corpus/01-expense.md "${TMP}/skip/"
+  ln -s "${TMP}/nowhere" "${TMP}/skip/broken"   # 斷掉的 symlink：statSync 會 ENOENT
+  OUT=$(node rank-probe.cjs "${TMP}/skip" --ask "${ASK}" 2>&1); RC=$?
+  N=$(printf '%s\n' "${OUT}" | sed -n 's/^跳過 \([0-9]*\) 個.*/\1/p')
+  CLEAN=$(node rank-probe.cjs demo/corpus --ask "${ASK}" >/dev/null 2>&1; echo $?)
+  [ "${RC}" = 2 ] && [ "${N}" = 1 ] && [ "${CLEAN}" = 0 ] \
+    && ok "跳過 1 個就回 2，沒跳過的照樣回 0" || bad "跳過那次碼 ${RC}、報 ${N} 個；乾淨那次碼 ${CLEAN}"
 fi
 
 echo

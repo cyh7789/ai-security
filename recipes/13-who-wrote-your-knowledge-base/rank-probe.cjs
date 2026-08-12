@@ -134,6 +134,14 @@ async function embedAll(texts) {
   const arr = (body.data || []).map((d) => d.embedding);
   // 長度對不上就停。少一筆會讓後面的分數整排錯位，而排序照樣印得出來。
   if (arr.length !== texts.length) fail(`embedding 端點回了 ${arr.length} 筆，我送了 ${texts.length} 筆`);
+  // 維度也要對。長短不一的向量餘弦算得出數字（短的那截直接被忽略），
+  // 非數字則一路變成 NaN，兩種都會照樣印出一份排名。
+  const dim = Array.isArray(arr[0]) ? arr[0].length : -1;
+  arr.forEach((v, i) => {
+    if (!Array.isArray(v) || v.length !== dim || v.some((x) => typeof x !== "number" || !Number.isFinite(x))) {
+      fail(`第 ${i} 筆向量不合用：長度 ${Array.isArray(v) ? v.length : "非陣列"}，第一筆是 ${dim} 維`);
+    }
+  });
   return arr;
 }
 
@@ -172,5 +180,12 @@ async function embedAll(texts) {
       console.log(`要擠進去得贏過第 ${TOP} 名的 ${cut ? cut.score.toFixed(6) : "(不足名額)"}，不是贏過第一名。`);
     }
     console.log("名次是相對的：語料越少、問題越冷門，同一份東西的名次越前面。");
+  }
+
+  // 跳過了東西就不是一次完整的排名。Day 12 的整篇結論就是「沒走到」不能算「乾淨」，
+  // 這支要是印完一份漂亮的排名再回 0，它自己就是那個例子。
+  if (skipped.length) {
+    console.log(`\n這次跳過了 ${skipped.length} 個路徑，所以這份排名不完整。（結束碼 2）`);
+    process.exit(2);
   }
 })();
