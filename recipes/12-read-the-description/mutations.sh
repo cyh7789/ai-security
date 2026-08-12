@@ -108,6 +108,15 @@ m9() { sub skill-scan.cjs '  const hit = IMPERATIVE.some((re) => re.test(d));' \
   '  const hit = IMPERATIVE.some((re) => re.test(d)) && !/id_rsa/.test(d);'; }
 try "加一條規則讓下毒那份不算命令句" "12" m9
 
+# 這一條是第一版 mcp-desc.cjs 的真實行為，也是外審抓到的那個洞。
+m10() { sub mcp-desc.cjs '      cursor = res.nextCursor;
+      pages += 1;
+      // 分頁不收斂的話會一直問下去，那是 server 壞了，不是我沒問完。
+      if (pages > 50) fail("問了 50 頁還有 nextCursor，這台的分頁沒有收斂");' \
+  '      cursor = undefined;
+      pages += 1;'; }
+try "只問第一頁，不跟 nextCursor" "16" m10
+
 echo
 echo "════ 反向對照 ════"
 c1() { sub skill-scan.cjs '// 以及統計那一段為什麼不是風險指標：README。' '// 以及統計那一段為什麼不是風險指標：README（改過的註解）。'; }

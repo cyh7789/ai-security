@@ -254,6 +254,25 @@ if run 15; then
   [ "${MISS}" = 0 ] && ok "${N} 條都問到東西了"
 fi
 
+# ── 16 ───────────────────────────────────────────────────
+# tools/list 會分頁（規格：This operation supports pagination）。
+# 只問第一頁、印出一個數字、回 0，就是這一份從頭到尾在罵的那種假綠燈，
+# 而第一版的 mcp-desc.cjs 就是這樣寫的。
+if run 16; then
+  echo "=== 16 server 分頁回工具的時候，全部都要問到 ==="
+  # 只比描述那幾段，不比最後的統計行：統計行本來就會多一句「分 N 頁問完」，
+  # 那正是這條要它印出來的東西。
+  A=$(node mcp-desc.cjs --stdio -- ${D} | sed -n '/^── /,/^════/p' | sed '$d')
+  B=$(PAGED=1 node mcp-desc.cjs --stdio -- ${D} | sed -n '/^── /,/^════/p' | sed '$d')
+  NA=$(node mcp-desc.cjs --stdio -- ${D} | awk -F'\t' '/^TOTAL/{print $2}')
+  NB=$(PAGED=1 node mcp-desc.cjs --stdio -- ${D} | awk -F'\t' '/^TOTAL/{print $2" "$4}')
+  set -- ${NB}
+  # 分頁與不分頁拿到的內容要逐字相同，而且頁數要真的大於 1（不然這條沒在驗分頁）。
+  [ "${A}" = "${B}" ] && [ "${NA}" = "$1" ] && [ "$2" -gt 1 ] \
+    && ok "不分頁 ${NA} 個對分頁 $1 個（分 $2 頁），每一段描述逐字相同" \
+    || bad "不分頁 ${NA} 個、分頁 $1 個（$2 頁），內容$([ "${A}" = "${B}" ] && echo 相同 || echo 不同)"
+fi
+
 echo
 echo "════ ${PASS} 綠 ${FAIL} 紅 ${SKIP} 跳過 ════"
 [ "${FAIL}" = 0 ]

@@ -3,6 +3,9 @@
 //   node mcp-desc.cjs --stdio -- npx -y @playwright/mcp@latest
 //   node mcp-desc.cjs --http https://example.com/mcp [Header:值 ...]
 //
+// tools/list 會分頁（規格：This operation supports pagination），所以兩路都要
+// 跟著 nextCursor 一直問到沒有為止。只問第一頁然後回 0，就是這一份在罵的那種假綠燈。
+//
 // 為什麼要有 --http、結束碼為什麼分兩種：README。
 // 一句話版本：0 是問到了，2 是沒問到，而「沒問到」不是「它沒有工具」。
 
@@ -26,7 +29,7 @@ const fail = (msg) => {
 // ── 印描述 ────────────────────────────────────────────────
 // 原樣印、不截斷。這支存在的理由就是「UI 上那個名字不是模型收到的東西」，
 // 截斷等於把要給讀者看的證據刪掉，而植入的句子通常在後半段。
-function report(where, tools) {
+function report(where, tools, pages) {
   let total = 0;
   process.stdout.write("問的是這台：" + where + "\n");
   process.stdout.write("下面每一段都是它自己回報的描述，原樣，沒有截斷。\n");
@@ -37,12 +40,13 @@ function report(where, tools) {
     process.stdout.write("\n── 第 " + (i + 1) + " 個工具（共 " + tools.length + " 個）：" +
       t.name + "，描述 " + chars + " 字元 ──\n" + desc + "\n");
   });
-  process.stdout.write("\n════════ " + tools.length + " 個工具，描述合計 " + total + " 字元 ════════\n");
+  process.stdout.write("\n════════ " + tools.length + " 個工具，描述合計 " + total + " 字元" +
+    (pages > 1 ? "，分 " + pages + " 頁問完" : "") + " ════════\n");
   // 零個工具是一個合法的答案，但它跟「我沒問到」在畫面上長得一樣，要講開。
   if (!tools.length) {
     process.stdout.write("initialize 跟 tools/list 都答了，它就是沒宣告工具。\n");
   }
-  process.stdout.write("TOTAL\t" + tools.length + "\t" + total + "\n");
+  process.stdout.write("TOTAL\t" + tools.length + "\t" + total + "\t" + pages + "\n");
 }
 
 // ── stdio ────────────────────────────────────────────────
@@ -96,11 +100,21 @@ function viaStdio(cmd) {
     if (init.error) fail("initialize 被拒絕：" + JSON.stringify(init.error));
     // 這則是通知不是請求，少了它有些 server 會拒接後面的呼叫。
     send({ jsonrpc: "2.0", method: "notifications/initialized" });
-    const r = await req(2, "tools/list", {});
-    if (r.error) fail("tools/list 被拒絕：" + JSON.stringify(r.error));
+    const all = [];
+    let cursor, pages = 0, id = 2;
+    do {
+      const r = await req(id++, "tools/list", cursor ? { cursor } : {});
+      if (r.error) fail("tools/list 被拒絕：" + JSON.stringify(r.error));
+      const res = r.result || {};
+      all.push(...(res.tools || []));
+      cursor = res.nextCursor;
+      pages += 1;
+      // 分頁不收斂的話會一直問下去，那是 server 壞了，不是我沒問完。
+      if (pages > 50) fail("問了 50 頁還有 nextCursor，這台的分頁沒有收斂");
+    } while (cursor);
     done = true;
     clearTimeout(timer);
-    report(cmd.join(" "), (r.result && r.result.tools) || []);
+    report(cmd.join(" "), all, pages);
     // 不用 process.exit：stdout 接到管線時是非同步寫入，會把還沒排出去的內容丟掉。
     try { child.stdin.end(); } catch (e) { /* 管線已關 */ }
     try { child.kill("SIGTERM"); } catch (e) { /* 已經死了 */ }
@@ -167,8 +181,20 @@ function viaHttp(url, extra) {
     const init = check(await post({ jsonrpc: "2.0", id: 1, method: "initialize", params: INIT }), "initialize");
     negotiated = (init.result && init.result.protocolVersion) || INIT.protocolVersion;
     await post({ jsonrpc: "2.0", method: "notifications/initialized" });
-    const msg = check(await post({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }), "tools/list");
-    report(url, (msg.result && msg.result.tools) || []);
+    const all = [];
+    let cursor, pages = 0, id = 2;
+    do {
+      const msg = check(await post({
+        jsonrpc: "2.0", id: id++, method: "tools/list",
+        params: cursor ? { cursor } : {},
+      }), "tools/list");
+      const res = msg.result || {};
+      all.push(...(res.tools || []));
+      cursor = res.nextCursor;
+      pages += 1;
+      if (pages > 50) fail("問了 50 頁還有 nextCursor，這台的分頁沒有收斂");
+    } while (cursor);
+    report(url, all, pages);
   })();
 }
 

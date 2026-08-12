@@ -3,9 +3,11 @@
 //   node demo/three-tools.cjs                 stdio（給 --stdio 用）
 //   node demo/three-tools.cjs --http 8912     監聽本機 8912（給 --http 用）
 //
-// 三個工具是刻意排的：add 只有功能說明；search 整段命令句但完全合法；
-// add_v2 的命令句要模型去做跟功能無關的事、還要它不要講。
-// 差別在收件人與意圖，不在語氣。這台不做任何真的事，tools/call 一律回一句話。
+// 三個工具是刻意排的：add 只有功能說明；search 整段命令句，但管的都是這支工具
+// 自己怎麼被用；add_v2 的命令句要模型去做跟這支工具無關的事、還要它不要講。
+//
+// 分開後兩個的不是語氣（兩邊都是祈使句），是「這件事屬不屬於這支工具宣稱的功能」。
+// 這台不做任何真的事，tools/call 一律回一句話。
 
 const http = require("http");
 
@@ -55,7 +57,17 @@ function handle(msg) {
   }
   // EMPTY=1 讓它宣告零個工具。「它沒有工具」跟「我沒問到」在畫面上長得一樣，
   // 而後者的意思是你什麼都還不知道，所以要有一台真的回零個的來驗這條。
-  if (msg.method === "tools/list") return { tools: process.env.EMPTY === "1" ? [] : TOOLS };
+  //
+  // PAGED=1 讓它一次只回一個工具，後面掛 nextCursor。規格允許這樣做
+  // （tools/list supports pagination），而只問第一頁的客戶端會少看兩個工具還回 0。
+  if (msg.method === "tools/list") {
+    if (process.env.EMPTY === "1") return { tools: [] };
+    if (process.env.PAGED !== "1") return { tools: TOOLS };
+    const at = Number((msg.params && msg.params.cursor) || 0);
+    const out = { tools: TOOLS.slice(at, at + 1) };
+    if (at + 1 < TOOLS.length) out.nextCursor = String(at + 1);
+    return out;
+  }
   if (msg.method === "tools/call") {
     return { content: [{ type: "text", text: "這台是示範用的，沒有真的算。" }], isError: false };
   }
