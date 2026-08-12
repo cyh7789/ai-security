@@ -27,6 +27,28 @@ node kb-sources.cjs demo/kb.jsonl --prefix :
 
 `demo/kb-nosource.jsonl` 是故意壞的，拿來看非 0 長什麼樣。
 
+### 怎麼把庫匯成這個形狀
+
+Chroma 的話，`get()` 預設就回 `ids`、`documents`、`metadatas` 三樣（[官方參考](https://docs.trychroma.com/reference/python/collection)，2026-08 查證），來源通常在 metadata 裡：
+
+```bash
+python3 - <<'PY' > kb.jsonl
+import chromadb, json
+c = chromadb.PersistentClient("./chroma").get_collection("你的集合名")
+r = c.get()
+ids = r["ids"]
+docs = r["documents"] or [None] * len(ids)
+metas = r["metadatas"] or [None] * len(ids)
+assert len(ids) == len(docs) == len(metas) == c.count(), (len(ids), len(docs), len(metas), c.count())
+rows = ({"id": i, "text": d, "source": (m or {}).get("source")} for i, d, m in zip(ids, docs, metas))
+print("\n".join(json.dumps(x, ensure_ascii=False) for x in rows))
+PY
+```
+
+`documents` 跟 `metadatas` 可能整個是 `None`，所以先補齊長度再比筆數，對不上就停：**匯出少幾段，後面每個數字都錯，而它照樣印得出一張漂亮的表。** 庫很大就用 `limit` 與 `offset` 分批。存在 SQLite 或 Postgres 的就一句查詢撈三欄。**這一步撈不出 `source` 那一欄，第一步就已經有答案了**，那正是這支腳本會單獨數出來、而且用結束碼 2 告訴你的東西。跟 Day 8 那條規矩一樣：「沒有問題」跟「我沒看到」不能混在一起。
+
+`--prefix :` 只在來源長得像 `類型:項目` 時才加。來源是網址或 Windows 路徑的話會被切成 `https` 或 `C`，那就不要加。
+
 ## 二、丟一份自己造的進去，看它排第幾
 
 ```bash
