@@ -1,6 +1,6 @@
 # 12：讀那一欄
 
-搭配 [Day 12](https://ithelp.ithome.com.tw/users/20138924/ironman/8964) 的文章。
+對應 [Day 12｜MCP 工具描述不是寫給你看的：我的掃描器說乾淨，它只是沒去看](https://ithelp.ithome.com.tw/articles/10402601)。
 
 Day 8 你列了一張清單：裝了哪些工具、它們碰得到什麼。那張表看的是權限那一欄。
 這一份看的是**描述那一欄**：工具自己回報的那段字，你在 UI 上看不到，
