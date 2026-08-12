@@ -63,11 +63,13 @@ if run 3; then
   HPID=$!
   # 等它真的聽起來，不要用固定秒數：慢的機器上 sleep 1 會變成偶發紅燈。
   for _ in $(seq 1 40); do node -e 'require("net").connect(8913,"127.0.0.1").on("connect",()=>process.exit(0)).on("error",()=>process.exit(1))' 2>/dev/null && break; done
-  A=$(node mcp-desc.cjs --stdio -- ${D} | grep '^TOTAL')
-  B=$(node mcp-desc.cjs --http http://127.0.0.1:8913 | grep '^TOTAL')
+  # 比整段描述，不是只比 TOTAL：三段內容全換掉但總字元數湊成一樣，只比 TOTAL 會綠。
+  # 兩邊都從第一段描述開始比，因為第一行印的是「問的是哪一台」，本來就不同。
+  A=$(node mcp-desc.cjs --stdio -- ${D} | sed -n '/^── /,$p')
+  B=$(node mcp-desc.cjs --http http://127.0.0.1:8913 | sed -n '/^── /,$p')
   kill ${HPID} 2>/dev/null; wait ${HPID} 2>/dev/null
-  [ -n "${A}" ] && [ "${A}" = "${B}" ] && ok "兩路的工具數與字元數逐字相同：${A}" \
-    || bad "stdio「${A}」對 http「${B}」"
+  [ -n "${A}" ] && [ "${A}" = "${B}" ] && ok "兩路拿到的每一段描述逐字相同（$(printf '%s' "${A}" | grep -c '^── ') 段）" \
+    || bad "兩路拿到的內容不同：$(diff <(printf '%s' "${A}") <(printf '%s' "${B}") | head -4 | tr '\n' ' ')"
 fi
 
 # ── 4 ────────────────────────────────────────────────────
@@ -137,7 +139,9 @@ if run 8; then
     OLDOUT=$(node "${OLD}" files "${TMP}/tree" 2>&1); OLDRC=$?
     OLDN=$(printf '%s\n' "${OLDOUT}" | sed -n 's/^掃了 \([0-9]*\) 個.*/\1/p')
     NEWN=$(node skill-scan.cjs --quiet "${TMP}/tree" | awk -F'\t' '/^TOTAL/{print $2}')
-    [ "${OLDN}" = 1 ] && [ "${NEWN}" = 3 ] && [ "${OLDRC}" != 2 ] \
+    # 斷言要寫 = 0，不能寫 != 2：這一條的重點是「它漏掉卻回綠燈」，
+    # 舊工具哪天改成回 1（有話說）就不是同一件事了，這條就該紅。
+    [ "${OLDN}" = 1 ] && [ "${NEWN}" = 3 ] && [ "${OLDRC}" = 0 ] \
       && ok "舊的看到 ${OLDN} 個並回 ${OLDRC}，新的看到 ${NEWN} 個" \
       || bad "舊的 ${OLDN} 個／結束碼 ${OLDRC}，新的 ${NEWN} 個"
   fi
@@ -168,7 +172,12 @@ if run 11; then
   echo "=== 11 命令句統計數得對 ==="
   mktree
   L=$(node skill-scan.cjs --quiet "${TMP}/tree" | awk -F'\t' '/^TOTAL/{print $3"/"$5}')
-  [ "${L}" = "3/2" ] && ok "三份有描述欄，其中兩份含命令句" || bad "數出來是 ${L}，預期 3/2"
+  # 總數對不夠：把兩邊的標籤對調，總數還是 2。所以連「哪一份被標成什麼」一起驗。
+  OUT=$(node skill-scan.cjs "${TMP}/tree")
+  WHO=$(printf '%s\n' "${OUT}" | grep -c 'here/SKILL.md.*字元，沒有命令句')
+  [ "${L}" = "3/2" ] && [ "${WHO}" = 1 ] \
+    && ok "三份有描述欄，其中兩份含命令句，而且只有功能說明那份被標成沒有" \
+    || bad "數出來是 ${L}，只有功能說明那份的標記命中 ${WHO}"
 fi
 
 # ── 12 ───────────────────────────────────────────────────

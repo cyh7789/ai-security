@@ -17,7 +17,8 @@ node mcp-desc.cjs --stdio -- node demo/three-tools.cjs
 
 Day 8 的 `mcp-rpc.cjs` 只有 stdio 那一路（它檔頭第一行就寫了）。
 遠端的 server 在設定檔裡是一個網址不是一個指令，那支 spawn 不起來。
-我自己設定裡的十一台有八台是這種，所以那八台的描述我一直沒看過。
+我自己的設定檔裡有十一筆，去掉重複登記的是八台不重複的 server，其中六台是這種，
+所以那六台的描述我一直沒看過。
 
 ```bash
 node skill-scan.cjs --quiet demo/tree

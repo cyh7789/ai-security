@@ -110,6 +110,7 @@ function viaStdio(cmd) {
 // ── http ─────────────────────────────────────────────────
 function viaHttp(url, extra) {
   let session = null;
+  let negotiated = null;
 
   const post = (body) => new Promise((res, rej) => {
     const u = new URL(url);
@@ -123,6 +124,9 @@ function viaHttp(url, extra) {
       ...extra,
     };
     if (session) headers["mcp-session-id"] = session;
+    // 規格：If using HTTP, the client MUST include the MCP-Protocol-Version header
+    // on all subsequent requests。initialize 之後才送，因為那一發還沒協商完。
+    if (session || negotiated) headers["mcp-protocol-version"] = negotiated || INIT.protocolVersion;
     const r = mod.request({
       hostname: u.hostname, port: u.port, path: u.pathname + u.search,
       method: "POST", headers, timeout: TIMEOUT,
@@ -160,7 +164,8 @@ function viaHttp(url, extra) {
   };
 
   return (async () => {
-    check(await post({ jsonrpc: "2.0", id: 1, method: "initialize", params: INIT }), "initialize");
+    const init = check(await post({ jsonrpc: "2.0", id: 1, method: "initialize", params: INIT }), "initialize");
+    negotiated = (init.result && init.result.protocolVersion) || INIT.protocolVersion;
     await post({ jsonrpc: "2.0", method: "notifications/initialized" });
     const msg = check(await post({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }), "tools/list");
     report(url, (msg.result && msg.result.tools) || []);
