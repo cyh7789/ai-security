@@ -262,15 +262,41 @@ if run 16; then
   echo "=== 16 server 分頁回工具的時候，全部都要問到 ==="
   # 只比描述那幾段，不比最後的統計行：統計行本來就會多一句「分 N 頁問完」，
   # 那正是這條要它印出來的東西。
-  A=$(node mcp-desc.cjs --stdio -- ${D} | sed -n '/^── /,/^════/p' | sed '$d')
-  B=$(PAGED=1 node mcp-desc.cjs --stdio -- ${D} | sed -n '/^── /,/^════/p' | sed '$d')
+  # 四種組合都要驗：stdio／http × 一般 cursor／空字串 cursor。
+  # 空字串那兩種是外審抓到的：schema 說 nextCursor「present」就代表可能還有，
+  # 而空字串是合法的 opaque token。用真假值判斷的話那台合規 server 會被漏頁還回 0。
+  base() { sed -n '/^── /,/^════/p' | sed '$d'; }
+  A=$(node mcp-desc.cjs --stdio -- ${D} | base)
   NA=$(node mcp-desc.cjs --stdio -- ${D} | awk -F'\t' '/^TOTAL/{print $2}')
-  NB=$(PAGED=1 node mcp-desc.cjs --stdio -- ${D} | awk -F'\t' '/^TOTAL/{print $2" "$4}')
-  set -- ${NB}
-  # 分頁與不分頁拿到的內容要逐字相同，而且頁數要真的大於 1（不然這條沒在驗分頁）。
-  [ "${A}" = "${B}" ] && [ "${NA}" = "$1" ] && [ "$2" -gt 1 ] \
-    && ok "不分頁 ${NA} 個對分頁 $1 個（分 $2 頁），每一段描述逐字相同" \
-    || bad "不分頁 ${NA} 個、分頁 $1 個（$2 頁），內容$([ "${A}" = "${B}" ] && echo 相同 || echo 不同)"
+  ${D} --http 8915 2>/dev/null &
+  PPID2=$!
+  for _ in $(seq 1 40); do node -e 'require("net").connect(8915,"127.0.0.1").on("connect",()=>process.exit(0)).on("error",()=>process.exit(1))' 2>/dev/null && break; done
+  PAGED=1 ${D} --http 8916 2>/dev/null &
+  P1=$!
+  PAGED=empty ${D} --http 8917 2>/dev/null &
+  P2=$!
+  for p in 8916 8917; do for _ in $(seq 1 40); do node -e "require('net').connect($p,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))" 2>/dev/null && break; done; done
+  MISS=0
+  # 不要在這裡用 set --：它會把 $1 蓋掉，錯誤訊息會印出工具數而不是組合名（實測踩過）。
+  chk() {  # chk <說明> <描述段> <工具數> <頁數>
+    local name="$1" body="$2" n="$3" pg="$4"
+    if [ "${body}" != "${A}" ]; then bad "${name}：描述段跟不分頁那次不同"; MISS=1
+    elif [ "${n}" != "${NA}" ]; then bad "${name}：工具數 ${n}，不分頁是 ${NA}"; MISS=1
+    elif [ "${pg:-0}" -le 1 ]; then bad "${name}：只問了一頁，這條沒在驗分頁"; MISS=1
+    fi
+  }
+  for combo in "stdio 一般:PAGED=1 node mcp-desc.cjs --stdio -- ${D}" \
+               "stdio 空字串:PAGED=empty node mcp-desc.cjs --stdio -- ${D}" \
+               "http 一般:node mcp-desc.cjs --http http://127.0.0.1:8916" \
+               "http 空字串:node mcp-desc.cjs --http http://127.0.0.1:8917"; do
+    name="${combo%%:*}"; cmd="${combo#*:}"
+    OUT=$(eval "${cmd}")
+    chk "${name}" "$(printf '%s' "${OUT}" | base)" \
+      "$(printf '%s\n' "${OUT}" | awk -F'\t' '/^TOTAL/{print $2}')" \
+      "$(printf '%s\n' "${OUT}" | awk -F'\t' '/^TOTAL/{print $4}')"
+  done
+  kill ${PPID2} ${P1} ${P2} 2>/dev/null; wait ${PPID2} ${P1} ${P2} 2>/dev/null
+  [ "${MISS}" = 0 ] && ok "四種組合（stdio／http × 一般／空字串 cursor）都問到 ${NA} 個，描述逐字相同"
 fi
 
 echo

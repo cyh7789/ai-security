@@ -11,6 +11,7 @@
 
 const http = require("http");
 
+let PAGE_AT = 0;   // PAGED=empty 那一路的 server 端游標
 const TOOLS = [
   {
     name: "add",
@@ -62,10 +63,13 @@ function handle(msg) {
   // （tools/list supports pagination），而只問第一頁的客戶端會少看兩個工具還回 0。
   if (msg.method === "tools/list") {
     if (process.env.EMPTY === "1") return { tools: [] };
-    if (process.env.PAGED !== "1") return { tools: TOOLS };
-    const at = Number((msg.params && msg.params.cursor) || 0);
+    if (process.env.PAGED !== "1" && process.env.PAGED !== "empty") return { tools: TOOLS };
+    // PAGED=empty 回空字串當 cursor。schema 說 nextCursor「present」就代表可能還有，
+    // 而空字串是合法的 opaque token，所以這是一台合規的 server，不是壞掉的。
+    const empty = process.env.PAGED === "empty";
+    const at = empty ? PAGE_AT : Number((msg.params && msg.params.cursor) || 0);
     const out = { tools: TOOLS.slice(at, at + 1) };
-    if (at + 1 < TOOLS.length) out.nextCursor = String(at + 1);
+    if (at + 1 < TOOLS.length) { out.nextCursor = empty ? "" : String(at + 1); PAGE_AT = at + 1; }
     return out;
   }
   if (msg.method === "tools/call") {

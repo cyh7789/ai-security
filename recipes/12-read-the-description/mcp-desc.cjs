@@ -6,6 +6,11 @@
 // tools/list 會分頁（規格：This operation supports pagination），所以兩路都要
 // 跟著 nextCursor 一直問到沒有為止。只問第一頁然後回 0，就是這一份在罵的那種假綠燈。
 //
+// 判斷「還有沒有下一頁」要看那個欄位在不在，不能看它是不是真值。
+// schema 對 nextCursor 的原話是 "If present, there may be more results available."，
+// 而 cursor 是一個 opaque token，空字串是合法的值。用 `while (cursor)` 的話，
+// 回空字串的 server 會被當成問完了，然後回 0。第二版就是這樣，也是外審抓到的。
+//
 // 為什麼要有 --http、結束碼為什麼分兩種：README。
 // 一句話版本：0 是問到了，2 是沒問到，而「沒問到」不是「它沒有工具」。
 
@@ -101,17 +106,18 @@ function viaStdio(cmd) {
     // 這則是通知不是請求，少了它有些 server 會拒接後面的呼叫。
     send({ jsonrpc: "2.0", method: "notifications/initialized" });
     const all = [];
-    let cursor, pages = 0, id = 2;
+    let cursor, more = false, pages = 0, id = 2;
     do {
-      const r = await req(id++, "tools/list", cursor ? { cursor } : {});
+      const r = await req(id++, "tools/list", more ? { cursor } : {});
       if (r.error) fail("tools/list 被拒絕：" + JSON.stringify(r.error));
       const res = r.result || {};
       all.push(...(res.tools || []));
+      more = Object.prototype.hasOwnProperty.call(res, "nextCursor");
       cursor = res.nextCursor;
       pages += 1;
       // 分頁不收斂的話會一直問下去，那是 server 壞了，不是我沒問完。
       if (pages > 50) fail("問了 50 頁還有 nextCursor，這台的分頁沒有收斂");
-    } while (cursor);
+    } while (more);
     done = true;
     clearTimeout(timer);
     report(cmd.join(" "), all, pages);
@@ -182,18 +188,19 @@ function viaHttp(url, extra) {
     negotiated = (init.result && init.result.protocolVersion) || INIT.protocolVersion;
     await post({ jsonrpc: "2.0", method: "notifications/initialized" });
     const all = [];
-    let cursor, pages = 0, id = 2;
+    let cursor, more = false, pages = 0, id = 2;
     do {
       const msg = check(await post({
         jsonrpc: "2.0", id: id++, method: "tools/list",
-        params: cursor ? { cursor } : {},
+        params: more ? { cursor } : {},
       }), "tools/list");
       const res = msg.result || {};
       all.push(...(res.tools || []));
+      more = Object.prototype.hasOwnProperty.call(res, "nextCursor");
       cursor = res.nextCursor;
       pages += 1;
       if (pages > 50) fail("問了 50 頁還有 nextCursor，這台的分頁沒有收斂");
-    } while (cursor);
+    } while (more);
     report(url, all, pages);
   })();
 }

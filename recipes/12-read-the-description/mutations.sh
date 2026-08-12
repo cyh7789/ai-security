@@ -117,6 +117,28 @@ m10() { sub mcp-desc.cjs '      cursor = res.nextCursor;
       pages += 1;'; }
 try "只問第一頁，不跟 nextCursor" "16" m10
 
+# 外審抓到的第二個洞：用真假值判斷有沒有下一頁，空字串 cursor 就會被當成問完了。
+# stdio 與 http 各改一路，第 16 條都要紅（那條四種組合都跑）。
+m11() { sub mcp-desc.cjs '      more = Object.prototype.hasOwnProperty.call(res, "nextCursor");
+      cursor = res.nextCursor;
+      pages += 1;
+      // 分頁不收斂的話會一直問下去，那是 server 壞了，不是我沒問完。' \
+  '      cursor = res.nextCursor;
+      more = !!cursor;
+      pages += 1;
+      // 分頁不收斂的話會一直問下去，那是 server 壞了，不是我沒問完。'; }
+try "stdio 那一路改回用真假值判斷 cursor" "16" m11
+
+m12() { sub mcp-desc.cjs '      more = Object.prototype.hasOwnProperty.call(res, "nextCursor");
+      cursor = res.nextCursor;
+      pages += 1;
+      if (pages > 50)' \
+  '      cursor = res.nextCursor;
+      more = !!cursor;
+      pages += 1;
+      if (pages > 50)'; }
+try "http 那一路改回用真假值判斷 cursor" "16" m12
+
 echo
 echo "════ 反向對照 ════"
 c1() { sub skill-scan.cjs '// 以及統計那一段為什麼不是風險指標：README。' '// 以及統計那一段為什麼不是風險指標：README（改過的註解）。'; }
