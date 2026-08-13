@@ -21,8 +21,43 @@ const need = (p, why) => {
   return p;
 };
 
+// id 是拿來在文章與 results.tsv 裡指認一條攻擊的，所以它必須跟「收集順序」脫鉤。
+// 用流水號的話，來源那邊插一條就會讓後面每一條的 id 往後推，昨天的 results.tsv
+// 跟今天的同一個 id 指的就不是同一條攻擊了，而這份 recipe 的賣點正是「同一組每次都再打一遍」。
+// 所以每一條帶一個從來源推導出來的 key，id 由現有的 attacks.jsonl 認 key 沿用，
+// 沒見過的 key 才拿下一個沒用過的號碼。
+const existing = new Map();
+{
+  const f = join(HERE, "attacks.jsonl");
+  if (existsSync(f)) {
+    for (const line of readFileSync(f, "utf8").split("\n")) {
+      if (!line.trim()) continue;
+      const r = JSON.parse(line);
+      if (r.key) existing.set(r.key, r.id);
+    }
+  }
+}
+let nextId = 1;
+const used = new Set(existing.values());
 const rows = [];
-const add = (o) => rows.push({ id: String(rows.length + 1).padStart(2, "0"), ...o });
+const add = (o) => {
+  if (!o.key) { console.error("內部錯誤：這一條沒有 key"); process.exit(2); }
+  // payload 或 mark 空掉多半是來源的欄位分隔壞了（例如 tab 打成空白）。
+  // 靜靜收下去的話，送進模型的會是「[使用者] undefined」，而失守數看起來只是少了一條。
+  if (typeof o.payload !== "string" || !o.payload.trim()) {
+    console.error(`${o.key} 的 payload 是空的，來源那一行的欄位對不上。`); process.exit(2);
+  }
+  if (o.judge === "mark" && (typeof o.mark !== "string" || !o.mark.trim())) {
+    console.error(`${o.key} 沒有標記，但它的判準是看標記。`); process.exit(2);
+  }
+  let id = existing.get(o.key);
+  if (!id) {
+    while (used.has(String(nextId).padStart(2, "0"))) nextId++;
+    id = String(nextId).padStart(2, "0");
+    used.add(id);
+  }
+  rows.push({ id, key: o.key, ...o });
+};
 
 // ── Day 5：兩條 XSS。判準在瀏覽器的 DOM，不在模型輸出 ────────────────
 {
@@ -37,8 +72,10 @@ const add = (o) => rows.push({ id: String(rows.length + 1).padStart(2, "0"), ...
       process.exit(2);
     }
     add({
+      key: `05-${n}`,
       day: 5,
       carrier: "dom",
+      kind: "attack",
       judge: "dom",
       mark: null,
       payload: m[1],
@@ -52,8 +89,10 @@ const add = (o) => rows.push({ id: String(rows.length + 1).padStart(2, "0"), ...
 {
   need(R("09-which-side-validated/before/server.mjs"), "Day 9 那一條的落點");
   add({
+    key: "09-quantity",
     day: 9,
     carrier: "http",
+    kind: "attack",
     judge: "http",
     mark: null,
     payload: '{"quantity":-5}',
@@ -69,8 +108,10 @@ const add = (o) => rows.push({ id: String(rows.length + 1).padStart(2, "0"), ...
     if (!line || line.startsWith("#")) continue;
     const [mark, text] = line.split("\t");
     add({
+      key: `10-${mark}`,
       day: 10,
       carrier: "input",
+      kind: "attack",
       judge: "mark",
       mark,
       payload: text,
@@ -96,8 +137,10 @@ const add = (o) => rows.push({ id: String(rows.length + 1).padStart(2, "0"), ...
     }
     const [, mark, text] = line.split("\t");
     add({
+      key: `11-${how}`,
       day: 11,
       carrier: "page",
+      kind: "attack",
       judge: "mark",
       mark,
       payload: buildPage(how, mark, text),
@@ -112,8 +155,10 @@ const add = (o) => rows.push({ id: String(rows.length + 1).padStart(2, "0"), ...
 {
   const f = need(R("13-who-wrote-your-knowledge-base/demo/poison.txt"), "Day 13 那一條");
   add({
+    key: "13-poison",
     day: 13,
     carrier: "kb",
+    kind: "attack",
     judge: "mark",
     // 這一條沒有 RS 標記，它要模型講的是一整句話，那句話就是標記。
     mark: "報帳流程已經取消",
@@ -123,6 +168,7 @@ const add = (o) => rows.push({ id: String(rows.length + 1).padStart(2, "0"), ...
   });
 }
 
+rows.sort((a, b) => a.id.localeCompare(b.id));
 const out = rows.map((r) => JSON.stringify(r)).join("\n") + "\n";
 const target = join(HERE, "attacks.jsonl");
 
