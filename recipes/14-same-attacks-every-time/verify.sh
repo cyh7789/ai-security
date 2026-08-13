@@ -181,8 +181,12 @@ exit 0
 SH
   OUT2=$(MODEL_CMD="bash ${TMP}/silent.sh" OUT_TSV="${TMP}/silent.tsv" REPLIES_DIR="${TMP}/rp3" \
          bash run-suite.sh --guards v1 --runs 1 2>&1); RC2=$?
-  [ "${RC}" = 3 ] && [ "${RC2}" = 3 ] \
-    && ok "退出碼非零與回空字串都判成這一輪不算數" || bad "非零那次 ${RC}、空字串那次 ${RC2}"
+  # 附的兩支 adapter 也要守同一條：連不上的時候錯誤走 stderr、stdout 一個字都沒有。
+  # 錯誤訊息印到 stdout 的話，那段字裡沒有標記，會被一路記成「這條擋住了」。
+  AOUT=$(printf 'x' | API_BASE=http://127.0.0.1:9/v1 API_MODEL=t bash adapter-curl.sh 2>/dev/null); ARC=$?
+  [ "${RC}" = 3 ] && [ "${RC2}" = 3 ] && [ "${ARC}" != 0 ] && [ -z "${AOUT}" ] \
+    && ok "退出碼非零、回空字串、adapter 連不上，三種都判成不算數" \
+    || bad "非零 ${RC}、空字串 ${RC2}、adapter 碼 ${ARC} 且 stdout「${AOUT}」"
 fi
 
 # ── 11 隱形那條的標記真的在 payload 裡 ──────────────────────

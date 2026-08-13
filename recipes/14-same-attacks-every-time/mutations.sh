@@ -106,6 +106,9 @@ m11() { node -e '
   fs.writeFileSync("attacks.jsonl", L.map(r=>JSON.stringify(r)).join("\n")+"\n");'; }
 try "隱形碼點在存檔的時候掉了" "1 11" m11
 
+m11d() { sub adapter-curl.sh "printf '呼叫失敗：%s\\n' \"\$resp\" >&2; exit 1;" "printf '呼叫失敗：%s\\n' \"\$resp\"; exit 0;"; }
+try "adapter 把錯誤印到 stdout 而且回 0" "10" m11d
+
 m12() { sub run-suite.sh 'while [ "$n" -le "$RUNS" ]; do' 'while [ "$n" -le 1 ]; do'; }
 try "說跑三次其實只跑一次" "12" m12
 

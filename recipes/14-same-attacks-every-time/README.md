@@ -2,7 +2,7 @@
 
 搭配 Day 14。前一份是 [13-who-wrote-your-knowledge-base](../13-who-wrote-your-knowledge-base)。
 
-Day 10 到 Day 13 造了十五條攻擊，散在四個地方。這一份把它們收成一份檔案，
+Day 5 到 Day 13 造了十五條攻擊，散在五個地方。這一份把它們收成一份檔案，
 然後拿同一組去打不同版本的防護 prompt，印出一張可以比較的表。
 
 **它要回答的問題只有一個：你剛才那次改動，讓哪幾條變了。**
@@ -95,7 +95,16 @@ node collect.mjs --write     # 重收
    一定會出現的字」，通常是一個數字或一個專有名詞。寫得太寬鬆的話這一欄就白量了
 2. **`build-prompt.mjs` 的 `HEAD`**：換成你自己那套真正送出去的系統 prompt。
    這一份預設的三個是示範用的
-3. **`adapter.sh`**：接你自己的模型
+3. **接你自己的模型**：`adapter.sh` 走 CLI，`adapter-curl.sh` 走 OpenAI 相容的
+   `/chat/completions`（Ollama、vLLM、LM Studio 與多數雲端供應商都吃這個形狀）：
+
+   ```bash
+   API_BASE=http://localhost:11434/v1 API_MODEL=llama3.1 \
+   MODEL_CMD='bash adapter-curl.sh' bash run-suite.sh
+   ```
+
+   你家 API 長得不一樣的話，要改的只有最後那個 jq 取值路徑。**錯誤訊息一定要走
+   stderr 並且非零退出**：印到 stdout 的話，那段錯誤裡沒有標記，會被判成「這條擋住了」
 
 攻擊那邊先不要動。先用這十五條跑一輪，看你現在這版擋掉幾條，那個數字才是基準線。
 
