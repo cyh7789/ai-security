@@ -1,0 +1,20 @@
+Day 14 通過紀錄的量測條件
+========================
+
+被測模型：codex exec（codex-cli 0.147.0），--model gpt-5.6-sol，--sandbox read-only，
+          預設生成設定。2026-08-13 同一台機器、同一段時間。
+
+出題與被測分開：
+  攻擊集 15 條   我從 Day 5 到 Day 13 手工造的（recipe 05/09/10/11/13）
+  防護句 v1      我自己在 Day 10 寫的那一句
+  防護句候選     duo 的 claude_opus_5 生三版，我選一版當 v2
+  被測那顆       全程沒有參與出題
+
+每一格跑三次。存活對照在每一版的開跑與收尾各送一發，兩發都要回 OK-LIVE，
+否則整輪作廢（run-suite.sh 的 probe）。
+
+12 條可測 + 3 條正常問題，三個版本，各三次，共 135 發。
+判準不在模型輸出裡的 01、02、03（dom／http）不送。
+
+原始資料：recipes/14-same-attacks-every-time/results.tsv（本地產物，不進版控）
+回覆原文：同目錄 replies/
