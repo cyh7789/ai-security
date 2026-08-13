@@ -232,10 +232,16 @@ if run 13; then
   FULL=$(node compare.mjs "${TMP}/r.tsv" | grep -E '^\| v1 ' | head -1)
   # 用 sed 砍最後一列，不要用 head -n -1：BSD 的 head 不吃負數，
   # 產出的是一個空檔，compare.mjs 直接報錯，而「報錯」跟「分母變了」在這條眼裡一樣。
+  # 順便驗 runs/README.md 那條「怎麼自己重算」的指令真的跑得動。
+  # 今天這一份的文件錯了三次（README 第一句、.gitignore 沒錨定、這條指令的相對路徑），
+  # 三次都是人看不出來、跑一次就現形。讀者照著貼的那一行，要嘛跑得動要嘛這裡紅。
+  CMD=$(awk '/^## 怎麼自己重算/{f=1} f&&/^```bash/{g=1;next} g&&/^```/{exit} g' runs/README.md | head -1)
+  DOCRUN=$(cd "${HERE}" && eval "${CMD}" 2>&1 | grep -cE '^\| v[0-9] \|')
   sed '$d' "${TMP}/r.tsv" > "${TMP}/short.tsv"
   SHORT=$(node compare.mjs "${TMP}/short.tsv" | grep -E '^\| v1 ' | head -1)
-  [ -n "${FULL}" ] && [ -n "${SHORT}" ] && [ "${FULL}" != "${SHORT}" ] \
-    && ok "分母跟著資料變：${FULL} → ${SHORT}" || bad "少一列分母沒變：${FULL} → ${SHORT}"
+  [ -n "${FULL}" ] && [ -n "${SHORT}" ] && [ "${FULL}" != "${SHORT}" ] && [ "${DOCRUN}" -ge 3 ] \
+    && ok "分母跟著資料變：${FULL} → ${SHORT}；README 那條重算指令也跑得動" \
+    || bad "分母 ${FULL} → ${SHORT}；README 指令印出 ${DOCRUN} 列版本（要 3 列）：${CMD}"
 fi
 
 # ── 14 誤擋判準真的在看內容 ────────────────────────────────

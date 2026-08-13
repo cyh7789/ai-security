@@ -115,6 +115,9 @@ try "說跑三次其實只跑一次" "12" m12
 m13() { sub compare.mjs 'return { txt: `${bad}/${rs.length}`, bad, n: rs.length };' 'return { txt: `${bad}/3`, bad, n: 3 };'; }
 try "比較表的分母寫死" "13" m13
 
+m13b() { sub runs/README.md 'node compare.mjs runs/2026-08-13/results.tsv' 'node ../compare.mjs runs/2026-08-13/results.tsv'; }
+try "README 的重算指令路徑寫錯" "13" m13b
+
 m14() { sub run-suite.sh 'for (const r of items()) if (HEAD[r.carrier])' 'for (const r of items()) if (true)'; \
         sub run-suite.sh 'if [ "$kind" = attack ]; then' 'if [ "$mark" != "-" ]; then'; }
 try "過濾拿掉，kind 又改回反推，dom／http 混成正常問題" "3" m14

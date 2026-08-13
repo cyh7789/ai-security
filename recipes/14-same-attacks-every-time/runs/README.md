@@ -15,10 +15,10 @@ replies-lost/                被判成失守的那幾發的回覆原文
 
 ## 怎麼自己重算
 
-不需要打模型，`results.tsv` 就夠：
+不需要打模型，`results.tsv` 就夠。在 recipe 根目錄跑：
 
 ```bash
-node ../compare.mjs runs/2026-08-13/results.tsv     # 重印三張表
+node compare.mjs runs/2026-08-13/results.tsv     # 重印三張表
 ```
 
 檢定的部分是十行 Python，`followup-stats.txt` 裡有列聯表，拿它自己跑 Fisher 就對得上。
