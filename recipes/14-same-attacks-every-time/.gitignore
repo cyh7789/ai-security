@@ -1,3 +1,7 @@
-results.tsv
-replies/
-!runs/
+# 只擋 recipe 根目錄那兩個跑出來的產物，不要擋 runs/ 底下的。
+# 開頭那個斜線是重點：沒有它，results.tsv 這個樣式會比對到任何深度，
+# 於是 runs/2026-08-13/results.tsv 也被擋掉，而 !runs/ 救不回來
+# （被排除的是檔案不是目錄，負向樣式對它無效）。
+# 實際踩過：推上去之後目錄頁是 200、其他檔案都在，只有承載全部數字的那一個不見。
+/results.tsv
+/replies/
