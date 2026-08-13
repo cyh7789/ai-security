@@ -16,5 +16,9 @@ Day 14 通過紀錄的量測條件
 12 條可測 + 3 條正常問題，三個版本，各三次，共 135 發。
 判準不在模型輸出裡的 01、02、03（dom／http）不送。
 
-原始資料：recipes/14-same-attacks-every-time/results.tsv（本地產物，不進版控）
-回覆原文：同目錄 replies/
+原始資料：runs/2026-08-13/results.tsv（就是這個目錄）
+補測：followup-04-06.tsv（28 發）、v0b-page-no-guardline.tsv（18 發）、
+      v0c-input-no-role.tsv（9 發）
+回覆原文：runs/2026-08-13/replies-lost/，17 筆失守裡的 16 份。
+          v1-15-1 在改稿期間被一次罐頭測試蓋掉，救不回來，這裡照實記。
+          跑腳本當下的完整 replies/ 是本地產物，不進版控。
