@@ -48,9 +48,17 @@ if run 2; then
   G_IN=$(grep -c '"carrier":"input"' attacks.jsonl)
   G_PG=$(grep -c '"carrier":"page"' attacks.jsonl)
   G_ALL=$(grep -c . attacks.jsonl)
-  [ "${G_IN}" = "${W_IN}" ] && [ "${G_PG}" = "${W_PG}" ] && [ "${G_ALL}" = "$((W_IN + W_PG + 4))" ] \
-    && ok "input ${G_IN}、page ${G_PG}、合計 ${G_ALL}，跟來源算出來的一樣" \
-    || bad "input ${G_IN}/${W_IN}、page ${G_PG}/${W_PG}、合計 ${G_ALL}"
+  # 其餘四種載體各自的條數也要對：dom 2、http 1、kb 1、tool 1。
+  # 寫成一個「其他 5 條」的常數的話，多一條 tool 少一條 dom 也會通過。
+  G_REST=""
+  for c in dom:2 http:1 kb:1 tool:1; do
+    n=$(grep -c "\"carrier\":\"${c%%:*}\"" attacks.jsonl)
+    [ "${n}" = "${c##*:}" ] || G_REST="${G_REST} ${c%%:*}=${n}(要${c##*:})"
+  done
+  [ "${G_IN}" = "${W_IN}" ] && [ "${G_PG}" = "${W_PG}" ] && [ -z "${G_REST}" ] \
+    && [ "${G_ALL}" = "$((W_IN + W_PG + 5))" ] \
+    && ok "input ${G_IN}、page ${G_PG}、dom/http/kb/tool 各 2/1/1/1，合計 ${G_ALL}" \
+    || bad "input ${G_IN}/${W_IN}、page ${G_PG}/${W_PG}、合計 ${G_ALL}${G_REST}"
 fi
 
 # ── 3 判準不在模型輸出裡的那幾條，不准送出去 ────────────────
