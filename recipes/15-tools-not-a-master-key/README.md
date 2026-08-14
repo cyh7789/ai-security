@@ -15,10 +15,13 @@
 沒有相依套件，有 Node 就能跑。三個本機服務由腳本自己起、自己收。
 
 ```bash
-bash verify.sh                                        # 15 條檢查，一發真模型都不打
-MODEL_CMD='bash stub-model.sh' node agent.mjs --gate off   # 沒有閘，看它抓到什麼
-MODEL_CMD='bash stub-model.sh' node agent.mjs --gate on    # 有閘
+bash verify.sh                                              # 19 條檢查，一發真模型都不打
+MODEL_CMD='bash stub-model.sh' node agent.mjs --gate off    # 沒有閘，看它抓到什麼
+MODEL_CMD='bash stub-model.sh' node agent.mjs --gate on     # 字串白名單
+MODEL_CMD='bash stub-model.sh' node agent.mjs --gate safe --page redirect   # 補完版
 ```
+
+最後那條是這份的交付條件：模型照樣填了網址，但結果是 `deny`、`fetched=no`、`mark=no`。
 
 打真的模型：
 
@@ -32,7 +35,8 @@ MODEL_CMD='bash adapter.sh' N=6 bash run-attack.sh
 |---|---|
 | `tools.jsonl` | 工具清單。每一列要填「這個工具最壞能做到什麼」、唯讀還是寫入、可不可逆、閘是什麼 |
 | `allowlist.txt` | 抓取工具的白名單。預設只有一行 |
-| `gate.mjs` | 那道閘。模型填的網址送出去之前要過這裡 |
+| `gate.mjs` | 那道閘的第一版：只比對字串。**它擋不住 302** |
+| `safe-fetch.mjs` | 補完版：每一跳都重過閘，而且比對解析後的位址 |
 | `agent.mjs` | 玩具 agent：組 prompt、呼叫模型、解析工具呼叫、過閘、執行、記一行 |
 | `servers.mjs` | 三個本機假服務：假的 metadata、誘餌頁、一條回 302 的網址 |
 | `run-attack.sh` | 五種條件各跑 N 次 |
@@ -85,16 +89,37 @@ node summarise.mjs runs/2026-08-14/results.tsv
 
 第 3 條是這一份最重要的那個結論：**你擋的是你寫下來的那個名字，不是它最後連到的地方。**
 
-## 白名單要補的那兩件事
+## 補完版：`safe-fetch.mjs`
 
-這份 recipe 的 `gate.mjs` 故意只做字串比對，因為那正是多數人會寫的版本。要補：
+`gate.mjs` 故意只做字串比對，因為那正是多數人會寫的版本，而上面那張表就是它的成績單。
+補完版在 `safe-fetch.mjs`，兩層：
 
-1. **關掉自動跟隨重導向**，自己拿 `Location` 再過一次閘（OWASP 的 SSRF 防護頁明寫
-   `Disable the support for the following of the redirection in your web client`）
-2. **比對解析後的位址**，不是只比對網域。名字通過檢查到真的連線之間會再解析一次 DNS，
-   那個時間差就是 TOCTOU
+1. **關掉自動跟隨重導向，每一跳都重新過閘。** Node 的 `fetch` 預設是跟著走，
+   等於只檢查了第一跳。OWASP 的 SSRF 防護頁明寫
+   `Disable the support for the following of the redirection in your web client`
+2. **名字過了之後，把它解析成位址再檢查一次。**
+3. **拿剛才驗過的那個位址去連**，Host 標頭帶原本的主機名。只做第 2 層不做第 3 層等於白做：
+   檢查完到真正連線之間會再解析一次 DNS，攻擊者控制的網域可以在你檢查時解析成一個公開
+   位址，等你要連的時候再解析成內網位址。這個時間差就是 TOCTOU
 
-兩件都補完，剩下的是網路層的事，應用層擋不到。
+```bash
+node safe-fetch.mjs http://127.0.0.1:9011/spec-full
+# deny    127.0.0.1:9010 不在白名單上
+node safe-fetch.mjs http://127.0.0.1:9011/
+# allow   200 http://127.0.0.1:9011/
+```
+
+三層都補完，應用層能做的就差不多到頂了。再上去是網路層的出網政策，那是第二道防線，
+不是因為應用層做不到才需要它。
+
+**這一份只示範 http。** https 把主機名換成位址會撞上 SNI 與憑證主機名的檢查，
+那種情況要改用能指定 lookup 的傳輸層，形狀一樣但寫法不同。
+
+## 這一份依賴隔壁的 recipe 14
+
+`guard-v2.txt` 是 Day 14 定版那份防護句的複本，`verify.sh` 第 9 條會跟
+`../14-same-attacks-every-time/guards/v2.txt` 逐字比對。只下載這一個目錄的話那一條會紅，
+其餘 18 條照跑。
 
 ## 換成你自己那套
 
@@ -106,8 +131,11 @@ node summarise.mjs runs/2026-08-14/results.tsv
 ## 驗證
 
 ```bash
-bash verify.sh        # 15 條，一發真模型都不打
-bash mutations.sh     # 弄壞 20 種，看那 15 條會不會紅
+bash verify.sh        # 19 條，一發真模型都不打
+bash mutations.sh     # 弄壞 27 種，看那 19 條會不會紅
+
+第 7 條是**脆弱版的預期失敗**（字串白名單放行、請求到了內網），不是防線通過。
+防線的驗收條件是第 16 條到第 19 條。
 ```
 
 ## 已知的邊界
@@ -118,5 +146,8 @@ bash mutations.sh     # 弄壞 20 種，看那 15 條會不會紅
   兩種在表上長得一樣，所以 `replies/` 一定要留，30 份都在
 - **白名單這招在通用爬蟲場景不適用。** 本來就要抓任意網址的服務，
   要的是網路層隔離，不是應用層過濾
+- **位址那一層在本機示範裡碰不到。** 所有服務都在 `127.0.0.1`，本機起不了 DNS rebinding，
+  所以第 18 條檢查是用注入的解析器驗它的行為（名字在白名單上、解析到 `10.0.0.5` 要擋），
+  不是真的重綁一次 DNS
 - **這份只做到「擋下來」，沒有做「擋下來要留紀錄」。** 沒有紀錄的話你不知道它擋過幾次，
   那是 Day 20 的事

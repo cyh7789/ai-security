@@ -1,5 +1,5 @@
-{"name":"fetch_url","what":"抓一個網址回來","worst":"連到內網服務，把回應原文帶進 prompt","read_write":"read","reach":"outbound","reversible":"yes","gate":"allowlist.txt","note":"網址那格是模型填的，所以它的可達範圍等於整個網路"}
-{"name":"read_file","what":"讀專案裡的一個檔案","worst":"讀到 .env、~/.ssh、別的專案的原始碼","read_write":"read","reach":"local","reversible":"yes","gate":"限定根目錄，解析後的路徑要仍在根目錄底下","note":"路徑那格也是模型填的，跟 fetch_url 同一個形狀"}
-{"name":"write_file","what":"寫一個檔案","worst":"覆蓋設定檔或原始碼","read_write":"write","reach":"local","reversible":"no","gate":"限定輸出目錄，不覆寫既有檔","note":"不可逆的那一格是排序的依據，先處理它"}
-{"name":"run_sql","what":"對資料庫下查詢","worst":"讀到別人的資料，或改到正式資料","read_write":"write","reach":"internal","reversible":"no","gate":"唯讀連線 + 只准預先寫好的查詢","note":"Replit 那件事就是這一列沒有閘"}
-{"name":"send_email","what":"寄一封信","worst":"把資料寄到外面，而且收不回來","read_write":"write","reach":"outbound","reversible":"no","gate":"收件人白名單 + 人確認","note":"外送型的工具是資料外洩最短的一條路"}
+{"name":"fetch_url","what":"抓一個網址回來","worst":"連到內網服務，把回應原文帶進 prompt","read_write":"read","reach":"outbound","reversible":"no","why_irreversible":"讀到的東西進了 prompt 就收不回來，只能輪替憑證","gate":"allowlist.txt + safe-fetch.mjs","note":"網址那格是模型填的，所以它的可達範圍等於整個網路"}
+{"name":"read_file","what":"讀專案裡的一個檔案","worst":"讀到 .env、~/.ssh、別的專案的原始碼","read_write":"read","reach":"local","reversible":"no","why_irreversible":"檔案沒被改，但內容外洩了就是外洩了","gate":"限定根目錄，解析後的路徑要仍在根目錄底下","note":"路徑那格也是模型填的，跟 fetch_url 同一個形狀"}
+{"name":"write_file","what":"寫一個檔案","worst":"覆蓋設定檔或原始碼","read_write":"write","reach":"local","reversible":"no","why_irreversible":"覆蓋掉的內容沒有備份就回不來","gate":"限定輸出目錄，不覆寫既有檔","note":"這一列有版控的話其實救得回來，沒有就沒有"}
+{"name":"run_sql","what":"對資料庫下查詢","worst":"讀到別人的資料，或改到正式資料","read_write":"write","reach":"internal","reversible":"no","why_irreversible":"改到正式資料要靠備份，讀到的部分一樣收不回來","gate":"唯讀連線 + 只准預先寫好的查詢","note":"公開案例裡 agent 刪掉正式資料庫就是這一列沒有閘"}
+{"name":"send_email","what":"寄一封信","worst":"把資料寄到外面，而且收不回來","read_write":"write","reach":"outbound","reversible":"no","why_irreversible":"寄出去就在別人手上了","gate":"收件人白名單 + 人確認","note":"外送型的工具是資料外洩最短的一條路"}

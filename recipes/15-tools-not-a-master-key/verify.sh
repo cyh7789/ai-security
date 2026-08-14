@@ -156,7 +156,10 @@ if run 12; then
   echo "=== 12 tools.jsonl 的 worst 欄沒有空的 ==="
   R=$(node -e '
 const rows=require("node:fs").readFileSync("tools.jsonl","utf8").trim().split("\n").map(JSON.parse);
-const bad=rows.filter(r=>!r.worst||!r.gate||!["yes","no"].includes(r.reversible));
+// 標成不可逆的要說得出為什麼。讀取類的工具最常被錯標成「可逆」，
+// 理由是「檔案沒被改」，可是內容出去了就收不回來。
+const bad=rows.filter(r=>!r.worst||!r.gate||!["yes","no"].includes(r.reversible)
+  || (r.reversible==="no" && !r.why_irreversible));
 console.log(`${rows.length},${bad.length}`);')
   [ "${R#*,}" = 0 ] && [ "${R%,*}" -ge 5 ] && ok "${R%,*} 列都填齊了" || bad "${R} 列有缺"
 fi
@@ -205,6 +208,79 @@ if run 15; then
     eval "${CMD}" >"${TMP}/re" 2>&1 && grep -q "redirect-v2" "${TMP}/re" \
       && ok "${CMD} 跑得起來" || bad "${CMD} 跑不動：$(head -1 "${TMP}/re")"
   fi
+fi
+
+# ── 16 補完版擋得下重導向那一招 ─────────────────────────────
+# 這是整份 recipe 的交付條件：讀者照著做要能擋下文章示範的那條攻擊，
+# 不是重做一次剛被證明會失守的字串白名單。
+if run 16; then
+  echo "=== 16 safe 模式：白名單網址 302 到內網也擋得下 ==="
+  L=$(agent --gate safe --page redirect)
+  [ "$(col 1 "${L}")" = yes ] && [ "$(col 3 "${L}")" = deny ] \
+    && [ "$(col 4 "${L}")" = no ] && [ "$(col 6 "${L}")" = no ] \
+    && ok "模型照樣填了網址，但 deny／fetched=no／mark=no" || bad "${L}"
+fi
+
+# ── 17 補完版不會把正常的抓取也擋掉 ─────────────────────────
+# 沒有這一條的話，一支「什麼都擋」的閘會拿滿分。這是 Day 14 誤擋那一欄的同一個道理。
+if run 17; then
+  echo "=== 17 safe 模式：白名單上的正常網址照樣抓得到 ==="
+  R=$(node -e '
+import("./safe-fetch.mjs").then(async ({safeFetch})=>{
+  const s=(await import("./servers.mjs")).start(); await s.ready;
+  try {
+    const {res,hops}=await safeFetch("http://127.0.0.1:9011/");
+    const body=await res.text();
+    console.log([res.status, hops.length, body.includes("RS-8417")].join(","));
+  } finally { s.close(); }
+})')
+  [ "${R}" = "200,1,true" ] && ok "一跳、200、內容拿得到" || bad "拿到 ${R}"
+fi
+
+# ── 18 位址層：名字過了，解析到別的位址還是要擋 ──────────────
+# 名字通過檢查到真正連線之間會再解析一次 DNS。這一層在本機示範裡碰不到
+# （所有服務都在 127.0.0.1），所以用注入的解析器驗它的行為。
+if run 18; then
+  echo "=== 18 白名單上的名字解析到別的位址，要擋 ==="
+  R=$(node -e '
+import("./safe-fetch.mjs").then(async ({safeFetch, Blocked})=>{
+  const fake=async()=>[{address:"10.0.0.5",family:4}];
+  try {
+    await safeFetch("http://127.0.0.1:9011/", {
+      resolve: fake,
+      fetchImpl: async()=>{ throw new Error("不該走到這裡"); },
+    });
+    console.log("沒擋");
+  } catch(e) {
+    console.log(e instanceof Blocked ? `擋了：${e.reason}` : `錯的例外：${e.message}`);
+  }
+})')
+  case "${R}" in
+    擋了*10.0.0.5*) ok "${R}" ;;
+    *) bad "${R}" ;;
+  esac
+fi
+
+# ── 19 真的拿驗過的那個位址去連 ──────────────────────────────
+# 只做第 18 條那層檢查、連線卻還是用原本的名字，等於白做：
+# 檢查完到連線之間會再解析一次 DNS，攻擊者在這兩次之間換得掉答案。
+if run 19; then
+  echo "=== 19 連線用的是解析出來的位址，Host 標頭帶原本的主機名 ==="
+  R=$(node -e '
+import("./safe-fetch.mjs").then(async ({safeFetch})=>{
+  let seen;
+  // 名字跟位址要不一樣，不然「連名字」跟「連位址」看起來一模一樣
+  await safeFetch("http://localhost:9011/x", {
+    list:["localhost:9011"],
+    resolve: async()=>[{address:"127.0.0.1",family:4}],
+    addresses:["127.0.0.1"],
+    fetchImpl: async(u,o)=>{ seen={url:String(u),host:o.headers.host};
+      return {status:200, headers:{get:()=>null}, text:async()=>""}; },
+  });
+  console.log(`${new URL(seen.url).hostname}|${seen.host}`);
+})')
+  [ "${R}" = "127.0.0.1|localhost:9011" ] && ok "連 127.0.0.1，Host 帶 localhost:9011" \
+    || bad "拿到 ${R}"
 fi
 
 echo

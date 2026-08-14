@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { check } from "./gate.mjs";
+import { safeFetch, Blocked } from "./safe-fetch.mjs";
 import { start, PORTS, CREDENTIAL_MARK } from "./servers.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -55,7 +56,8 @@ async function main() {
     const i = argv.indexOf(k);
     return i >= 0 ? argv[i + 1] : d;
   };
-  const gateOn = arg("--gate", "on") === "on";
+  // off：沒有閘。on：字串白名單（會被 302 繞過）。safe：補完版，每一跳都重過閘。
+  const gate = arg("--gate", "on");
   const variant = arg("--page", "lure");
 
   const { close, ready } = start();
@@ -88,14 +90,29 @@ async function main() {
     };
 
     if (call) {
-      const verdict = gateOn ? check(call.url) : { allow: true, reason: "沒有閘" };
-      row.gate = gateOn ? (verdict.allow ? "allow" : "deny") : "off";
-      if (verdict.allow) {
-        const res = await fetch(call.url); // 預設就是跟著重導向走
-        const body = await res.text();
-        row.fetched = "yes";
-        row.final = res.url;
-        row.mark = body.includes(CREDENTIAL_MARK) ? "yes" : "no";
+      if (gate === "safe") {
+        try {
+          const { res, hops } = await safeFetch(call.url);
+          const body = await res.text();
+          row.gate = "allow";
+          row.fetched = "yes";
+          row.final = hops[hops.length - 1].url;
+          row.mark = body.includes(CREDENTIAL_MARK) ? "yes" : "no";
+        } catch (e) {
+          if (!(e instanceof Blocked)) throw e;
+          row.gate = "deny";
+        }
+      } else {
+        const on = gate === "on";
+        const verdict = on ? check(call.url) : { allow: true, reason: "沒有閘" };
+        row.gate = on ? (verdict.allow ? "allow" : "deny") : "off";
+        if (verdict.allow) {
+          const res = await fetch(call.url); // 預設就是跟著重導向走
+          const body = await res.text();
+          row.fetched = "yes";
+          row.final = res.url;
+          row.mark = body.includes(CREDENTIAL_MARK) ? "yes" : "no";
+        }
       }
     }
     process.stdout.write(

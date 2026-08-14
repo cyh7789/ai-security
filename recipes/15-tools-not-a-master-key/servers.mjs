@@ -47,8 +47,20 @@ function docsServer() {
 }
 
 export function start() {
-  const meta = metaServer().listen(PORTS.meta, "127.0.0.1");
-  const docs = docsServer().listen(PORTS.docs, "127.0.0.1");
+  // 埠被別的東西佔住時，預設會拋一個沒人接的 error 事件，讀者拿到的是一整頁堆疊。
+  const up = (server, port) => {
+    server.on("error", (e) => {
+      console.error(
+        e.code === "EADDRINUSE"
+          ? `127.0.0.1:${port} 已經有東西在聽了。先收掉它，或改 servers.mjs 的 PORTS。`
+          : String(e),
+      );
+      process.exit(1);
+    });
+    return server.listen(port, "127.0.0.1");
+  };
+  const meta = up(metaServer(), PORTS.meta);
+  const docs = up(docsServer(), PORTS.docs);
   const ready = Promise.all(
     [meta, docs].map((s) => new Promise((r) => s.on("listening", r))),
   );
