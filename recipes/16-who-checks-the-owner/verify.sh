@@ -252,5 +252,23 @@ if want 18; then
   [ "${GOT}" = yes ] && ok "掃到了" || bad "沒掃到（欄位是 ${GOT}）"
 fi
 
+# ── 21 洩不洩漏「這筆存不存在」是量出來的 ────────────────────
+# 這條的重點不是 403 比較危險，是同一支端點對兩種情況給了兩種答案。
+# 一支對「別人的」跟「不存在的」都回 403 的處理函式，一樣問不出東西。
+if want 21; then
+  case_ "21 96 份裡分得開的就是那兩份"
+  OUT=$(bash enum-all.sh)
+  # 這裡不用 awk 比中文字串：macOS 內建的 awk 拿兩個中文字串比會一律相等
+  # （$2=="分得開" 與 $2=="分不開" 同時對 96 列全中，2026-08-15 實測），
+  # 於是這條會變成永遠紅或永遠綠。改用整欄的逐字比對。
+  SPLIT=$(printf '%s\n' "${OUT}" | grep -cF "$(printf '\t分得開\t')" || true)
+  NAMES=$(printf '%s\n' "${OUT}" | grep -F "$(printf '\t分得開\t')" | cut -f1 | tr '\n' ' ')
+  # list 那組全部回 403，但它對存不存在一視同仁，所以一份都不該分得開。
+  LIST=$(printf '%s\n' "${OUT}" | grep -F "$(printf '\t分得開\t')" | grep -c '^list-' || true)
+  [ "${SPLIT}" = 2 ] && [ "${LIST}" = 0 ] \
+    && ok "分得開的 2 份（${NAMES}），全 403 的 list 那組一份都沒有" \
+    || bad "分得開 ${SPLIT} 份（${NAMES}）、其中 list 佔 ${LIST} 份"
+fi
+
 printf '\n%s 綠 %s 紅\n' "${PASS}" "${FAIL}"
 [ "${FAIL}" = 0 ]

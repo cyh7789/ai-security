@@ -11,7 +11,7 @@
 沒有相依套件，有 Node 就能跑。
 
 ```bash
-bash verify.sh              # 20 條檢查，一發真模型都不打
+bash verify.sh              # 21 條檢查，一發真模型都不打
 bash probe.sh before        # 把編號從 1001 數到 1008
 bash probe.sh after         # 同一輪，修過的版本
 bash calibrate.sh           # 偵測規則的 M 要填多少
@@ -37,6 +37,7 @@ after ：越權拿到 0 張別人的訂單
 | `prompts/` | 八份需求，彼此的差別可以逐行 diff |
 | `judge.mjs` | 判一份生成的處理函式有沒有綁身分。判行為，不讀程式碼 |
 | `run-gen.sh` | 兩組隨機交錯生成，逐份判決 |
+| `enumerable.mjs`／`enum-all.sh` | 擋下來之後，回應還洩不洩漏「這筆存不存在」 |
 
 ## 量出來的：96 發，沒有一發外洩
 
@@ -74,8 +75,20 @@ node summarise.mjs runs/2026-08-15/results.tsv
 | `nested` | 1 | 11 |
 | 其餘五組 | 0 | 12 |
 
-**403 等於承認那筆資料存在。** 查單筆的端點回 404，查清單的回 403，
-拿這兩種回應交叉問一輪就把有效編號列舉出來了。這一欄比「有沒有擋住」更會分岔。
+**但危險的不是 403 這個數字。** 危險的是同一支端點對「別人的」跟「根本不存在的」
+給了兩種答案，那就一個一個問得出來哪些編號存在。這件事要另外量：
+
+```bash
+bash enum-all.sh
+# bare-4     分得開   403|              404|
+# nested-10  分得開   403|{"error":"Forbidden"}   404|{"error":"Invoice not found"}
+```
+
+96 份裡 **94 份分不開、2 份分得開**，而那 2 份剛好就是單筆端點回 403 的那兩份。
+
+`list` 那組 12 份全回 403，一份都沒有分得開：它對「不是你的」跟「沒這個人」
+一視同仁，所以問不出東西。**同一個狀態碼，一邊洩漏一邊不洩漏，
+差別在兩種情況有沒有被分開回答。**
 
 ## 偵測規則：M 是量出來的
 
@@ -104,8 +117,8 @@ node detect.mjs logs/after-scan.tsv --window 60 --owners 3
 ## 驗證
 
 ```bash
-bash verify.sh        # 20 條，一發真模型都不打
-bash mutations.sh     # 弄壞 23 種，看那 20 條會不會紅
+bash verify.sh        # 21 條，一發真模型都不打
+bash mutations.sh     # 弄壞 24 種，看那 21 條會不會紅
 ```
 
 ## 已知的邊界
