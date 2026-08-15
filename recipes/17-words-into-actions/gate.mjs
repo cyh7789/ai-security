@@ -6,7 +6,8 @@
 //
 // 三種閘的差別只有一個：判斷基準是從哪裡來的。
 //   intent     兩端都是模型這一輪產生的字（宣稱的意圖、填的參數）
-//   external   兩端都在模型外面（使用者原本打的那句話、我寫死的清單）
+//   external   動作還是模型提的，但准不准由模型碰不到的兩樣東西決定
+//              （使用者原本打的那句話、我寫死的清單）
 //   allowlist  Day 15 那道閘的形狀，看的是「這個工具、這個目標准不准碰」
 import { fileURLToPath } from "node:url";
 
@@ -55,8 +56,12 @@ export function intentGate(call) {
 }
 
 // 二、外部基準閘：高風險動作要在使用者「自己打的那句話」裡有依據。
-// 兩個輸入都在模型外面：userRequest 是進 prompt 之前就存在的字串，
-// DENY_BY_DEFAULT 是版控裡的一行。模型這一輪講了什麼，這道閘看不到。
+// 它一樣讀 call.tool，所以不是「兩端都在模型外」；差別在決定准不准的那兩樣
+// 模型碰不到：userRequest 是進 prompt 之前就存在的字串，DENY_BY_DEFAULT 是版控裡的一行。
+// 模型這一輪宣稱了什麼，這道閘看不到。
+//
+// 比對規則只認關鍵字，是玩具等級：處理不了否定、同義詞、受詞，
+// 也不核對原話裡的編號跟 call.args.id 是不是同一個。真要上線得換成結構化授權。
 export function externalGate(call, userRequest) {
   if (!DENY_BY_DEFAULT.includes(call.tool)) {
     return { allow: true, reason: `${call.tool} 不在預設拒絕清單上` };
