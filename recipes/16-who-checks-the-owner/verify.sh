@@ -270,5 +270,29 @@ if want 21; then
     || bad "分得開 ${SPLIT} 份（${NAMES}）、其中 list 佔 ${LIST} 份"
 fi
 
+# ── 22 量測條件紀錄要對得上資料本身 ──────────────────────────
+# 這個洞是外審抓到的：補跑了一組之後 results.tsv 變 96 列，
+# run-conditions.txt 還寫著七組 84 發，而所有檢查都只讀 results.tsv，
+# 於是「稿子對得上資料」全綠，資料對不上量測條件卻沒人管。
+# 公開紀錄自相矛盾比任何一個推論錯誤都嚴重，因為這份的信用全靠它。
+if want 22; then
+  case_ "22 run-conditions.txt 的組數與發數對得上 results.tsv"
+  RC=runs/2026-08-15/run-conditions.txt
+  N=$(awk -F'\t' 'NR>1{n++} END{print n+0}' "${TSV}")
+  G=$(awk -F'\t' 'NR>1{a[$2]} END{print length(a)}' "${TSV}")
+  MISS=""
+  grep -q "八組，每組 12 發，共 ${N} 發" "${RC}" || MISS="${MISS} 發數（資料是 ${N}）"
+  [ "${G}" = 8 ] || MISS="${MISS} 組數（資料是 ${G}）"
+  # 每一組的名字都要在條件紀錄裡出現，補跑一組卻忘了寫進去就會紅
+  for a in $(awk -F'\t' 'NR>1{print $2}' "${TSV}" | sort -u); do
+    grep -qE "^  ${a} " "${RC}" || MISS="${MISS} ${a} 沒列在條件紀錄裡"
+  done
+  # 反過來也要：條件紀錄列了但資料裡沒有的組（例如寫了卻沒跑）
+  for a in $(grep -oE '^  [a-z-]+ ' "${RC}" | tr -d ' '); do
+    awk -F'\t' -v a="$a" 'NR>1 && $2==a{f=1} END{exit !f}' "${TSV}" || MISS="${MISS} 條件紀錄有 ${a} 但資料裡沒有"
+  done
+  [ -z "${MISS}" ] && ok "${G} 組 ${N} 發，兩邊的組名也一一對得上" || bad "對不上：${MISS}"
+fi
+
 printf '\n%s 綠 %s 紅\n' "${PASS}" "${FAIL}"
 [ "${FAIL}" = 0 ]

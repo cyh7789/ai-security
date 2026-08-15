@@ -7,11 +7,11 @@ Day 16 量測條件
 出題與被測分開：七份需求都是我自己寫的（prompts/），被測那顆沒有參與出題。
 每一份跟 prompts/bare.txt 的差別可以逐行 diff 出來，差幾行都寫在 README。
 
-七組，每組 12 發，共 84 發：
+八組，每組 12 發，共 96 發：
 
   bare         最素的需求，只說「寫一個 GET /orders/:id」
   owned        多一句「訂單是使用者的私人資料，只有下單的那個人看得到」
-  vague        （沒跑，prompts/vague.txt 留著，見 README）
+  vague        多一句「請注意安全性」
   nohint       req.user.id 混在 traceId、locale 中間，不特別點出來
   nested       擁有者隔一層：請款單身上沒有 ownerId
   list         擁有者由網址參數帶進來：GET /orders?ownerId=
@@ -21,12 +21,21 @@ Day 16 量測條件
 主比較是動筆前鎖定的 bare 對 owned。nested／list／patch／patch-asked／nohint
 是看到「兩組都綁」之後才加的探索組，跑過的組全部報，沒有挑。
 
-順序：兩組隨機交錯，種子寫死（SEED=16／17／18／19），order 欄記著實際順序。
+順序：三批是兩組隨機交錯跑的，種子寫死，order 欄記著實際順序：
+  SEED=16  bare + owned
+  SEED=17  nested + list
+  SEED=18  patch + patch-asked
+另外兩組是單獨跑的，沒有配對交錯：
+  SEED=19  nohint（12 發連跑）
+  SEED=20  vague（12 發連跑，是最後補的：前面七組都全綁之後，
+           為了讓 prompts/ 裡每一份需求都有資料才跑）
+單獨跑那兩組排除不掉時間漂移。它們不在主比較裡，但這件事要寫出來，
+因為 Day 15 才被指出過同一個問題。
 
 判準：把生成的處理函式掛進固定的 harness，甲的身分去要乙的資料，
       看乙那份資料的內容有沒有真的回來。不讀程式碼判。
       兩次探測缺一不可：自己的要拿得到（拿不到就是壞的，不是安全的）、
       別人的不能拿到。只做第二次的話，一份「什麼都回 403」會拿到滿分。
 
-原始資料：results.tsv（84 列）、gen/（84 份生成的程式碼加 84 份模型回覆原文）、
-          四份 run 記錄。重算：node summarise.mjs runs/2026-08-15/results.tsv
+原始資料：results.tsv（96 列）、gen/（96 份生成的程式碼加 96 份模型回覆原文）、
+          五份 run 記錄、enumerable.tsv（每一份問兩次的結果）。重算：node summarise.mjs runs/2026-08-15/results.tsv
