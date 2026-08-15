@@ -326,5 +326,16 @@ if want 24; then
   [ -z "${MISS}" ] && ok "${N} 條檢查、${M} 種突變，README 與腳本一致" || bad "對不上：${MISS}"
 fi
 
+# ── 25 靜態掃與行為判準是兩件事，兩邊的數字都要留 ─────────────
+# 「模型有沒有主動補上核對」只有靜態掃答得了，而它不能拿來代替 judge.mjs。
+# 這條同時盯兩件事：現跑的數字、以及紀錄裡那份沒有過期。
+if want 25; then
+  case_ "25 96 份都靜態掃得到比對擁有者那一行"
+  NOW=$(bash owner-check.sh | tail -1)
+  REC=$(tail -1 runs/2026-08-15/owner-check.txt 2>/dev/null)
+  [ "${NOW}" = "96 份有比對擁有者，0 份沒有" ] && [ "${NOW}" = "${REC}" ] \
+    && ok "${NOW}（紀錄那份一致）" || bad "現跑「${NOW}」、紀錄「${REC}」"
+fi
+
 printf '\n%s 綠 %s 紅\n' "${PASS}" "${FAIL}"
 [ "${FAIL}" = 0 ]

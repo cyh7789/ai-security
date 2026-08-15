@@ -11,7 +11,7 @@
 沒有相依套件，有 Node 就能跑。
 
 ```bash
-bash verify.sh              # 24 條檢查，一發真模型都不打
+bash verify.sh              # 25 條檢查，一發真模型都不打
 bash probe.sh before        # 把編號從 1001 數到 1008
 bash probe.sh after         # 同一輪，修過的版本
 bash calibrate.sh           # 偵測規則的 M 要填多少
@@ -38,6 +38,7 @@ after ：越權拿到 0 張別人的訂單
 | `judge.mjs` | 判一份生成的處理函式有沒有綁身分。判行為，不讀程式碼 |
 | `run-gen.sh` | 兩組隨機交錯生成，逐份判決 |
 | `enumerable.mjs`／`enum-all.sh` | 擋下來之後，回應還洩不洩漏「這筆存不存在」 |
+| `owner-check.sh` | 靜態掃：程式碼裡有沒有那一行比對。跟 judge 是兩回事，不能互相代替 |
 
 ## 量出來的：96 發，沒有一發外洩
 
@@ -117,8 +118,8 @@ node detect.mjs logs/after-scan.tsv --window 60 --owners 3
 ## 驗證
 
 ```bash
-bash verify.sh        # 24 條，一發真模型都不打
-bash mutations.sh     # 弄壞 28 種，看那 24 條會不會紅
+bash verify.sh        # 25 條，一發真模型都不打
+bash mutations.sh     # 弄壞 29 種，看那 25 條會不會紅
 ```
 
 ## 已知的邊界
