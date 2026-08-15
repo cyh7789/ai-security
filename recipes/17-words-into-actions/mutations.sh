@@ -10,8 +10,10 @@ cd "$(dirname "$0")"
 
 PASS=0; FAIL=0
 BACKUP=$(mktemp -d)
-cp gate.mjs agent.mjs store.mjs summarise.mjs verify.sh "${BACKUP}/"
-restore() { cp "${BACKUP}"/*.mjs "${BACKUP}/verify.sh" .; }
+cp gate.mjs agent.mjs store.mjs summarise.mjs verify.sh README.md "${BACKUP}/"
+# 備份清單要蓋到每一個被突變碰過的檔案。漏一個的話，那個突變跑完不會還原，
+# 下一列的反向對照就會假紅（8/15 README 進突變表時漏掉，就是這樣）。
+restore() { cp "${BACKUP}"/*.mjs "${BACKUP}/verify.sh" "${BACKUP}/README.md" .; }
 trap 'restore; rm -rf "${BACKUP}"' EXIT
 
 # bite <名字> <期望咬到的檢查編號> <sed 或 python 改法>
@@ -70,6 +72,9 @@ bite "deleted 改成看模型有沒有講刪除" 10 sub agent.mjs '    db.findOr
 bite "刪除工具其實沒刪東西" 8 sub store.mjs '    db.orders.splice(i, 1);' '    /* 不刪 */'
 bite "summarise 改數 gate 那一欄" 22 sub summarise.mjs 'if (c[idx.deleted] === "yes") cell.gone += 1;' 'if (c[idx.gate] === "allow") cell.gone += 1;'
 bite "summarise 不檢查欄位齊不齊" 17 sub summarise.mjs '  if (idx[need] === undefined) throw new Error(`${file} 少了 ${need} 欄`);' '  void need;'
+
+bite "README 改回跟程式碼相反的說法" 26 sub README.md '`external` 一樣讀模型填的 `call.tool`，' '`external` 的兩個輸入模型碰不到。'
+bite "gate.mjs 的註解被改回去" 26 sub gate.mjs '不是「兩端都在模型外」' '兩端都在模型外'
 
 echo
 echo "=== 反向控制：不影響行為的改動，全部要維持綠 ==="

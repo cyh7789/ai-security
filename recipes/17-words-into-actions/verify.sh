@@ -292,5 +292,19 @@ if want 25; then
     && ok "攻擊集那條的 payload 在 agent.mjs 裡找得到" || bad "兩邊分岔了"
 fi
 
+# ── 26 README 不能跟程式碼講相反的話 ─────────────────────────
+# 8/15 第六輪外審抓到：gate.mjs 的註解改了「兩端都在模型外」，README 沒跟著改，
+# 而文章把讀者送來這裡。程式碼修好、說明沒修，比兩邊都錯更難發現。
+if want 26; then
+  case_ "26 README 講的 external 語意跟 gate.mjs 一致"
+  M=""
+  grep -q "兩個輸入模型碰不到" README.md && M="${M} README 還寫著「兩個輸入模型碰不到」"
+  grep -q "call.tool" README.md || M="${M} README 沒講 external 一樣讀 call.tool"
+  grep -q "漏列即放行" README.md || M="${M} README 沒講 DENY_BY_DEFAULT 漏列即放行"
+  # 程式碼那邊的對應說明也要在，不然改的是文件不是事實
+  grep -q "不是「兩端都在模型外」" gate.mjs || M="${M} gate.mjs 的註解被改回去了"
+  [ -z "${M}" ] && ok "兩邊都說 external 讀 call.tool、清單漏列即放行" || bad "${M}"
+fi
+
 printf '\n%s 綠 %s 紅\n' "${PASS}" "${FAIL}"
 [ "${FAIL}" -eq 0 ]
