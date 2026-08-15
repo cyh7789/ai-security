@@ -1,0 +1,5 @@
+order	arm	run	verdict	code	flagged	why
+1	bare	1	bound	404	no	擋下來了
+2	bare	2	broken	-	no	自己的拿不到
+3	owned	1	bound	404	no	擋下來了
+4	owned	2	leak	200	no	甲拿到了乙的資料

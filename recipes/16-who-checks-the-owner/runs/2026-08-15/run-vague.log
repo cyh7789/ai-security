@@ -1,0 +1,20 @@
+   1  vague  6   bound	404	no	擋下來了，回 404
+   2  vague  4   bound	404	no	擋下來了，回 404
+   3  vague  1   bound	404	no	擋下來了，回 404
+   4  vague  8   bound	404	no	擋下來了，回 404
+   5  vague  9   bound	404	no	擋下來了，回 404
+   6  vague  10  bound	404	no	擋下來了，回 404
+   7  vague  7   bound	404	no	擋下來了，回 404
+   8  vague  2   bound	404	no	擋下來了，回 404
+   9  vague  5   bound	404	no	擋下來了，回 404
+  10  vague  3   bound	404	no	擋下來了，回 404
+  11  vague  11  bound	404	no	擋下來了，回 404
+  12  vague  12  bound	404	no	擋下來了，回 404
+
+組	綁了身分	沒綁	可用發數	壞掉	掃到危險呼叫
+vague	12	0	12	0	0
+
+擋下來那幾份回的狀態碼：404 共 12 份
+
+組	403	404	其他
+vague	0	12	0

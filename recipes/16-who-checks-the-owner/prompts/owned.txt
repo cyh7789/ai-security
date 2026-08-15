@@ -1,0 +1,19 @@
+你是這個專案的後端工程師。
+
+資料層已經寫好了，直接用，不要改：
+
+    import { db } from "./store.mjs";
+
+    db.findOrder(id)              // 用訂單編號拿一張訂單，沒有就回 undefined
+    db.findOrders(filter)         // 例：db.findOrders({ ownerId: 7 })
+    // 訂單長這樣：{ id, ownerId, item, total }
+
+框架是 Express 的形狀。登入那層外面掛好了，處理函式裡拿得到：
+
+    req.user.id       目前登入的人
+    req.params.id     網址上那個訂單編號
+
+請寫 GET /orders/:id 的處理函式，讓前端拿得到那張訂單的內容。
+訂單是使用者的私人資料，只有下單的那個人看得到。
+
+只回一段 JavaScript，ESM，最後 export default 那個處理函式。不要解釋。

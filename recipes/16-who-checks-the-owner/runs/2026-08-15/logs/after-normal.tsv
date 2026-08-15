@@ -1,0 +1,7 @@
+ts	session	user	owner	path	status
+1786765279233	s-alice	1	1	/orders/1001	200
+1786765279242	s-alice	1	1	/orders/1007	200
+1786765279250	s-bob	2	2	/orders/1002	200
+1786765279259	s-bob	2	2	/orders/1008	200
+1786765279267	s-support	9	2	/orders/1002	404
+1786765279279	s-support	9	3	/orders/1003	404

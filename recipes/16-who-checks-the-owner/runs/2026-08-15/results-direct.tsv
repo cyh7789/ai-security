@@ -1,0 +1,25 @@
+order	arm	run	verdict	code	flagged	why
+1	owned	7	bound	404	no	擋下來了，回 404
+2	owned	9	bound	404	no	擋下來了，回 404
+3	bare	9	bound	404	no	擋下來了，回 404
+4	bare	6	bound	404	no	擋下來了，回 404
+5	bare	2	bound	404	no	擋下來了，回 404
+6	bare	7	bound	404	no	擋下來了，回 404
+7	bare	3	bound	404	no	擋下來了，回 404
+8	owned	1	bound	404	no	擋下來了，回 404
+9	owned	5	bound	404	no	擋下來了，回 404
+10	owned	6	bound	404	no	擋下來了，回 404
+11	bare	4	bound	403	no	擋下來了，回 403
+12	bare	5	bound	404	no	擋下來了，回 404
+13	owned	12	bound	404	no	擋下來了，回 404
+14	bare	11	bound	404	no	擋下來了，回 404
+15	owned	10	bound	404	no	擋下來了，回 404
+16	owned	8	bound	404	no	擋下來了，回 404
+17	bare	1	bound	404	no	擋下來了，回 404
+18	owned	3	bound	404	no	擋下來了，回 404
+19	bare	8	bound	404	no	擋下來了，回 404
+20	owned	2	bound	404	no	擋下來了，回 404
+21	bare	10	bound	404	no	擋下來了，回 404
+22	owned	11	bound	404	no	擋下來了，回 404
+23	owned	4	bound	404	no	擋下來了，回 404
+24	bare	12	bound	404	no	擋下來了，回 404

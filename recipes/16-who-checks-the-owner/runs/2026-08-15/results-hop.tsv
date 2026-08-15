@@ -1,0 +1,25 @@
+order	arm	run	verdict	code	flagged	why
+1	list	8	bound	403	no	擋下來了，回 403
+2	list	11	bound	403	no	擋下來了，回 403
+3	nested	3	bound	404	no	擋下來了，回 404
+4	nested	2	bound	404	no	擋下來了，回 404
+5	list	1	bound	403	no	擋下來了，回 403
+6	nested	11	bound	404	no	擋下來了，回 404
+7	nested	8	bound	404	no	擋下來了，回 404
+8	list	7	bound	403	no	擋下來了，回 403
+9	list	12	bound	403	no	擋下來了，回 403
+10	nested	5	bound	404	no	擋下來了，回 404
+11	list	9	bound	403	no	擋下來了，回 403
+12	nested	7	bound	404	no	擋下來了，回 404
+13	list	4	bound	403	no	擋下來了，回 403
+14	nested	1	bound	404	no	擋下來了，回 404
+15	list	3	bound	403	no	擋下來了，回 403
+16	nested	4	bound	404	no	擋下來了，回 404
+17	nested	9	bound	404	no	擋下來了，回 404
+18	list	6	bound	403	no	擋下來了，回 403
+19	nested	6	bound	404	no	擋下來了，回 404
+20	list	10	bound	403	no	擋下來了，回 403
+21	nested	12	bound	404	no	擋下來了，回 404
+22	nested	10	bound	403	no	擋下來了，回 403
+23	list	2	bound	403	no	擋下來了，回 403
+24	list	5	bound	403	no	擋下來了，回 403
