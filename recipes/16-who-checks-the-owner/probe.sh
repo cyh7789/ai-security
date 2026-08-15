@@ -57,11 +57,11 @@ for id in $(seq 1001 1008); do
   body=$(get 1 s-scan "${id}")
   case "${body}" in
     *人體工學椅*|*螢幕支架*|*降噪耳機*|*行動電源*|*外接硬碟*|*腳踏墊*)
-      verdict="拿到了別人的訂單"; LEAK=$((LEAK+1)) ;;
-    *機械鍵盤*|*鍵帽組*) verdict="自己的，本來就看得到" ;;
-    *) verdict="沒拿到" ;;
+      verdict="拿到了別人的"; LEAK=$((LEAK+1)) ;;
+    *機械鍵盤*|*鍵帽組*) verdict="本來就看得到" ;;
+    *) verdict="沒有拿到東西" ;;
   esac
-  printf '  /orders/%s  %-20s %s\n' "${id}" "${verdict}" "${body}"
+  printf '  /orders/%s  %s  %s\n' "${id}" "${verdict}" "${body}"
 done
 
 echo
