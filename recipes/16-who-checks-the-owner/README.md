@@ -11,7 +11,7 @@
 沒有相依套件，有 Node 就能跑。
 
 ```bash
-bash verify.sh              # 21 條檢查，一發真模型都不打
+bash verify.sh              # 24 條檢查，一發真模型都不打
 bash probe.sh before        # 把編號從 1001 數到 1008
 bash probe.sh after         # 同一輪，修過的版本
 bash calibrate.sh           # 偵測規則的 M 要填多少
@@ -117,8 +117,8 @@ node detect.mjs logs/after-scan.tsv --window 60 --owners 3
 ## 驗證
 
 ```bash
-bash verify.sh        # 21 條，一發真模型都不打
-bash mutations.sh     # 弄壞 24 種，看那 21 條會不會紅
+bash verify.sh        # 24 條，一發真模型都不打
+bash mutations.sh     # 弄壞 28 種，看那 24 條會不會紅
 ```
 
 ## 已知的邊界

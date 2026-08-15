@@ -9,6 +9,11 @@
 set -u
 cd "$(dirname "$0")"
 ONLY="${1:-}"
+# 沒有 node 的環境裡，下面好幾條的預期值與實際值會同時變成空字串而「相等」，
+# 於是它們會綠。整輪還是會紅，但個別檢查假通過會讓人看錯是哪裡壞了。
+command -v node >/dev/null || { echo "這份要 Node 才能跑，先裝 Node 再來。"; exit 2; }
+command -v curl >/dev/null || { echo "probe.sh 要 curl。"; exit 2; }
+
 PASS=0; FAIL=0
 case_() { printf '\n=== %s ===\n' "$1"; }
 ok()   { printf '  [OK]   %s\n' "$1"; PASS=$((PASS+1)); }
@@ -34,7 +39,8 @@ if want 1; then
   case_ "1 before 越權拿到的張數＝資料裡不屬於甲的張數"
   WANT=$(node -e 'import("./store.mjs").then(({db})=>console.log(db.orders.filter(o=>o.ownerId!==1&&o.id<=1008).length))')
   GOT=$(bash probe.sh before | sed -n 's/^越權拿到 \([0-9]*\) 張.*/\1/p')
-  [ "${GOT}" = "${WANT}" ] && ok "${GOT} 張，跟資料算出來的一樣" || bad "拿到 ${GOT} 張，資料說應該是 ${WANT}"
+  # 兩邊都空的時候「相等」，那是環境壞了不是檢查通過
+  [ -n "${WANT}" ] && [ -n "${GOT}" ] && [ "${GOT}" = "${WANT}" ] && ok "${GOT} 張，跟資料算出來的一樣" || bad "拿到 ${GOT} 張，資料說應該是 ${WANT}"
 fi
 
 # ── 2 修過的版本一張都拿不到 ─────────────────────────────────
@@ -303,6 +309,21 @@ if want 23; then
   REC=$(cut -f2 runs/2026-08-15/positive-control.txt 2>/dev/null)
   [ "${GOT}" = leak ] && [ "${REC}" = leak ] \
     && ok "現跑判 leak，紀錄裡那一列也是 leak" || bad "現跑 ${GOT}、紀錄 ${REC}"
+fi
+
+# ── 24 README 寫的條數要等於實際條數 ────────────────────────
+# 加了 case 22、23 卻忘了改 README，外面的人點進來就看到兩個數字打架，
+# 而這份的賣點正是「你自己重跑」。這條讓那個數字不能靠人記得。
+if want 24; then
+  case_ "24 README 的檢查條數與突變種數對得上"
+  N=$(grep -cE '^if want [0-9]+; then' verify.sh)
+  M=$(grep -cE '^try "' mutations.sh)
+  MISS=""
+  grep -q "bash verify.sh              # ${N} 條檢查" README.md || MISS="${MISS} 開頭那行（實際 ${N} 條）"
+  grep -q "bash verify.sh        # ${N} 條" README.md || MISS="${MISS} 驗證那節（實際 ${N} 條）"
+  grep -q "弄壞 ${M} 種，看那 ${N} 條會不會紅" README.md || MISS="${MISS} 突變那行（實際 ${M} 種）"
+  grep -q "弄壞 ${M} 種" mutations.sh || MISS="${MISS} mutations.sh 自己印的種數"
+  [ -z "${MISS}" ] && ok "${N} 條檢查、${M} 種突變，README 與腳本一致" || bad "對不上：${MISS}"
 fi
 
 printf '\n%s 綠 %s 紅\n' "${PASS}" "${FAIL}"
