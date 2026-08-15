@@ -9,7 +9,7 @@ set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 cd "${HERE}"
 BAK=$(mktemp -d); trap 'restore; rm -rf "${BAK}"' EXIT
-FILES="runs/2026-08-15/run-conditions.txt store.mjs judge.mjs enumerable.mjs detect.mjs summarise.mjs calibrate.sh probe.sh access-log.mjs stub-model.sh README.md before/server.mjs after/server.mjs prompts/owned.txt prompts/list.txt"
+FILES="runs/2026-08-15/run-conditions.txt control/known-bad.mjs store.mjs judge.mjs enumerable.mjs detect.mjs summarise.mjs calibrate.sh probe.sh access-log.mjs stub-model.sh README.md before/server.mjs after/server.mjs prompts/owned.txt prompts/list.txt"
 SNAP="${BAK}/runs"
 save()    { for f in ${FILES}; do cp "$f" "${BAK}/$(echo "$f" | tr / _)"; done; cp -R runs "${SNAP}"; }
 restore() { for f in ${FILES}; do cp "${BAK}/$(echo "$f" | tr / _)" "$f" 2>/dev/null; done
@@ -63,6 +63,7 @@ try "README 的重算指令路徑改錯"    16 "sed -i '' 's|node summarise.mjs 
 try "列舉判準只比內容不比狀態碼" 21 "sed -i '' 's#return .*res.code.*;#return body;#' enumerable.mjs"
 try "條件紀錄的發數沒跟著資料改"   22 "sed -i '' 's/共 96 發/共 84 發/' runs/2026-08-15/run-conditions.txt"
 try "條件紀錄漏掉補跑的那一組"     22 "sed -i '' '/^  vague /d' runs/2026-08-15/run-conditions.txt"
+try "陽性對照被偷偷修好了"         23 "sed -i '' 's/if (!order) return res.status(404).json({ error: \"not found\" });/if (!order || order.ownerId !== req.user.id) return res.status(404).json({ error: \"not found\" });/' control/known-bad.mjs"
 try "客服那筆自己的訂單被拿掉"     12 "sed -i '' '/id: 1009/d' store.mjs"
 
 echo
@@ -77,5 +78,5 @@ fi
 restore
 
 echo
-printf '弄壞 26 種，抓到 %s 種，沒抓到 %s 種\n' "${BIT}" "${MISS}"
+printf '弄壞 27 種，抓到 %s 種，沒抓到 %s 種\n' "${BIT}" "${MISS}"
 [ "${MISS}" = 0 ]

@@ -294,5 +294,16 @@ if want 22; then
   [ -z "${MISS}" ] && ok "${G} 組 ${N} 發，兩邊的組名也一一對得上" || bad "對不上：${MISS}"
 fi
 
+# ── 23 陽性對照要留得下逐字判決 ──────────────────────────────
+# 96 發全綠時，「模型都寫對了」跟「判準壞了」從結果本身分不出來。
+# 分得出來的唯一辦法是把一份已知不綁的丟進同一支 judge，而且把那一列留在紀錄裡。
+if want 23; then
+  case_ "23 已知不綁的那份，judge 現在判它外洩"
+  GOT=$(node judge.mjs control/known-bad.mjs | cut -f2)
+  REC=$(cut -f2 runs/2026-08-15/positive-control.txt 2>/dev/null)
+  [ "${GOT}" = leak ] && [ "${REC}" = leak ] \
+    && ok "現跑判 leak，紀錄裡那一列也是 leak" || bad "現跑 ${GOT}、紀錄 ${REC}"
+fi
+
 printf '\n%s 綠 %s 紅\n' "${PASS}" "${FAIL}"
 [ "${FAIL}" = 0 ]
