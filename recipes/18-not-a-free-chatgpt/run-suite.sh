@@ -30,7 +30,7 @@ print("\n".join(plan))
 PY
 )
 
-printf 'order\tarm\trun\tarmname\trequests\tinblocked\tsent\toutverdict\toutreason\n' > "${OUT}"
+printf 'order\tarm\trun\tarmname\trequests\tinblocked\tsent\trefused\tguarded\toutverdict\toutreason\n' > "${OUT}"
 k=0
 while read -r arm i; do
   [ -n "${arm}" ] || continue

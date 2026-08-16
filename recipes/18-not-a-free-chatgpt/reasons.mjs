@@ -17,12 +17,21 @@ const SIGNALS = {
   製造急迫: ["急迫", "限時", "催促", "立刻", "期限", "以免", "盡快"],
 };
 
-const rows = readFileSync(process.argv[2] ?? "results.tsv", "utf8")
-  .trim()
-  .split("\n")
-  .slice(1)
-  .map((l) => l.split("\t"))
-  .map((c) => ({ arm: c[1], verdict: c[7], reason: c[8] ?? "" }));
+// 欄位用表頭的名字取，不用位置。8/16 到 8/17 我加了兩次欄（refused、guarded），
+// 位置寫死的話舊的 results.tsv 會被讀到別欄，而它不會報錯，只會安靜地全部變 0。
+const lines = readFileSync(process.argv[2] ?? "results.tsv", "utf8").trim().split("\n");
+const head = lines[0].split("\t");
+const at = (name) => {
+  const i = head.indexOf(name);
+  if (i < 0) {
+    console.error(`${process.argv[2]} 沒有「${name}」這一欄，表頭是：${head.join(" ")}`);
+    process.exit(2);
+  }
+  return i;
+};
+const [iArm, iV, iR] = [at("arm"), at("outverdict"), at("outreason")];
+const rows = lines.slice(1).map((l) => l.split("\t"))
+  .map((c) => ({ arm: c[iArm], verdict: c[iV], reason: c[iR] ?? "" }));
 
 for (const arm of [...new Set(rows.map((r) => r.arm))]) {
   const g = rows.filter((r) => r.arm === arm);

@@ -30,7 +30,8 @@ const normal = PREFIX + ask;              // 一筆正常請求實際送出去�
 const worst = PREFIX + LIMITS.maxChars;   // 長度閘只量使用者那段，所以上限之外還要加前綴
 const quota = normal * LIMITS.perMinute;  // 一分鐘額度打滿
 
-console.log(`固定前綴\t${PREFIX} 字（系統提示，每一次請求都送）`);
+const SYSN = cp(SYSTEM);
+console.log(`固定前綴\t${PREFIX} 字（系統提示 ${SYSN} 字，加上「使用者：」那個標籤）`);
 console.log(`正常提問平均\t${ask.toFixed(1)} 字（${rows.length} 句實測），整筆 ${normal.toFixed(1)} 字`);
 console.log(`最貴的一筆\t使用者 ${LIMITS.maxChars} 字，整筆 ${worst} 字`);
 console.log(`單筆比值\t${(worst / normal).toFixed(1)} 倍`);

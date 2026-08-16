@@ -76,13 +76,13 @@ echo
 echo "=== 鏈與判準 ==="
 bite "輸入側判決被無視，全部照送" 21 sub chain.mjs '    if (!r.allow) {' '    if (false) {'
 bite "只跑第一道閘就算過" 21 sub chain.mjs 'const ORDER = ["rate", "length", "scenario"];' 'const ORDER = ["rate"];'
-bite "組合後的全文寫進檔案" 12 sub chain.mjs '  ({ verdict, reason } = await classify(pieces.join("\n\n"), cmd));' '  const joined = pieces.join("\n\n"); (await import("node:fs")).writeFileSync("leak.txt", joined); ({ verdict, reason } = await classify(joined, cmd));'
+bite "組合後的全文寫進檔案" 12 sub chain.mjs '  ({ verdict, reason } = await classify(pieces.join("\n\n"), ccmd));' '  const joined = pieces.join("\n\n"); (await import("node:fs")).writeFileSync("leak.txt", joined); ({ verdict, reason } = await classify(joined, ccmd));'
 bite "summarise 改數輸出側判決當輸入側攔截" 22 sub summarise.mjs 'inblocked: +c[5]' 'inblocked: c[7] === "flag" ? 1 : 0'
 
 echo
 echo "=== 成本軸 ==="
-bite "成本軸改成打模型拿基準" 14 sub cost.mjs 'const avg = rows.reduce((a, b) => a + b, 0) / rows.length;' 'const avg = Number((await import("node:child_process")).execSync(process.env.MODEL_CMD ?? "echo 24").toString().trim());'
-bite "成本軸把比值算反" 13 sub cost.mjs 'console.log(`比值\t${(one / quota).toFixed(2)} 倍`);' 'console.log(`比值\t${(quota / one).toFixed(2)} 倍`);'
+bite "成本軸改成打模型拿基準" 14 sub cost.mjs 'const ask = rows.reduce((a, b) => a + b, 0) / rows.length;' 'const ask = Number((await import("node:child_process")).execSync(process.env.MODEL_CMD ?? "echo 24").toString().trim());'
+bite "成本軸把比值算反" 13 sub cost.mjs 'console.log(`單筆比值\t${(worst / normal).toFixed(1)} 倍`);' 'console.log(`單筆比值\t${(normal / worst).toFixed(1)} 倍`);'
 
 echo
 echo "=== 素材與公開紀錄 ==="
@@ -117,7 +117,7 @@ echo "=== 說明與程式碼分岔 ==="
 bite "README 拿掉黑名單那層的限制" 19 sub README.md '**而那一層是黑名單，黑名單只擋得住你想得到的那些。**' '而那一層很有效。'
 bite "gates.mjs 的黑名單註解被改掉" 19 sub gates.mjs '黑名單只擋得住你想得到的那些' '黑名單夠用了'
 bite "classify.mjs 的佔位聲明被拿掉" 19 sub classify.mjs '是 Day 26 的題目' '已經驗過了'
-bite "攻擊集那條的載體改回 input" 18 sub ../14-same-attacks-every-time/attacks.jsonl '"carrier":"turns"' '"carrier":"input"'
+bite "攻擊集那條的載體改回 input" 18 sub ../14-same-attacks-every-time/attacks.jsonl '"carrier":"requests"' '"carrier":"input"'
 
 echo
 echo "=== 反向控制：不影響行為的改動，全部要維持綠 ==="

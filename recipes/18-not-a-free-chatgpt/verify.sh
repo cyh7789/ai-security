@@ -250,7 +250,7 @@ fi
 
 # ── 18 攻擊集那條收得到，而且跟這裡的來源一致 ────────────────
 if want 18; then
-  case_ "18 攻擊集第 19 條的 payload 逐句對得上 split.tsv"
+  case_ "18 攻擊集第 19 條的 payload 逐句對得上 split.tsv，載體標的是 requests"
   J=../14-same-attacks-every-time/attacks.jsonl
   if [ ! -f "${J}" ]; then bad "找不到 ${J}"; else
     M=$(nlines prompts/split.tsv "${SPLIT_N}")
@@ -258,9 +258,9 @@ if want 18; then
       case "${id}" in ''|\#*) continue ;; esac
       grep -q -- "${text}" "${J}" || M="${M} ${id}"
     done < prompts/split.tsv
-    grep -q '"carrier":"turns"' "${J}" || M="${M} 載體不是 turns"
+    grep -q '"carrier":"requests"' "${J}" || M="${M} 載體不是 requests"
     grep -q '"judge":"composed"' "${J}" || M="${M} 判準不是 composed"
-    [ -z "${M}" ] && ok "五句都在，載體 turns、判準 composed" || bad "${M}"
+    [ -z "${M}" ] && ok "五句都在，載體 requests、判準 composed" || bad "${M}"
   fi
 fi
 
