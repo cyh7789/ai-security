@@ -29,17 +29,35 @@
 | 03 | [處置外洩憑證時的三個假通過](recipes/03-revoke-verification/) | [Day 3](https://ithelp.ithome.com.tw/articles/10401276) | **可以跑了** |
 | 04 | [貼給 AI 之前的紅線檢查](recipes/04-what-not-to-paste/) | [Day 4](https://ithelp.ithome.com.tw/articles/10401371) | **可以跑了** |
 | 05 | [innerHTML 的假綠燈](recipes/05-innerhtml-fake-green/) | [Day 5](https://ithelp.ithome.com.tw/articles/10401465) | **可以跑了** |
-| 06 | [它在哪裡跑](recipes/06-run-it-somewhere-else/) | Day 6 | **可以跑了** |
-| 07– | 隨連載加入 | Day 7–30 | 未完成 |
+| 06 | [它在哪裡跑](recipes/06-run-it-somewhere-else/) | [Day 6](https://ithelp.ithome.com.tw/articles/10401762) | **可以跑了** |
+| 07 | [它到底存不存在](recipes/07-does-it-even-exist/) | [Day 7](https://ithelp.ithome.com.tw/articles/10401878) | **可以跑了** |
+| 08 | [我裝的那幾台，各自碰得到什麼](recipes/08-what-can-it-touch/) | [Day 8](https://ithelp.ithome.com.tw/articles/10402102) | **可以跑了** |
+| 09 | [前端擋得住的，後端擋不擋得住](recipes/09-which-side-validated/) | [Day 9](https://ithelp.ithome.com.tw/articles/10402200) | **可以跑了** |
+| 10 | [指令跟資料，接起來之後還分得開嗎](recipes/10-instructions-vs-data/) | [Day 10](https://ithelp.ithome.com.tw/articles/10402365) | **可以跑了** |
+| 11 | [你看到的那一頁，跟模型讀到的那一頁](recipes/11-what-the-model-reads/) | [Day 11](https://ithelp.ithome.com.tw/articles/10402496) | **可以跑了** |
+| 12 | [讀那一欄](recipes/12-read-the-description/) | [Day 12](https://ithelp.ithome.com.tw/articles/10402601) | **可以跑了** |
+| 13 | [那些段落是誰放進去的](recipes/13-who-wrote-your-knowledge-base/) | [Day 13](https://ithelp.ithome.com.tw/articles/10402644) | **可以跑了** |
+| 14 | [同一組攻擊，每次改完 prompt 都再打一遍](recipes/14-same-attacks-every-time/) | [Day 14](https://ithelp.ithome.com.tw/articles/10402753) | **可以跑了** |
+| 15 | [工具不是萬用鑰匙](recipes/15-tools-not-a-master-key/) | [Day 15](https://ithelp.ithome.com.tw/articles/10402942) | **可以跑了** |
+| 16 | [誰在檢查這張單是不是你的](recipes/16-who-checks-the-owner/) | [Day 16](https://ithelp.ithome.com.tw/articles/10403127) | **可以跑了** |
+| 17 | [模型講的話變成動作，中間那道閘](recipes/17-words-into-actions/) | Day 17 | **可以跑了** |
+| 18 | [四道閘，跟它們各自防的是什麼](recipes/18-not-a-free-chatgpt/) | Day 18 | **可以跑了** |
+| 19– | 隨連載加入 | Day 19–30 | 未完成 |
+
+每一份都是 `bash recipes/<名字>/verify.sh`。一次跑全部：
 
 ```bash
-bash recipes/01-frontend-api-key/verify.sh
-bash recipes/02-secret-scan-blind-spots/verify.sh
-bash recipes/03-revoke-verification/verify.sh
-bash recipes/04-what-not-to-paste/verify.sh
-bash recipes/05-innerhtml-fake-green/verify.sh
-bash recipes/06-run-it-somewhere-else/verify.sh
+for d in recipes/*/; do bash "$d/verify.sh" >/dev/null || echo "紅了：$d"; done
 ```
+
+**這張表由 `bash check-index.sh` 盯著**，少一列或指到不存在的資料夾就紅。
+最新那份 recipe 的 `verify.sh` 最後一條會呼叫它，所以每天都會跑到。
+會有這道閘，是因為這張表在 8/16 以前停在 06 停了十二天：
+每天都有人跑 verify，沒有人重讀 README。
+
+跑得動的前提：07 之後要 Node 20 以上，14、15、17、18 另外要 `python3`（洗牌與突變用）。
+缺什麼它會直接講再退出，不會靜靜地假綠。打真模型是選配，
+`MODEL_CMD` 沒設就走各自的罐頭模型，而罐頭跑出來的數字不代表任何模型的行為。
 
 01 到 05 全部在 `mktemp -d` 裡跑，不碰你的檔案。
 **06 不一樣**：它要示範「掛了什麼才是判準」，所以第 4 節會把你的家目錄

@@ -267,5 +267,17 @@ if want 22; then
   [ -z "${M}" ] && ok "split $(sm split)、direct $(sm direct)，兩組都對得上原始資料" || bad "${M}"
 fi
 
+# ── 23 頂層 README 那張表跟 recipes/ 對得上 ──────────────────
+# 最新這份帶著它跑。那張表 8/16 以前停在 06 停了十二天，中間補了十二份，
+# 因為每天都有人跑 verify，沒有人重讀 README。
+if want 23; then
+  case_ "23 頂層 README 的 recipe 索引沒有漏列，也沒有死連結"
+  if OUT=$(bash ../../check-index.sh 2>&1); then
+    ok "${OUT}"
+  else
+    bad "${OUT}"
+  fi
+fi
+
 printf '\n%s 綠 %s 紅\n' "${PASS}" "${FAIL}"
 [ "${FAIL}" -eq 0 ]
