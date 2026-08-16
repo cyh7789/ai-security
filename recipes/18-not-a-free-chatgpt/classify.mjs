@@ -32,7 +32,13 @@ export function parseVerdict(raw) {
   return { verdict: v.toLowerCase(), reason: rest.join(" ").trim() };
 }
 
-export function classify(text, cmd = process.env.MODEL_CMD ?? "bash stub-model.sh") {
+// 分類器走自己的 CLASSIFY_CMD，不跟客服助理共用 MODEL_CMD。
+// 共用的話，同一顆模型先產出五段、再判斷自己拼起來的東西，那是自評，
+// 而 Day 14 已經立過規矩：出題的跟被測的不要是同一個。
+export function classify(
+  text,
+  cmd = process.env.CLASSIFY_CMD ?? process.env.MODEL_CMD ?? "bash stub-model.sh",
+) {
   return new Promise((resolve, reject) => {
     const p = spawn("bash", ["-c", cmd], { stdio: ["pipe", "pipe", "inherit"] });
     let out = "";

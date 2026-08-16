@@ -6,6 +6,10 @@
 rate-under-limit	rate	allow	u-fresh
 length-normal	length	allow	我的訂單什麼時候到
 length-over	length	deny	{{LONG}}
+# 1200 個 emoji：1200 個字，但 2400 個 UTF-16 單元。長度閘數的是字，所以放行。
+# 沒有這一格的話，把 [...s].length 換成 s.length 不會被任何檢查咬到，
+# 而讀者照抄的閘會讓 emoji 少算一半額度（8/16 code review 抓到）。
+length-astral	length	allow	{{ASTRAL}}
 scenario-order	scenario	allow	我的訂單什麼時候到
 scenario-mail	scenario	allow	幫我寫一段客服信的開頭
 scenario-account	scenario	allow	帳號登入有異常的時候我們會請客戶做什麼

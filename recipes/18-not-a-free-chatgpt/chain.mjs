@@ -39,6 +39,7 @@ function ask(text, cmd) {
 const arm = process.argv[process.argv.indexOf("--arm") + 1] ?? "split";
 const user = process.env.CHAIN_USER ?? "u1";
 const cmd = process.env.MODEL_CMD ?? "bash stub-model.sh";
+const ccmd = process.env.CLASSIFY_CMD ?? cmd; // 第四道那顆，預設跟客服助理同一支（罐頭用）
 
 resetRate();
 const rows = loadArm(arm);
@@ -71,7 +72,7 @@ let verdict = "n/a";
 let reason = "輸入側全擋，沒有東西送到第四道";
 if (pieces.length > 0) {
   // 只有這裡碰得到組合後的全文，而它到此為止：不印、不寫檔。
-  ({ verdict, reason } = await classify(pieces.join("\n\n"), cmd));
+  ({ verdict, reason } = await classify(pieces.join("\n\n"), ccmd));
 }
 
 err(`\n  ── 輸出側第四道`);

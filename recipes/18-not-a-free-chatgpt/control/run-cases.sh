@@ -8,6 +8,7 @@ set -u
 cd "$(dirname "$0")/.."
 
 LONG=$(node -e 'process.stdout.write("字".repeat(2001))')
+ASTRAL=$(node -e 'process.stdout.write("\u{1F600}".repeat(1200))')
 pass=0
 fail=0
 
@@ -22,6 +23,7 @@ check() { # name want got
 while IFS=$'\t' read -r name gate want input; do
   case "${name}" in ''|\#*) continue ;; esac
   [ "${input}" = "{{LONG}}" ] && input="${LONG}"
+  [ "${input}" = "{{ASTRAL}}" ] && input="${ASTRAL}"
   if [ "${gate}" = "classify" ]; then
     got=$(printf '%s' "${input}" | node classify.mjs | cut -f1)
   else

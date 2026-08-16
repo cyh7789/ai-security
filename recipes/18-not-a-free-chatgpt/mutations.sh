@@ -20,12 +20,21 @@ tar cf "${BACKUP}" gates.mjs classify.mjs chain.mjs cost.mjs summarise.mjs \
 ATTACKS=../14-same-attacks-every-time/attacks.jsonl
 ATTACKS_BAK="$(dirname "${BACKUP}")/attacks.jsonl"
 cp "${ATTACKS}" "${ATTACKS_BAK}"
-restore() { tar xf "${BACKUP}"; cp "${ATTACKS_BAK}" "${ATTACKS}"; }
+# tar 只覆蓋清單內的檔，刪不掉突變「新增」出來的。8/16 就是這樣讓 leak.txt
+# 跟著第一個 commit 進了公開 repo：那一列讓 chain.mjs 寫檔，restore 沒把它收掉。
+NEWFILES="leak.txt"
+restore() {
+  tar xf "${BACKUP}"
+  cp "${ATTACKS_BAK}" "${ATTACKS}"
+  for f in ${NEWFILES}; do rm -f "${f}"; done
+}
 trap 'restore; rm -rf "$(dirname "${BACKUP}")"' EXIT
 
 bite() {
   local name=$1 want=$2; shift 2
-  "$@" || { printf '  [SKIP] %-48s 改不動\n' "${name}"; return; }
+  # SKIP 要算失敗。錨點被一次無害的 refactor 改掉，就會靜靜少一種而總計照樣是 0 紅
+  # ——跟 check-index.sh 要解決的那件事同型：數字變了沒有人在看。
+  "$@" || { printf '  [SKIP] %-48s 改不動（算失敗）\n' "${name}"; FAIL=$((FAIL+1)); return; }
   if bash verify.sh "${want}" >/dev/null 2>&1; then
     printf '  [FAIL] %-48s 第 %s 條沒咬到\n' "${name}" "${want}"; FAIL=$((FAIL+1))
   else
@@ -55,7 +64,7 @@ bite "次數閘改成一律拒絕" 8 sub gates.mjs '  if (win.length >= LIMITS.p
 bite "視窗長度改成零，誰都不會累積" 7 sub gates.mjs 'now - t < 60_000' 'now - t < 0'
 bite "長度閘的比較反過來" 9 sub gates.mjs '  return n > LIMITS.maxChars' '  return n < LIMITS.maxChars'
 bite "長度上限拉到無限" 9 sub gates.mjs '  maxChars: 2000,' '  maxChars: Number.MAX_SAFE_INTEGER,'
-bite "長度改數 UTF-16 單元而不是字" 9 sub gates.mjs '  const n = [...String(text)].length;' '  const n = String(text).length; if (n > 2000 && n < 2100) return { allow: true, reason: "放行" };'
+bite "長度改數 UTF-16 單元而不是字" 20 sub gates.mjs '  const n = [...String(text)].length;' '  const n = String(text).length;'
 
 echo
 echo "=== 第四道 ==="
@@ -112,8 +121,13 @@ bite "攻擊集那條的載體改回 input" 18 sub ../14-same-attacks-every-time
 
 echo
 echo "=== 反向控制：不影響行為的改動，全部要維持綠 ==="
-sub gates.mjs '// 四道閘。前面三道看送進來的' '// 四道閘。頭三道看送進來的' 2>/dev/null || true
-sub chain.mjs '// 一整條鏈跑一次' '// 一條鏈跑一次' 2>/dev/null || true
+# 錨點打錯會被 || true 吞掉，那一半就沒改到。8/16 的錨點寫「前面三道」，
+# 檔案裡是「前三道」，所以 gates.mjs 一個字都沒動，而第 19 條正是 grep 它的註解。
+for pair in "gates.mjs|// 四道閘。前三道看送進來的|// 四道閘。頭三道看送進來的" \
+            "chain.mjs|// 一整條鏈跑一次|// 一條鏈跑一次"; do
+  IFS='|' read -r f a b <<< "${pair}"
+  sub "${f}" "${a}" "${b}" || { printf '  [FAIL] 反向對照的錨點在 %s 找不到\n' "${f}"; FAIL=$((FAIL+1)); }
+done
 if bash verify.sh >/dev/null 2>&1; then
   printf '  [OK]   %-48s 全部維持綠\n' "只改註解"; PASS=$((PASS+1))
 else
@@ -121,5 +135,6 @@ else
 fi
 restore
 
-printf '\n%s 種咬到 %s 種沒咬到\n' "${PASS}" "${FAIL}"
-[ "${FAIL}" -eq 0 ]
+WANT_TOTAL=31   # 突變列數加反向對照那一列。改表就改這個數字。
+printf '\n%s 種咬到 %s 種沒咬到（預期 %s 種）\n' "${PASS}" "${FAIL}" "${WANT_TOTAL}"
+[ "${FAIL}" -eq 0 ] && [ "${PASS}" -eq "${WANT_TOTAL}" ]
