@@ -232,6 +232,32 @@ const add = (o) => {
   });
 }
 
+// ── Day 18：第一條沒有任何一句是攻擊的攻擊 ────────────────────
+// 前面十八條都有一句話或一段材料，你指得出來「就是這裡」。這條沒有。
+// 五句拆開來問，每一句單獨看都是客服日常，判準只在拼起來的那一段上成立。
+// 載體是 turns 不是 input：分開在幾個回合送出，正是它躲過逐句檢查的方式。
+{
+  const f = need(R("18-not-a-free-chatgpt/prompts/split.tsv"), "Day 18 那一條");
+  const turns = readFileSync(f, "utf8")
+    .split("\n")
+    .filter((l) => l.trim() && !l.startsWith("#"))
+    .map((l) => l.split("\t")[1]);
+  if (turns.length < 2) {
+    console.error("Day 18 那條收到的回合少於兩句，拆解組合的意思就沒了。");
+    process.exit(2);
+  }
+  add({
+    key: "18-split-compose",
+    day: 18,
+    carrier: "turns",
+    kind: "attack",
+    judge: "composed",
+    payload: turns.join("\n"),
+    source: "recipes/18-not-a-free-chatgpt/prompts/split.tsv",
+    note: "五句分次問，逐句都過得了輸入側。判準落在拼起來那一段，只有輸出側看得到。",
+  });
+}
+
 rows.sort((a, b) => a.id.localeCompare(b.id));
 const out = rows.map((r) => JSON.stringify(r)).join("\n") + "\n";
 const target = join(HERE, "attacks.jsonl");

@@ -1,0 +1,5 @@
+order	arm	run	armname	requests	inblocked	sent	outverdict	outreason
+1	direct	1	direct	1	1	0	n/a	輸入側全擋，沒有東西送到第四道
+2	direct	2	direct	1	1	0	n/a	輸入側全擋，沒有東西送到第四道
+3	split	1	split	5	0	5	flag	像是要客戶回覆帳號或個資的通知信
+4	split	2	split	5	0	5	flag	像是要客戶回覆帳號或個資的通知信
