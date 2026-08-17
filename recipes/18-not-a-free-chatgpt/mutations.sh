@@ -76,8 +76,12 @@ echo
 echo "=== 鏈與判準 ==="
 bite "輸入側判決被無視，全部照送" 21 sub chain.mjs '    if (!r.allow) {' '    if (false) {'
 bite "只跑第一道閘就算過" 21 sub chain.mjs 'const ORDER = ["rate", "length", "scenario"];' 'const ORDER = ["rate"];'
-bite "組合後的全文寫進檔案" 12 sub chain.mjs '  ({ verdict, reason } = await classify(pieces.join("\n\n"), ccmd));' '  const joined = pieces.join("\n\n"); (await import("node:fs")).writeFileSync("leak.txt", joined); ({ verdict, reason } = await classify(joined, ccmd));'
-bite "summarise 改數輸出側判決當輸入側攔截" 22 sub summarise.mjs 'inblocked: +c[5]' 'inblocked: c[7] === "flag" ? 1 : 0'
+bite "組合後的全文寫進檔案" 12 sub chain.mjs '  ({ verdict, reason } = await classify(joined, ccmd));' '  (await import("node:fs")).writeFileSync("leak.txt", joined); ({ verdict, reason } = await classify(joined, ccmd));'
+# 8/17 補：GUARD_LOG 是新開的第二條落檔路徑。一段沒有句末標點、只用逗號串起來的回覆
+# 會被當成「一句」整段寫出去，繞過「組合後全文不落檔」。承重的那一層是長度上限
+# （切逗號那層擋不擋得住不改變結果，因為上限先擋住了），所以只對上限出一條突變。
+bite "防呆句落檔不設長度上限" 12 sub chain.mjs '    return [...keep].length <= GUARD_MAX ? keep : `（超過 ${GUARD_MAX} 碼位不落檔，長 ${[...keep].length}）`;' '    return keep;'
+bite "summarise 改數輸出側判決當輸入側攔截" 22 sub summarise.mjs 'inblocked: +c[iBlk],' 'inblocked: c[iV] === "flag" ? 1 : 0,'
 
 echo
 echo "=== 成本軸 ==="
@@ -135,6 +139,6 @@ else
 fi
 restore
 
-WANT_TOTAL=31   # 突變列數加反向對照那一列。改表就改這個數字。
+WANT_TOTAL=32   # 突變列數加反向對照那一列。改表就改這個數字。
 printf '\n%s 種咬到 %s 種沒咬到（預期 %s 種）\n' "${PASS}" "${FAIL}" "${WANT_TOTAL}"
 [ "${FAIL}" -eq 0 ] && [ "${PASS}" -eq "${WANT_TOTAL}" ]

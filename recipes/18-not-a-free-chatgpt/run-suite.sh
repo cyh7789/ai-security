@@ -30,12 +30,12 @@ print("\n".join(plan))
 PY
 )
 
-printf 'order\tarm\trun\tarmname\trequests\tinblocked\tsent\trefused\tguarded\toutverdict\toutreason\n' > "${OUT}"
+printf 'order\tarm\trun\tarmname\trequests\tinblocked\tsent\trefused\tguarded\tperflag\toutverdict\toutreason\n' > "${OUT}"
 k=0
 while read -r arm i; do
   [ -n "${arm}" ] || continue
   k=$((k + 1))
-  if ! line=$(node chain.mjs --arm "${arm}" 2>/dev/null); then
+  if ! line=$(CHAIN_RUN="${i}" node chain.mjs --arm "${arm}" 2>/dev/null); then
     echo "第 ${k} 條（${arm}）掛了，整輪作廢" >&2
     exit 1
   fi

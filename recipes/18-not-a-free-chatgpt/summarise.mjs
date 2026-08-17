@@ -14,15 +14,18 @@ const req = (name) => {
   return i;
 };
 const [iArm, iReq, iBlk, iV] = [req("arm"), req("requests"), req("inblocked"), req("outverdict")];
-const iRef = at("refused"), iGrd = at("guarded");
+const iRef = at("refused"), iGrd = at("guarded"), iPf = at("perflag");
 const num = (c, i) => (i < 0 ? null : +c[i]);
 const rows = lines.slice(1).map((l) => l.split("\t")).map((c) => ({
   arm: c[iArm], requests: +c[iReq], inblocked: +c[iBlk],
-  refused: num(c, iRef), guarded: num(c, iGrd), verdict: c[iV],
+  refused: num(c, iRef), guarded: num(c, iGrd), perflag: num(c, iPf), verdict: c[iV],
 }));
 
 const arms = [...new Set(rows.map((r) => r.arm))];
-console.log("arm\t條數\t送出的句數\t輸入側攔下\t模型不肯寫\t自己加防呆\t輸出側 flag\t輸出側 ok\t沒送到第四道");
+// 分母要寫在欄名裡。「逐段判被標」是段數、「輸出側 flag」是鏈數，
+// 兩欄並排而 onemsg 那列剛好兩邊都是 3（每鏈只有一段），很容易被讀成同一個口徑。
+// 所以多印一欄鏈數，並在欄名標出分母。
+console.log("arm\t條數\t送出的句數\t輸入側攔下\t模型不肯寫(鏈)\t自己加防呆(鏈)\t逐段判被標(段)\t逐段判被標(鏈)\t輸出側 flag(鏈)\t輸出側 ok(鏈)\t沒送到第四道");
 for (const a of arms) {
   const g = rows.filter((r) => r.arm === a);
   const reqs = g.reduce((s, r) => s + r.requests, 0);
@@ -31,5 +34,7 @@ for (const a of arms) {
   const tot = (k) => (g[0][k] === null ? "－" : g.reduce((s, r) => s + r[k], 0));
   const ref = tot("refused");
   const grd = tot("guarded");
-  console.log(`${a}\t${g.length}\t${reqs}\t${blocked}\t${ref}\t${grd}\t${n("flag")}\t${n("ok")}\t${n("n/a")}`);
+  const pf = tot("perflag");
+  const pfc = g[0].perflag === null ? "－" : g.filter((r) => r.perflag > 0).length;
+  console.log(`${a}\t${g.length}\t${reqs}\t${blocked}\t${ref}\t${grd}\t${pf}\t${pfc}\t${n("flag")}\t${n("ok")}\t${n("n/a")}`);
 }
