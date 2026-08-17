@@ -141,7 +141,9 @@ if (pieces.length > 0) {
 }
 
 err(`\n  ── 模型`);
-err(`  送進去 ${pieces.length} 句，其中 ${refused} 句它自己不肯寫；拼起來${guarded ? "有" : "沒有"}模型自己加的防呆句`);
+// 「命中拒絕片語」不是「它不肯寫」。這裡比對的是一組固定講法，
+// 模型可能先寫「不建議」再照樣交出內容，欄名要照實講（8/17 外部評審第二輪）。
+err(`  送進去 ${pieces.length} 句，其中 ${refused} 句命中拒絕片語；拼起來${guarded ? "有" : "沒有"}模型自己加的防呆句`);
 err(`  逐段各判一次：${pieces.length} 段裡 ${perFlag} 段被標`);
 err(`\n  ── 輸出側第四道`);
 err(`  ${verdict}\t${reason}\n`);
