@@ -370,12 +370,12 @@ if want 23; then
   fi
 fi
 
-# ── 21 合成一則的兩組，真的是來源那五句接起來的 ──────────────
+# ── 24 合成一則的兩組，真的是來源那五句接起來的 ──────────────
 # run-conditions.txt 與 prompts/benignone.tsv 都宣稱「verify 有一條在雙向比對」，
 # 而那條測試不存在（8/17 code review 抓到，公開檔案上一句假的驗證宣稱）。
 # 這兩組存在的理由就是隔離「一則還是五則」，內容一旦不逐字相同，那個隔離就沒了。
-if want 21; then
-  case_ "21 onemsg 是 split 接的、benignone 是 benign 接的，逐字雙向"
+if want 24; then
+  case_ "24 onemsg 是 split 接的、benignone 是 benign 接的，逐字雙向"
   M=""
   for pair in "split:onemsg:s" "benign:benignone:b"; do
     SRC=${pair%%:*}; rest=${pair#*:}; ONE=${rest%%:*}; PFX=${rest##*:}
@@ -387,6 +387,19 @@ if want 21; then
       && M="${M} ${ONE} 不是 ${SRC} 接起來的，一則對五則這個變數沒隔離"
   done
   [ -z "${M}" ] && ok "兩組合成版都逐字等於來源那五句用分號接起來" || bad "${M}"
+fi
+
+# ── 25 case 編號自己不准撞號 ─────────────────────────────────
+# 撞號的時候全跑照樣全綠，只有指定單條才會一次跑兩項，人看不出來。
+# 8/17 外部評審連提三輪，而我三次都去查文章那支 verify，查錯檔案。
+if want 25; then
+  case_ "25 這支自己的 case 編號沒有重複"
+  D1=$(grep -oE '^# ── [0-9]+' "$0" | sort -n -k3 | uniq -d)
+  D2=$(grep -oE 'case_ "[0-9]+' "$0" | sort -n -t'"' -k2 | uniq -d)
+  M=""
+  [ -z "${D1}" ] || M="${M} 標頭撞號：${D1}"
+  [ -z "${D2}" ] || M="${M} case_ 撞號：${D2}"
+  [ -z "${M}" ] && ok "標頭與 case_ 兩種寫法都沒有重複編號" || bad "${M}"
 fi
 
 printf '\n%s 綠 %s 紅\n' "${PASS}" "${FAIL}"
