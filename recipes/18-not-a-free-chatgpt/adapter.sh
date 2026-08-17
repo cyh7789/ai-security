@@ -4,7 +4,9 @@
 #
 #   MODEL_CMD='bash adapter.sh' N=12 bash run-suite.sh
 #
-# 客服助理跟第四道那顆分類器走同一支，因為這天要示範的是「有這一格」，
-# 不是「這一格該用哪顆模型」。選型與驗證是 Day 26。
+# 只給客服助理用。第四道那顆分類器走 classifier.sh，是另一家的模型，
+# 因為同一顆先產出五段再判斷自己拼起來的東西就是自評。
+# （8/16 第一版兩邊共用這一支，讀者那輪抓到，8/17 這行註解才跟著改。）
+# 那一顆該怎麼挑、怎麼驗是 Day 26。
 set -u
 exec codex exec --model "${CODEX_MODEL:-gpt-5.6-sol}" --sandbox read-only 2>/dev/null

@@ -1,4 +1,5 @@
-2026-08-17 定案輪之二。文章引用的數字全部來自這一輪，final.tsv 就是它。
+2026-08-17 定案輪之二。文章引用的數字全部來自這一輪，這裡的檔案是 results.tsv
+（文章那邊的 sources/final.tsv 是它的複本，兩邊逐位元相同，檔名不一樣）。
 
 模型      客服助理 codex exec --model gpt-5.6-sol；第四道 claude -p --model claude-haiku-4-5-20251001
 發數      split / onemsg / benign / benignone / evade 各 12 條，共 60 條

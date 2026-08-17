@@ -206,13 +206,19 @@ if want 13; then
       const ask = rows.reduce((a, b) => a + b, 0) / rows.length;
       const normal = prefix + ask, worst = prefix + LIMITS.maxChars;
       process.stdout.write([prefix, (worst / normal).toFixed(1),
-        (worst / (normal * LIMITS.perMinute)).toFixed(2)].join(" "));
+        (worst / (normal * LIMITS.perMinute)).toFixed(2),
+        (worst / (worst * LIMITS.perMinute)).toFixed(2)].join(" "));
     });')
   set -- ${WANT}
   M=""
   printf '%s' "${O}" | grep -qF "固定前綴	$1 字" || M="${M} 前綴不是 $1"
   printf '%s' "${O}" | grep -qF "單筆比值	$2 倍" || M="${M} 單筆比值不是 $2"
-  printf '%s' "${O}" | grep -qF "最貴那筆佔一分鐘	$3" || M="${M} 一分鐘佔比不是 $3"
+  printf '%s' "${O}" | grep -qF "達上限一筆／典型分鐘	$3" || M="${M} 典型分鐘佔比不是 $3"
+  # 8/17 外部評審：拿 normal*perMinute 當「額度」會讓 $3 讀起來像安全上界。
+  # 真正的上界是 worst*perMinute，兩個都要印，而且名稱要分得開。
+  printf '%s' "${O}" | grep -qF "達上限一筆／最壞分鐘	$4" || M="${M} 最壞分鐘佔比不是 $4"
+  printf '%s' "${O}" | grep -q "這才是閘門允許的上界" || M="${M} 沒印出真正的上界"
+  printf '%s' "${O}" | grep -q "一分鐘額度" && M="${M} 「一分鐘額度」那個錯名稱回來了"
   # 舊那句結論不准回來：它是拿只數使用者字元的分母算的
   printf '%s' "${O}" | grep -q "抵得上 rate limit 放行一整分鐘" && M="${M} 舊的結論句回來了"
   [ -z "${M}" ] && ok "前綴 $1 字、單筆 $2 倍、佔一分鐘 $3，三個都對得上獨立重算" || bad "${M}"
