@@ -48,16 +48,16 @@ if run 2; then
   G_IN=$(grep -c '"carrier":"input"' attacks.jsonl)
   G_PG=$(grep -c '"carrier":"page"' attacks.jsonl)
   G_ALL=$(grep -c . attacks.jsonl)
-  # 其餘六種載體各自的條數也要對：dom 2、http 2、kb 1、tool 1、data 1、requests 1。
+  # 其餘七種載體各自的條數也要對：dom 2、http 2、kb 1、tool 1、data 1、requests 1、param 1。
   # 寫成一個「其他 8 條」的常數的話，多一條 tool 少一條 dom 也會通過。
   G_REST=""
-  for c in dom:2 http:2 kb:1 tool:1 data:1 requests:1; do
+  for c in dom:2 http:2 kb:1 tool:1 data:1 requests:1 param:1; do
     n=$(grep -c "\"carrier\":\"${c%%:*}\"" attacks.jsonl)
     [ "${n}" = "${c##*:}" ] || G_REST="${G_REST} ${c%%:*}=${n}(要${c##*:})"
   done
   [ "${G_IN}" = "${W_IN}" ] && [ "${G_PG}" = "${W_PG}" ] && [ -z "${G_REST}" ] \
-    && [ "${G_ALL}" = "$((W_IN + W_PG + 8))" ] \
-    && ok "input ${G_IN}、page ${G_PG}、dom/http/kb/tool/data/requests 各 2/2/1/1/1/1，合計 ${G_ALL}" \
+    && [ "${G_ALL}" = "$((W_IN + W_PG + 9))" ] \
+    && ok "input ${G_IN}、page ${G_PG}、dom/http/kb/tool/data/requests/param 各 2/2/1/1/1/1/1，合計 ${G_ALL}" \
     || bad "input ${G_IN}/${W_IN}、page ${G_PG}/${W_PG}、合計 ${G_ALL}${G_REST}"
 fi
 

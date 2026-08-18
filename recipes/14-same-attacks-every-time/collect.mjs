@@ -7,7 +7,7 @@
 // 為什麼要用收的不用手抄：手抄的清單會跟來源分岔，而分岔的那一天你不會知道。
 // 來源改了這支就會產出不一樣的東西，--check 那條就紅。
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -259,6 +259,29 @@ const add = (o) => {
     payload: turns.join("\n"),
     source: "recipes/18-not-a-free-chatgpt/prompts/split.tsv",
     note: "五句分開送，各自獨立無對話歷史。判準落在拼起來那一段，而那一段只存在於收件者手上。",
+  });
+}
+
+// Day 19：載體是 param，判準是 file。這是第一條判準落在檔案系統上的攻擊，
+// 前十九條分別判 DOM、HTTP 回應、模型回覆裡的標記、工具連到哪裡、那筆資料還在不在。
+{
+  const f = need(R("19-straight-into-the-shell/probe.mjs"), "Day 19 那一條");
+  const mod = await import(pathToFileURL(f).href);
+  const subst = mod.attacks("/tmp/PWNED").find((a) => a.name === "subst");
+  if (!subst) {
+    console.error("Day 19 那條在 probe.mjs 裡找不到 subst，攻擊集不能靠記憶補。");
+    process.exit(2);
+  }
+  add({
+    key: "19-shell-subst",
+    day: 19,
+    carrier: "param",
+    kind: "attack",
+    judge: "file",
+    mark: "PWNED",
+    payload: subst.input,
+    source: "recipes/19-straight-into-the-shell/probe.mjs",
+    note: "型別驗證過的字串，帶進拼出來的 shell 指令。判準不在回覆也不在資料庫，在檔案系統：那個標記檔出現了沒有。",
   });
 }
 
