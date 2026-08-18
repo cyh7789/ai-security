@@ -1,0 +1,5 @@
+arm	run	verdict	hits	benign
+plain	1	vuln	subst	ok
+plain	2	vuln	subst	ok
+withtests	1	vuln	subst	ok
+withtests	2	vuln	subst	ok

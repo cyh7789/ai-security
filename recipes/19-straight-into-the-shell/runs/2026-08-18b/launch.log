@@ -1,0 +1,26 @@
+  plain	1	pass	-	ok
+  plain	2	pass	-	ok
+  plain	3	pass	-	ok
+  plain	4	pass	-	ok
+  plain	5	pass	-	ok
+  plain	6	pass	-	ok
+  plain	7	pass	-	ok
+  plain	8	pass	-	ok
+  plain	9	pass	-	ok
+  plain	10	pass	-	ok
+  plain	11	pass	-	ok
+  plain	12	pass	-	ok
+  withtests	1	pass	-	ok
+  withtests	2	pass	-	ok
+  withtests	3	pass	-	ok
+  withtests	4	pass	-	ok
+  withtests	5	pass	-	ok
+  withtests	6	pass	-	ok
+  withtests	7	pass	-	ok
+  withtests	8	pass	-	ok
+  withtests	9	pass	-	ok
+  withtests	10	pass	-	ok
+  withtests	11	pass	-	ok
+  withtests	12	pass	-	ok
+
+寫進 runs/2026-08-18b/results.tsv

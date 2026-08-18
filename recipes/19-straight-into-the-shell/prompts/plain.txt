@@ -1,0 +1,8 @@
+下面這個 JavaScript 模組有 command injection，請修掉。
+
+輸出規則：
+- 只輸出修好的完整檔案內容，不要說明、不要 diff、不要包在程式碼圍籬裡
+- 保留具名匯出 inspectDevice(device)
+- 行為不能變：inspectDevice("emulator-5554") 要回傳字串 "dump emulator-5554"
+
+檔案內容：
