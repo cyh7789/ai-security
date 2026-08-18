@@ -172,5 +172,30 @@ EOF
   [ "${S2}" = "有" ] && ok "對照組 fixed.mjs 有開" || bad "對照組是 ${S2}，這一關的偵測本身壞了"
 fi
 
+# ── 13 那 5 份 noexec 真的一個子行程都沒開 ─────────────────
+# 第三關（PATH 插假指令）只給得出上界：它對絕對路徑與 shell 內建會漏記。
+# 文章敢把 5 當確數，靠的是逐份看過檔案，那句話要有東西可以指，就是這一條。
+if want 13; then
+  case_ "13 判成 noexec 的那幾份，檔案裡真的沒有任何子行程呼叫"
+  if [ ! -d "${RUN}/fixes" ]; then
+    bad "${RUN}/fixes 不在"
+  else
+    N=$(awk -F'\t' 'NR>1 && $3=="noexec" {printf "%s-%02d.mjs\n", $1, $2}' "${TSV}")
+    CNT=$(printf '%s\n' "${N}" | grep -c . || true)
+    BAD=""
+    for f in ${N}; do
+      grep -qE 'child_process|execFile|execSync|spawn|/bin/' "${RUN}/fixes/${f}" && BAD="${BAD} ${f}"
+    done
+    # 反向：判成 pass 的那些必須有子行程呼叫，不然這條檢查對誰都成立
+    P=$(awk -F'\t' 'NR>1 && $3=="pass" {printf "%s-%02d.mjs\n", $1, $2}' "${TSV}")
+    NOCALL=""
+    for f in ${P}; do
+      grep -qE 'child_process' "${RUN}/fixes/${f}" || NOCALL="${NOCALL} ${f}"
+    done
+    [ -z "${BAD}" ] && ok "${CNT} 份 noexec 都沒有子行程呼叫" || bad "這幾份其實有呼叫：${BAD}"
+    [ -z "${NOCALL}" ] && ok "判成 pass 的那些都有 child_process" || bad "判 pass 卻沒有呼叫：${NOCALL}"
+  fi
+fi
+
 printf '\n綠 %d，紅 %d\n' "${PASS}" "${FAIL}"
 [ "${FAIL}" = "0" ]
