@@ -59,11 +59,35 @@ node summarise.mjs runs/2026-08-18b/results.tsv
 真實案例（CVE-2025-59834）的 payload 是 `; rm -rf /tmp;#`，advisory 自己在旁邊寫了
 `be careful actually executing this payload`。這裡不跑那條。
 
+## 三條攻擊輸入蓋不到哪裡（`quote-boundary.mjs` 實跑）
+
+`vuln.mjs` 把字串插在一對雙引號裡，所以分號打不穿。**那個「打不穿」只在輸入本身不含雙引號時成立**：
+
+```
+$ node quote-boundary.mjs
+分號（probe 的 sep）	目標檔 22→22 位元組	標記檔 沒有
+自帶雙引號再用分號	目標檔 22→22 位元組	標記檔 有
+自帶雙引號再重導向	目標檔 22→7 位元組	標記檔 沒有
+變數展開	目標檔 22→22 位元組	標記檔 沒有
+```
+
+第三列最難看：目標檔被覆寫，而標記檔沒建，**三關會全綠**。判準只認標記檔，看不到「檔案被改掉」這一族。
+
+## `execFileSync` 擋的是哪一層，不是全部
+
+它擋的是 shell 對那一行的解讀。以下都還在：
+
+- `shell: true` 一開就回到原點（Node 文件：`If the shell option is enabled, do not pass unsanitized user input to this function`）
+- **參數注入**：字串形狀合法，但被目標程式當成選項。`--` 可以把後面的字釘成操作數
+- 指令名走 PATH 找，PATH 本身也是輸入
+- Windows 的 `.bat` 與 `.cmd` 不能直接交給 `execFile`
+- 目標程式自己可能再開一個 shell
+
 ## 這個 recipe 沒有回答的
 
 - 只有一種語言、一種呼叫形狀（`child_process`）。SQL 與路徑那兩類沒測
 - 一顆模型、一天、兩份提示。換模型要重測
-- `probe` 只認得標記檔。攻擊輸入不建檔案的變體（外連、讀檔）它看不到
+- `probe` 只認得標記檔。不建檔案的變體（外連、讀檔、覆寫既有檔案）它看不到
 
 ## 動手前就寫死的三種結果（預先登記）
 
