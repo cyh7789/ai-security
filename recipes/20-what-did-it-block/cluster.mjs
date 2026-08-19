@@ -61,21 +61,42 @@ function jaccard(a, b) {
   return hit / (a.size + b.size - hit);
 }
 
-// 單連結聚合：跟群裡任何一句夠像就併進去。
+// 單連結聚合，走 union-find。
+//
+// 第一版不是這樣寫的，它逐筆掃、找到第一個有成員夠像的群就塞進去然後 break。
+// 那個寫法有兩個問題：A 接 B、B 接 C 而 A 不接 C 的時候三者不會併成一群，
+// 而且結果會隨輸入順序改變。名字叫單連結、行為不是，那比沒做還糟，
+// 因為報出來的堆數看起來像實驗結果（8/19 外審抓到，數字全部重跑過）。
+//
 // 挑單連結是因為它最容易把東西併在一起，也就是最容易讓「這些是同一件事」成立。
-// 用一個偏向自己結論的方法，是為了讓「連它都分不出來」這句話說得比較保守；
-// 反過來如果它照樣分出很多群，那個結果就更難推翻。
+// 用一個偏向自己結論的方法，是為了讓「連它都分不出來」這句話說得比較保守。
 function cluster(items, th) {
   const gs = items.map(grams);
-  const groups = [];
-  for (let i = 0; i < items.length; i += 1) {
-    let put = null;
-    for (const g of groups) {
-      if (g.some((j) => jaccard(gs[i], gs[j]) >= th)) { put = g; break; }
+  const parent = items.map((_, i) => i);
+  const find = (x) => {
+    while (parent[x] !== x) {
+      parent[x] = parent[parent[x]];
+      x = parent[x];
     }
-    if (put) put.push(i); else groups.push([i]);
+    return x;
+  };
+  const union = (a, b) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent[rb] = ra;
+  };
+  for (let i = 0; i < items.length; i += 1) {
+    for (let j = i + 1; j < items.length; j += 1) {
+      if (jaccard(gs[i], gs[j]) >= th) union(i, j);
+    }
   }
-  return groups;
+  const byRoot = new Map();
+  for (let i = 0; i < items.length; i += 1) {
+    const r = find(i);
+    if (!byRoot.has(r)) byRoot.set(r, []);
+    byRoot.get(r).push(i);
+  }
+  return [...byRoot.values()];
 }
 
 console.log(`門檻 ${TH}（字元 bigram 的 Jaccard，單連結）`);

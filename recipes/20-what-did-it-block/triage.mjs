@@ -8,14 +8,35 @@
 //       那個總和不對應任何東西。這支腳本遇到多版本會分開列、不加總。
 //   二、切片裡面用 reason_code 計數。它是判斷點自己吐出來的短碼，
 //       同一個分支永遠是同一個字串，數得動。
-//   三、只有 reason_code 是空的那一格，才需要把 reason_text 拿去分群。
-//       那一格才是「你不知道要找什麼」的地方，也才是 AI 分群真正有用的位置。
+//   三、**有 code 不等於這一筆不用看。** code 只說得出它走到哪個程式分支，
+//       說不出那個決定對不對。這支的第一版把「有 code」當成「已知情境」，
+//       於是有 code 的全部不進人工佇列，而 Day 20 自己找到的那條誤擋
+//       （防詐宣導，code 是 SCOPE_BLOCK，看起來再正常不過）就永遠不會被撈出來。
+//       用這個 recipe 教的方法找不到這個 recipe 自己找到的東西，那方法就是錯的
+//       （8/19 外審抓到）。
+//       所以：沒有 code 的全部進候選；有 code 的照樣要抽樣覆核，
+//       而且量大的那幾個 code 要在同一個 code 裡面再看有沒有次分類。
 //   四、分群的結果是候選，不是判決。哪一筆算誤擋、哪一筆算漏網由人定，
 //       判準是 Day 14 自己寫下的成功條件。交給模型判等於讓防線自己打自己的成績。
 //
 // 第三步是這個 recipe 最想講的一句。把全部理由丟給 AI 分群，看起來很像在做事，
-// 實際上你會拿到一堆「模型換了措辭的同一句話」堆成的群。
+// 實際上你會拿到一堆「模型換了措辭的同一句話」堆成的群；而只看有沒有 code
+// 就決定要不要覆核，你會漏掉那些「分支對、判斷錯」的整類問題。
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { readJournal } from "./journal.mjs";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+// 標注清單是人寫的那一份，triage 只讀不寫。它存在的意義就是回答
+// 「這個決定對不對」，那件事 reason_code 答不出來。
+const labels = readFileSync(join(HERE, "labels.tsv"), "utf8")
+  .split("\n")
+  .filter((l) => l && !l.startsWith("#") && !l.startsWith("id\t"))
+  .map((l) => {
+    const c = l.split("\t");
+    return { id: c[0], digest: c[1], verdict: c[5] };
+  });
 
 const path = process.argv[2];
 const rows = path ? readJournal(path) : readJournal();
@@ -56,6 +77,24 @@ for (const [k, rs] of [...slices.entries()].sort()) {
   for (const [code, n] of [...counts.entries()].sort((a, b) => b[1] - a[1])) {
     console.log(`  ${String(n).padStart(4)}　${code}`);
   }
+
+  // 有 code 的那些也要有人看。這裡只挑出「該去看」的兩種，不做判斷：
+  // 量最大的那個 code（誤擋通常藏在量大的分支裡，因為它是規則寫得太寬），
+  // 以及已經被人標注過的那些（標注清單裡的 verdict 是人給的，不是 code 給的）。
+  const labelled = new Set(labels.map((l) => l.digest));
+  const hit = rs.filter((r) => labelled.has(r.digest));
+  if (hit.length) {
+    console.log(`  這一片裡有 ${hit.length} 筆在標注清單上，逐筆列出來（它們都有 code）：`);
+    for (const r of hit) {
+      const l = labels.find((x) => x.digest === r.digest);
+      console.log(`        ${r.trace_id}\t${r.reason_code}\t人判：${l.verdict}`);
+    }
+  }
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+  if (top && top[1] >= 2) {
+    console.log(`  量最大的 code 是 ${top[0]}（${top[1]} 筆），要在這個 code 裡面再看有沒有次分類。`);
+  }
+
   if (needCluster.length) {
     console.log(`  ${String(needCluster.length).padStart(4)}　沒有 reason_code，要人看（分群只跑這一格）`);
     for (const r of needCluster.slice(0, 5)) console.log(`        ${r.digest}\t${r.reason_text}`);

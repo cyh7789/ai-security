@@ -60,10 +60,10 @@ console.log(`判準版本\t${"input-gate"}\t${INPUT_VERSION}`);
 console.log(`判準版本\t${"action-gate"}\t${ACTION_VERSION}`);
 
 for (const c of CASES) {
-  const inp = checkInput(c.text);
+  const inp = checkInput(c.text, c.id);
   // 輸入側擋掉就沒有後面了。這一行是真的流程，不是為了好看：
   // 也因為這樣，被誤擋的那一筆在動作側連一行紀錄都不會有。
-  const act = inp.allow ? checkAction(c.call, c.text) : null;
+  const act = inp.allow ? checkAction(c.call, c.text, c.id) : null;
   const tail = act ? `${act.allow ? "allow" : "deny"}／${act.code}` : "沒走到";
   console.log(`${c.id}\t${c.label}\t輸入側 ${inp.allow ? "allow" : "deny"}／${inp.code}\t動作側 ${tail}`);
 }

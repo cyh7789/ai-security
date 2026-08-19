@@ -3,6 +3,13 @@
 // 欄位七個，少一個都會讓事後那份統計失去意義：
 //
 //   ts             什麼時候
+//   trace_id       同一次請求的識別碼。少了它，input-gate 那一列跟 action-gate
+//                  那一列就對不起來：兩道閘的 digest 算的是不同東西（一個是輸入
+//                  文字，一個是工具加參數），而就算兩邊都雜湊同一段文字，
+//                  兩個人同時送一模一樣的字也會拿到同一個 digest。
+//                  這一欄不是可選的（8/19 外審抓到，原本七欄沒有它）
+//   schema_version 這張表自己的版本。前半篇整篇在講欄位會長，
+//                  新表當然要自己標，不然兩週後同一個坑再踩一次
 //   point          哪一個判斷點（同一個系統有好幾個，混在一起數就白數了）
 //   policy_version 當時那個判斷點用的判準是哪一版
 //   digest         輸入的指紋，不是輸入本身（見下面「不記什麼」）
@@ -20,7 +27,11 @@ import { dirname, join } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const JOURNAL = join(HERE, "journal.tsv");
-export const COLUMNS = ["ts", "point", "policy_version", "digest", "decision", "reason_code", "reason_text"];
+export const SCHEMA_VERSION = "1";
+export const COLUMNS = [
+  "ts", "trace_id", "schema_version", "point", "policy_version",
+  "digest", "decision", "reason_code", "reason_text",
+];
 
 // 判準版本不是手填的。
 //
@@ -51,7 +62,7 @@ export function digest(text) {
 // 不把它釘住的話，「連跑兩次結果一致」這條就驗不了，而那條是紀錄能不能拿來
 // 比對版本差異的前提。
 export function record(entry) {
-  const row = { ts: process.env.JOURNAL_NOW || new Date().toISOString(), ...entry };
+  const row = { ts: process.env.JOURNAL_NOW || new Date().toISOString(), schema_version: SCHEMA_VERSION, ...entry };
   for (const c of COLUMNS) {
     if (row[c] === undefined || row[c] === "") row[c] = "-";
     // 值裡面有 tab 或換行，整個檔的欄位就錯位了，而錯位之後每一欄都還讀得出東西，

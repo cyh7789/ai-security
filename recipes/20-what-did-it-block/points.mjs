@@ -43,9 +43,10 @@ export const ACTION_VERSION = policyVersion(
 // 只記擋下來的那些是最省事的做法，也是這件事最常見的做法，而它剛好把
 // 「漏網」整類問題變成看不見：一筆該擋沒擋的請求，在只記 deny 的紀錄裡
 // 連一行都不會出現。你翻遍紀錄找不到它，不是因為它不存在，是因為你沒記。
-export function checkInput(text) {
+export function checkInput(text, traceId) {
   const r = scenarioGate(text);
   record({
+    trace_id: traceId,
     point: INPUT_POINT,
     policy_version: INPUT_VERSION,
     digest: digest(text),
@@ -56,9 +57,10 @@ export function checkInput(text) {
   return r;
 }
 
-export function checkAction(call, userRequest) {
+export function checkAction(call, userRequest, traceId) {
   const r = externalGate(call, userRequest);
   record({
+    trace_id: traceId,
     point: ACTION_POINT,
     policy_version: ACTION_VERSION,
     digest: digest(`${call.tool}:${JSON.stringify(call.args ?? {})}|${userRequest}`),

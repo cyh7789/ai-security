@@ -70,8 +70,9 @@ fi
 # 這條在 record() 只寫 deny 的時候會紅。
 if want 2; then
   case_ "2 紀錄裡放行與擋下都有"
-  A=$(tail -n +2 "${TMP}/j1.tsv" | col 5 | grep -c '^allow$' || true)
-  D=$(tail -n +2 "${TMP}/j1.tsv" | col 5 | grep -c '^deny$' || true)
+  DEC=$(head -1 "${TMP}/j1.tsv" | tr '\t' '\n' | grep -n '^decision$' | cut -d: -f1)
+  A=$(tail -n +2 "${TMP}/j1.tsv" | col "${DEC}" | grep -c '^allow$' || true)
+  D=$(tail -n +2 "${TMP}/j1.tsv" | col "${DEC}" | grep -c '^deny$' || true)
   [ "${A}" -ge 1 ] && [ "${D}" -ge 1 ] \
     && ok "放行 ${A} 筆、擋下 ${D} 筆，兩種都留下了" \
     || bad "放行 ${A}、擋下 ${D}，少了一種就看不到另一半"
@@ -96,14 +97,14 @@ fi
 # 理由那一欄是模型寫的自由文字。裡面出現一個 tab，整個檔從那一列開始錯位，
 # 而錯位之後每一欄都還讀得出東西，不會噴錯。
 if want 4; then
-  case_ "4 每一列都是七欄"
+  case_ "4 每一列都是九欄"
   N=$(head -1 "${TMP}/j1.tsv" | tr '\t' '\n' | grep -c .)
   BADROW=$(tail -n +2 "${TMP}/j1.tsv" | while IFS= read -r l; do
     c=$(printf '%s' "$l" | tr '\t' '\n' | grep -c .)
-    [ "$c" = "7" ] || printf 'x'
+    [ "$c" = "9" ] || printf 'x'
   done | grep -c x || true)
-  [ "${N}" = "7" ] && [ "${BADROW}" = "0" ] \
-    && ok "表頭 7 欄，資料列沒有一列欄數不對" \
+  [ "${N}" = "9" ] && [ "${BADROW}" = "0" ] \
+    && ok "表頭 9 欄，資料列沒有一列欄數不對" \
     || bad "表頭 ${N} 欄、欄數不對的資料列 ${BADROW} 列"
 fi
 
@@ -134,7 +135,7 @@ if want 6; then
     import('./journal.mjs').then((m) => {
       console.log(m.digest(process.argv[1]));
     })" "$BQ")
-  tail -n +2 "${TMP}/j1.tsv" | cut -f2,4 | grep -qx "input-gate${TAB}${D1}" \
+  tail -n +2 "${TMP}/j1.tsv" | cut -f4,6 | grep -qx "input-gate${TAB}${D1}" \
     && ok "紀錄裡那筆誤擋的指紋，等於應放行集 B4 那句話算出來的" \
     || bad "B4 的指紋 ${D1} 在紀錄裡找不到"
 fi
@@ -147,7 +148,7 @@ if want 7; then
   LD=$(grep '^F1' labels.tsv | col 2)
   LV=$(grep '^F1' labels.tsv | col 4)
   NOW=$(node -e 'import("./points.mjs").then((m) => console.log(m.INPUT_VERSION))')
-  tail -n +2 "${TMP}/j1.tsv" | cut -f2,4 | grep -qx "input-gate${TAB}${LD}" \
+  tail -n +2 "${TMP}/j1.tsv" | cut -f4,6 | grep -qx "input-gate${TAB}${LD}" \
     && ok "指紋 ${LD} 在紀錄裡" || bad "指紋 ${LD} 在紀錄裡找不到"
   [ "${LV}" = "${NOW}" ] \
     && ok "標注時的判準版本 ${LV} 就是現在這一版" \
@@ -222,7 +223,7 @@ fi
 if want 12; then
   case_ "12 同一個判斷點出現兩個判準版本時，不加總"
   # 版本號不寫死在這裡：判準一改它就會變，寫死的話這條會靜靜地造不出第二個版本。
-  V=$(tail -n +2 "${TMP}/j1.tsv" | cut -f3 | head -1)
+  V=$(tail -n +2 "${TMP}/j1.tsv" | cut -f5 | head -1)
   { head -1 "${TMP}/j1.tsv"; tail -n +2 "${TMP}/j1.tsv"; \
     tail -n +2 "${TMP}/j1.tsv" | sed "s/${V}/deadbeef/"; } > "${TMP}/two.tsv"
   node triage.mjs "${TMP}/two.tsv" > "${TMP}/two.out"
@@ -295,6 +296,56 @@ if want 17; then
   grep -q "benign	5	48	${BH}" README.md || M="${M} README 貼的 benign 堆數不是 ${BH}"
   grep -q "還有 ${EH} 堆" README.md || M="${M} README 沒寫 evade 的 ${EH} 堆"
   [ -z "${M}" ] && ok "benign ${BH} 堆、evade ${EH} 堆，判語與數字一致" || bad "對不上：${M}"
+fi
+
+# ── 18 分群真的是單連結：換個輸入順序，堆數不能變 ──────────
+# 第一版寫成「找到第一個夠像的群就塞進去」，那個結果會隨輸入順序改變，
+# 而它的名字叫單連結。名字跟行為不符最糟，因為報出來的堆數看起來像實驗結果。
+# 這條就是釘那件事：真的 single-linkage 等價於相似度圖的連通分量，跟順序無關。
+if want 18; then
+  case_ "18 分群結果不隨輸入順序改變"
+  R=$(node -e '
+    const { readFileSync, readdirSync, statSync } = require("node:fs");
+    const { join } = require("node:path");
+    const RUNS = "../18-not-a-free-chatgpt/runs";
+    const set = new Set();
+    for (const d of readdirSync(RUNS)) {
+      const dir = join(RUNS, d);
+      if (!statSync(dir).isDirectory()) continue;
+      for (const f of readdirSync(dir)) {
+        if (!f.endsWith(".tsv")) continue;
+        const L = readFileSync(join(dir, f), "utf8").trim().split("\n");
+        const h = L[0].split("\t");
+        if (!h.includes("outreason")) continue;
+        for (const l of L.slice(1)) {
+          const r = Object.fromEntries(l.split("\t").map((v, i) => [h[i], v]));
+          if (r.armname === "evade" && r.outreason) set.add(r.outreason);
+        }
+      }
+    }
+    const items = [...set];
+    const grams = (s) => {
+      const t = s.replace(/[，。、；：（）「」\s]/g, "");
+      const g = new Set();
+      for (let i = 0; i + 1 < t.length; i += 1) g.add(t.slice(i, i + 2));
+      return g;
+    };
+    const jac = (a, b) => { let h = 0; for (const x of a) if (b.has(x)) h += 1; return h / (a.size + b.size - h); };
+    const run = (xs) => {
+      const gs = xs.map(grams);
+      const p = xs.map((_, i) => i);
+      const find = (x) => { while (p[x] !== x) { p[x] = p[p[x]]; x = p[x]; } return x; };
+      for (let i = 0; i < xs.length; i += 1)
+        for (let j = i + 1; j < xs.length; j += 1)
+          if (jac(gs[i], gs[j]) >= 0.3) { const a = find(i), b = find(j); if (a !== b) p[b] = a; }
+      return new Set(xs.map((_, i) => find(i))).size;
+    };
+    console.log(`${run(items)} ${run([...items].reverse())}`);
+  ')
+  F=${R%% *}; B=${R##* }
+  [ -n "${F}" ] && [ "${F}" = "${B}" ] \
+    && ok "正序 ${F} 堆、反序 ${B} 堆，一樣" \
+    || bad "正序 ${F} 堆、反序 ${B} 堆，會隨順序變就不是單連結"
 fi
 
 printf '\n%d 綠 %d 紅\n' "${PASS}" "${FAIL}"
