@@ -30,7 +30,7 @@ import { readJournal } from "./journal.mjs";
 const HERE = dirname(fileURLToPath(import.meta.url));
 // 標注清單是人寫的那一份，triage 只讀不寫。它存在的意義就是回答
 // 「這個決定對不對」，那件事 reason_code 答不出來。
-const labels = readFileSync(join(HERE, "labels.tsv"), "utf8")
+const labels = readFileSync(process.env.TRIAGE_LABELS || join(HERE, "labels.tsv"), "utf8")
   .split("\n")
   .filter((l) => l && !l.startsWith("#") && !l.startsWith("id\t"))
   .map((l) => {
@@ -85,13 +85,16 @@ for (const [k, rs] of [...slices.entries()].sort()) {
   // 有 code 的那些也要有人看。這裡只挑出「該去看」的兩種，不做判斷：
   // 量最大的那個 code（誤擋通常藏在量大的分支裡，因為它是規則寫得太寬），
   // 以及已經被人標注過的那些（標注清單裡的 verdict 是人給的，不是 code 給的）。
+  // 命中要用這把鑰匙，取值也要用同一把。8/19 外審抓到第一版只有命中改對了，
+  // 取 verdict 的時候退回去比 digest，於是同一句話在新版被正確放行，
+  // 印出來的還是舊版那個「誤擋」。改了一半比沒改更難發現。
   const keyOf = (x) => `${x.point}|${x.policy_version}|${x.digest}|${x.decision}`;
-  const labelled = new Set(labels.map(keyOf));
-  const hit = rs.filter((r) => labelled.has(keyOf(r)));
+  const labelByKey = new Map(labels.map((l) => [keyOf(l), l]));
+  const hit = rs.filter((r) => labelByKey.has(keyOf(r)));
   if (hit.length) {
     console.log(`  這一片裡有 ${hit.length} 筆在標注清單上，逐筆列出來（它們都有 code）：`);
     for (const r of hit) {
-      const l = labels.find((x) => x.digest === r.digest);
+      const l = labelByKey.get(keyOf(r));
       console.log(`        ${r.trace_id}\t${r.reason_code}\t人判：${l.verdict}`);
     }
   }

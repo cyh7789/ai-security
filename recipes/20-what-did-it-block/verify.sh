@@ -360,14 +360,31 @@ if want 19; then
     && ok "record() 少了 trace_id 會拋錯" || bad "少了 trace_id 照樣寫得進去"
 fi
 
-# ── 20 人工標注的比對要帶版本 ──────────────────────────
+# ── 20 人工標注不會跨版本污染（造真的資料驗，不是 grep 原始碼）────
 # 只比 digest 的話，同一句話在新判準下被正確放行，舊版那個「誤擋」標籤照樣黏上去，
 # 那跟整份 recipe「不同版本是兩把不同的尺」直接衝突。
+#
+# 第一版的檢查是 grep 原始碼有沒有 keyOf，所以「命中改對了、取值還在比 digest」
+# 這種改一半的 bug 照樣全綠（8/19 外審抓到）。這條改成造兩筆同指紋、
+# 不同判準版本、不同判定的標注，看印出來的是哪一筆。
 if want 20; then
-  case_ "20 標注比對帶了判斷點與判準版本"
-  grep -q 'const keyOf = (x) => `${x.point}|${x.policy_version}|${x.digest}|${x.decision}`' triage.mjs \
-    && ok "比對的鑰匙是 point + policy_version + digest + decision" \
-    || bad "標注還在只比 digest，換版本會把舊標籤黏到新紀錄上"
+  case_ "20 同指紋不同判準版本的標注，取到的是當版那筆"
+  DG=$(tail -n +2 "${TMP}/j1.tsv" | awk -F'\t' '$4=="input-gate" && $8=="SCOPE_BLOCK" {print $6}' | head -1)
+  NOW=$(tail -n +2 "${TMP}/j1.tsv" | awk -F'\t' '$4=="input-gate" && $8=="SCOPE_BLOCK" {print $5}' | head -1)
+  if [ -z "${DG}" ] || [ -z "${NOW}" ]; then
+    bad "紀錄裡找不到那筆誤擋，這條驗不了"
+  else
+    {
+      printf 'id\tdigest\tpoint\tpolicy_version\tdecision\tverdict\tsource\t處置\n'
+      printf 'OLD\t%s\tinput-gate\tdeadbeef\tdeny\t舊版誤擋\t測試\t-\n' "${DG}"
+      printf 'NEW\t%s\tinput-gate\t%s\tdeny\t當版誤擋\t測試\t-\n' "${DG}" "${NOW}"
+    } > "${TMP}/labels-two.tsv"
+    OUT=$(TRIAGE_LABELS="${TMP}/labels-two.tsv" node triage.mjs "${TMP}/j1.tsv")
+    M=""
+    printf '%s' "${OUT}" | grep -q '人判：當版誤擋' || M="${M} 沒取到當版那筆"
+    printf '%s' "${OUT}" | grep -q '人判：舊版誤擋' && M="${M} 取到了舊版那筆（跨版本污染）"
+    [ -z "${M}" ] && ok "同一個指紋兩筆標注，只認判準版本 ${NOW} 那筆" || bad "對不上：${M}"
+  fi
 fi
 
 # ── 21 有 code 的也要真的抽樣，而且抽法是決定性的 ─────────────
