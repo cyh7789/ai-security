@@ -348,5 +348,39 @@ if want 18; then
     || bad "正序 ${F} 堆、反序 ${B} 堆，會隨順序變就不是單連結"
 fi
 
+# ── 19 trace_id 缺了要吵，不是靜靜填一個「-」 ────────────────
+# 文件說必填、實際可空，是這類 schema 最常見的謊。兩週後才會發現整批關聯不起來。
+if want 19; then
+  case_ "19 少了 trace_id 會擋下來"
+  node -e '
+    import("./journal.mjs").then((m) => {
+      try { m.record({ point: "x", decision: "allow" }); process.exit(1); }
+      catch { process.exit(0); }
+    });' 2>/dev/null \
+    && ok "record() 少了 trace_id 會拋錯" || bad "少了 trace_id 照樣寫得進去"
+fi
+
+# ── 20 人工標注的比對要帶版本 ──────────────────────────
+# 只比 digest 的話，同一句話在新判準下被正確放行，舊版那個「誤擋」標籤照樣黏上去，
+# 那跟整份 recipe「不同版本是兩把不同的尺」直接衝突。
+if want 20; then
+  case_ "20 標注比對帶了判斷點與判準版本"
+  grep -q 'const keyOf = (x) => `${x.point}|${x.policy_version}|${x.digest}|${x.decision}`' triage.mjs \
+    && ok "比對的鑰匙是 point + policy_version + digest + decision" \
+    || bad "標注還在只比 digest，換版本會把舊標籤黏到新紀錄上"
+fi
+
+# ── 21 有 code 的也要真的抽樣，而且抽法是決定性的 ─────────────
+if want 21; then
+  case_ "21 有 code 的抽樣覆核真的抽得出東西"
+  node demo.mjs >/dev/null 2>&1
+  A=$(node triage.mjs | grep -c "抽樣覆核" || true)
+  B=$(node triage.mjs); C=$(node triage.mjs)
+  [ "${A}" -ge 1 ] || bad "triage 沒有抽樣那一段"
+  [ "${A}" -ge 1 ] && { [ "${B}" = "${C}" ] \
+    && ok "抽得出樣本，而且連跑兩次抽到同一批" \
+    || bad "同一批紀錄兩次抽到不一樣的樣本"; }
+fi
+
 printf '\n%d 綠 %d 紅\n' "${PASS}" "${FAIL}"
 [ "${FAIL}" = 0 ]

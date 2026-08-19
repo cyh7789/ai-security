@@ -1,6 +1,6 @@
 // 判斷點的紀錄器。一個判斷點做完決定，就寫一行進來。
 //
-// 欄位七個，少一個都會讓事後那份統計失去意義：
+// 欄位九個，少一個都會讓事後那份統計失去意義：
 //
 //   ts             什麼時候
 //   trace_id       同一次請求的識別碼。少了它，input-gate 那一列跟 action-gate
@@ -46,8 +46,9 @@ export function policyVersion(...definitions) {
   return h.digest("hex").slice(0, 8);
 }
 
-// 輸入不整段留。留一個指紋，加上長度與前幾個字，足夠讓人事後認出「就是這一筆」，
-// 也足夠把重複的輸入歸在一起。
+// 輸入不整段留。留的是 sha256 前十碼加字數，足夠把重複的輸入歸在一起。
+// 十六進位十碼是 40 個位元，這是 demo 的尺度：夠拿來歸重複，不夠當正式環境的識別碼，
+// 要防字典反查的話得換成帶金鑰的 HMAC。
 //
 // 這是 Day 18 欠下的那條：你為了看清楚防線，在自己的伺服器上多存了一份使用者輸入。
 // 那份東西保存多久、誰看得到、刪不刪得掉，是動手之前就要決定的事，不是之後再說。
@@ -62,6 +63,10 @@ export function digest(text) {
 // 不把它釘住的話，「連跑兩次結果一致」這條就驗不了，而那條是紀錄能不能拿來
 // 比對版本差異的前提。
 export function record(entry) {
+  // trace_id 缺了就吵。少了它，同一次請求的兩列在事後對不起來，
+  // 而那正是這張表存在的理由之一。靜靜填一個「-」進去，等於文件說必填、
+  // 實際可空，兩週後才會發現整批紀錄關聯不起來（8/19 外審抓到）。
+  if (!entry.trace_id) throw new Error("record() 少了 trace_id，這一欄不是可選的");
   const row = { ts: process.env.JOURNAL_NOW || new Date().toISOString(), schema_version: SCHEMA_VERSION, ...entry };
   for (const c of COLUMNS) {
     if (row[c] === undefined || row[c] === "") row[c] = "-";

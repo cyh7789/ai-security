@@ -35,7 +35,11 @@ const labels = readFileSync(join(HERE, "labels.tsv"), "utf8")
   .filter((l) => l && !l.startsWith("#") && !l.startsWith("id\t"))
   .map((l) => {
     const c = l.split("\t");
-    return { id: c[0], digest: c[1], verdict: c[5] };
+    // 人工標注本身也有版本。判準改了，舊版本的「誤擋」不能自動繼承到新版本，
+    // 所以比對的鑰匙要帶上判斷點、判準版本與當時的判決，不能只有輸入指紋
+    // （8/19 外審抓到：只比 digest 的話，同一句話在新判準下被正確放行，
+    // 舊版那個「誤擋」標籤照樣會黏上去）。
+    return { id: c[0], digest: c[1], point: c[2], policy_version: c[3], decision: c[4], verdict: c[5] };
   });
 
 const path = process.argv[2];
@@ -81,8 +85,9 @@ for (const [k, rs] of [...slices.entries()].sort()) {
   // 有 code 的那些也要有人看。這裡只挑出「該去看」的兩種，不做判斷：
   // 量最大的那個 code（誤擋通常藏在量大的分支裡，因為它是規則寫得太寬），
   // 以及已經被人標注過的那些（標注清單裡的 verdict 是人給的，不是 code 給的）。
-  const labelled = new Set(labels.map((l) => l.digest));
-  const hit = rs.filter((r) => labelled.has(r.digest));
+  const keyOf = (x) => `${x.point}|${x.policy_version}|${x.digest}|${x.decision}`;
+  const labelled = new Set(labels.map(keyOf));
+  const hit = rs.filter((r) => labelled.has(keyOf(r)));
   if (hit.length) {
     console.log(`  這一片裡有 ${hit.length} 筆在標注清單上，逐筆列出來（它們都有 code）：`);
     for (const r of hit) {
@@ -90,9 +95,23 @@ for (const [k, rs] of [...slices.entries()].sort()) {
       console.log(`        ${r.trace_id}\t${r.reason_code}\t人判：${l.verdict}`);
     }
   }
-  const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
-  if (top && top[1] >= 2) {
-    console.log(`  量最大的 code 是 ${top[0]}（${top[1]} 筆），要在這個 code 裡面再看有沒有次分類。`);
+  // 有 code 的也要抽樣，而且抽法要是決定性的：按指紋排序取前幾筆，
+  // 同一批紀錄每次抽到同樣那幾筆，覆核結果才對得起來。
+  const SAMPLE = Number(process.env.TRIAGE_SAMPLE ?? 2);
+  const byCode = new Map();
+  for (const r of rs) {
+    if (!r.reason_code || r.reason_code === "-") continue;
+    if (!byCode.has(r.reason_code)) byCode.set(r.reason_code, []);
+    byCode.get(r.reason_code).push(r);
+  }
+  const ordered = [...byCode.entries()].sort((a, b) => b[1].length - a[1].length);
+  if (ordered.length) {
+    console.log(`  有 code 的抽樣覆核（每個 code 取 ${SAMPLE} 筆，按指紋排序，量大的排前面）：`);
+    for (const [code, list] of ordered) {
+      for (const r of [...list].sort((a, b) => a.digest.localeCompare(b.digest)).slice(0, SAMPLE)) {
+        console.log(`        ${code}\t${r.trace_id}\t${r.digest}`);
+      }
+    }
   }
 
   if (needCluster.length) {
