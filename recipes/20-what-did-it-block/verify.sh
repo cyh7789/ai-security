@@ -274,28 +274,24 @@ if want 16; then
     || bad "README 的數字跟實跑對不上（現在是 ${T} 列 ${D} 種）"
 fi
 
-# ── 17 分群跑在缺碼那一格，而且它自己的預測會被檢查 ─────────
-# 這條顧的是「不要拿一個失敗的方法去支持結論」：cluster.mjs 印的判語
-# 必須跟它算出來的堆數一致。堆數變了判語沒變，或反過來，都要紅。
+# ── 17 分群跑在缺碼那一格，數字與範圍限制都要對 ──────────────
+# 這條原本驗的是「堆數落在 2 到 12 就算方法有效」，那個區間是人為訂的，
+# 而且把輸入條數當成了正確群數（8/19 外審抓到）。現在只驗兩件事實：
+# 印出來的數字跟 README 貼的一致，以及那段範圍限制還在。
 if want 17; then
-  case_ "17 cluster 的判語跟它自己算出來的堆數一致"
+  case_ "17 cluster 的數字跟 README 一致，範圍限制沒掉"
   OUT=$(node cluster.mjs 0.3)
-  # 用 tab 錨定：cluster 的輸出裡「benign」在表格與結語各出現一次，
-  # 不錨定的話 grep 抓到兩行，數字就變成一團字串（第一次寫就踩到了）。
   BH=$(printf '%s' "${OUT}" | grep "^benign${TAB}" | cut -f4)
   EH=$(printf '%s' "${OUT}" | grep "^evade${TAB}" | cut -f4)
   M=""
   [ -n "${BH}" ] && [ -n "${EH}" ] || M="${M} 讀不到堆數"
-  # benign 五條輸入堆出 2 到 12 堆才算方法有效，這個界寫在 cluster.mjs 裡
-  if [ "${BH}" -ge 2 ] && [ "${BH}" -le 12 ]; then
-    printf '%s' "${OUT}" | grep -q '方向對得上' || M="${M} 堆數在界內，判語卻說沒用"
-  else
-    printf '%s' "${OUT}" | grep -q '沒有用' || M="${M} 堆數 ${BH} 在界外，判語卻說有效"
-  fi
-  # README 貼的數字要跟現跑的一樣
   grep -q "benign	5	48	${BH}" README.md || M="${M} README 貼的 benign 堆數不是 ${BH}"
   grep -q "還有 ${EH} 堆" README.md || M="${M} README 沒寫 evade 的 ${EH} 堆"
-  [ -z "${M}" ] && ok "benign ${BH} 堆、evade ${EH} 堆，判語與數字一致" || bad "對不上：${M}"
+  # 不能再宣稱輸入條數是正確群數
+  printf '%s' "${OUT}" | grep -q "輸入條數不是正確群數" || M="${M} 輸出少了「輸入條數不是正確群數」那句"
+  grep -q "分群是在\*\*每個組各自跑\*\*的" README.md || M="${M} README 沒講各組堆數不能相加"
+  grep -q "可以證偽的預測" cluster.mjs && M="${M} 原始碼還寫著「可以證偽的預測」"
+  [ -z "${M}" ] && ok "benign ${BH} 堆、evade ${EH} 堆，跟 README 一致，範圍限制都在" || bad "對不上：${M}"
 fi
 
 # ── 18 分群真的是單連結：換個輸入順序，堆數不能變 ──────────
