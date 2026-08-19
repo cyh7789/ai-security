@@ -10,7 +10,7 @@
 ```bash
 node demo.mjs           # 三筆固定輸入走過兩個判斷點，寫出 journal.tsv
 node triage.mjs         # 分流：先切片，再計數，最後才輪到分群
-node drift.mjs          # 拿 recipe 18 兩週的紀錄，量「這份紀錄為什麼不能直接加總」
+node drift.mjs          # 拿 recipe 18 那兩天的紀錄，量「這份紀錄為什麼不能直接加總」
 bash version-demo.sh    # 判準改一個字，紀錄上的版本號會不會自己跟著變
 bash verify.sh          # 全部驗一次
 ```
@@ -27,7 +27,7 @@ ts  point  policy_version  digest  decision  reason_code  reason_text
 | 欄 | 為什麼非有不可 |
 |---|---|
 | `point` | 一個系統有好幾個判斷點。混在一起數，你算出來的那個比例不對應任何東西 |
-| `policy_version` | 判準每週在改。沒有這一欄，兩週的紀錄看起來像同一把尺量的 |
+| `policy_version` | 判準一直在改。沒有這一欄，不同時間的兩批紀錄看起來像同一把尺量的 |
 | `digest` | 輸入的指紋，不是輸入。認得出「就是這一筆」、歸得了重複，但不留全文 |
 | `decision` | **放行的也要記。** 只記擋下來的那些，漏網整類問題會從紀錄裡消失 |
 | `reason_code` | 判斷點自己吐的短碼，同一個分支永遠同一個字串，數得動 |
@@ -35,9 +35,9 @@ ts  point  policy_version  digest  decision  reason_code  reason_text
 
 ## 這份 recipe 的主張：理由那一欄要拆成兩個
 
-`drift.mjs` 量的是 recipe 18 兩個禮拜留下來的 252 列紀錄。兩件事：
+`drift.mjs` 量的是 recipe 18 那兩天留下來的 252 列紀錄。兩件事：
 
-**一、欄位會跑。** 同一支腳本的八批結果，欄數 9 → 10 → 11 → 12。
+**一、欄位會跑。** 同一支腳本的八批結果，欄數 9、9、9、10、10、11、11、12。
 `outreason` 一直在最後一欄，所以欄號跟著往後移。
 任何「全部接起來、表頭讀一次、之後照欄號取值」的算法，在後面幾批讀到的是
 `outverdict` 和 `guarded`，不是理由，而且不會噴任何錯。
