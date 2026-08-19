@@ -17,11 +17,28 @@ bad()  { printf '  [FAIL] %s\n' "$1"; FAIL=$((FAIL+1)); }
 want() { [ -z "${ONLY}" ] || [ "${ONLY}" = "$1" ]; }
 
 TMP=$(mktemp -d)
-trap 'rm -rf "${TMP}"' EXIT
+trap 'rm -rf "${TMP}" "${HERE_PY}"' EXIT
 TAB=$(printf '\t')
 # awk 不用在這裡：macOS 的 awk 拿中文當 -v 的值時 `$1==k` 每一列都成立，
 # 於是每一條檢查都會拿到整份輸出而且照樣有綠有紅（recipe 19 撞過）。
 col() { cut -f"$1"; }
+# drift 那張表的欄位取名字不取位置。這支自己就是在講「照欄號取值會讀到別的欄」，
+# 8/19 給 drift 加「輸入」欄的時候，第 8、9、16 條同時紅掉，紅的方式一模一樣。
+dcol() { python3 "${HERE_PY}" "$1" "$2" "$3"; }
+HERE_PY=$(mktemp)
+cat > "${HERE_PY}" <<'DCOLPY'
+import sys
+path, arm, which = sys.argv[1:4]
+head = None
+for line in open(path, encoding="utf8"):
+    p = line.rstrip("\n").split("\t")
+    if p[0] == "臂":
+        head = p
+        continue
+    if head and p[0] == arm and len(p) == len(head):
+        print(p[head.index(which)])
+        break
+DCOLPY
 
 JOURNAL_NOW=FIXED node demo.mjs > "${TMP}/demo.out" 2>&1 || { echo "demo.mjs 跑不起來"; cat "${TMP}/demo.out"; exit 2; }
 cp journal.tsv "${TMP}/j1.tsv"
@@ -142,8 +159,8 @@ fi
 # 兩條路的數字不一樣就紅。drift 改成印寫死的數字的話，這條會紅。
 if want 8; then
   case_ "8 drift 的列數與不重複數，換一支程式重算得出來"
-  DT=$(grep '^整批' "${TMP}/drift.out" | col 2)
-  DD=$(grep '^整批' "${TMP}/drift.out" | col 3)
+  DT=$(dcol "${TMP}/drift.out" 整批 列數)
+  DD=$(dcol "${TMP}/drift.out" 整批 不重複)
   PY=$(python3 - <<'PY'
 import csv, glob, os
 files = sorted(glob.glob("../18-not-a-free-chatgpt/runs/*/*.tsv"))
@@ -170,8 +187,8 @@ fi
 # 這條是整份 recipe 的主張。它紅掉代表資料變了，那個主張要重講。
 if want 9; then
   case_ "9 benign 那一臂，48 列 48 種"
-  L=$(grep '^benign'"${TAB}" "${TMP}/drift.out" | col 2)
-  D=$(grep '^benign'"${TAB}" "${TMP}/drift.out" | col 3)
+  L=$(dcol "${TMP}/drift.out" benign 列數)
+  D=$(dcol "${TMP}/drift.out" benign 不重複)
   [ -n "${L}" ] && [ "${L}" = "${D}" ] && [ "${L}" -ge 40 ] \
     && ok "同一組正常請求 ${L} 列，模型寫出 ${D} 種理由，重複率零" \
     || bad "benign 那一臂 ${L} 列 ${D} 種"
@@ -248,12 +265,36 @@ fi
 # ── 16 README 講的數字跟實跑對得上 ───────────────────────
 if want 16; then
   case_ "16 README 的 252／203 跟現在跑出來的一樣"
-  T=$(grep '^整批' "${TMP}/drift.out" | col 2)
-  D=$(grep '^整批' "${TMP}/drift.out" | col 3)
+  T=$(dcol "${TMP}/drift.out" 整批 列數)
+  D=$(dcol "${TMP}/drift.out" 整批 不重複)
   [ -n "${T}" ] && [ -n "${D}" ] \
     && grep -q "${T} 列紀錄" README.md && grep -q "${D} 種不同的理由" README.md \
     && ok "README 寫的 ${T} 列 ${D} 種，就是現在跑出來的" \
     || bad "README 的數字跟實跑對不上（現在是 ${T} 列 ${D} 種）"
+fi
+
+# ── 17 分群跑在缺碼那一格，而且它自己的預測會被檢查 ─────────
+# 這條顧的是「不要拿一個失敗的方法去支持結論」：cluster.mjs 印的判語
+# 必須跟它算出來的堆數一致。堆數變了判語沒變，或反過來，都要紅。
+if want 17; then
+  case_ "17 cluster 的判語跟它自己算出來的堆數一致"
+  OUT=$(node cluster.mjs 0.3)
+  # 用 tab 錨定：cluster 的輸出裡「benign」在表格與結語各出現一次，
+  # 不錨定的話 grep 抓到兩行，數字就變成一團字串（第一次寫就踩到了）。
+  BH=$(printf '%s' "${OUT}" | grep "^benign${TAB}" | cut -f4)
+  EH=$(printf '%s' "${OUT}" | grep "^evade${TAB}" | cut -f4)
+  M=""
+  [ -n "${BH}" ] && [ -n "${EH}" ] || M="${M} 讀不到堆數"
+  # benign 五條輸入堆出 2 到 12 堆才算方法有效，這個界寫在 cluster.mjs 裡
+  if [ "${BH}" -ge 2 ] && [ "${BH}" -le 12 ]; then
+    printf '%s' "${OUT}" | grep -q '方向對得上' || M="${M} 堆數在界內，判語卻說沒用"
+  else
+    printf '%s' "${OUT}" | grep -q '沒有用' || M="${M} 堆數 ${BH} 在界外，判語卻說有效"
+  fi
+  # README 貼的數字要跟現跑的一樣
+  grep -q "benign	5	48	${BH}" README.md || M="${M} README 貼的 benign 堆數不是 ${BH}"
+  grep -q "還有 ${EH} 堆" README.md || M="${M} README 沒寫 evade 的 ${EH} 堆"
+  [ -z "${M}" ] && ok "benign ${BH} 堆、evade ${EH} 堆，判語與數字一致" || bad "對不上：${M}"
 fi
 
 printf '\n%d 綠 %d 紅\n' "${PASS}" "${FAIL}"
