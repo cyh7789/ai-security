@@ -1,0 +1,6 @@
+ts	point	policy_version	digest	decision	reason_code	reason_text
+2026-08-19T10:49:01.742Z	input-gate	968fe113	7f0e453ac4:11	allow	SCENARIO_OK	到貨時間（命中「到貨」）
+2026-08-19T10:49:01.743Z	action-gate	395a4dea	10f5f72dcc:33	allow	NOT_DENY_LISTED	get_order 不在預設拒絕清單上
+2026-08-19T10:49:01.743Z	input-gate	968fe113	06c0368790:16	deny	SCOPE_BLOCK	要做的事不該由客服 bot 做（命中「騙」）
+2026-08-19T10:49:01.743Z	input-gate	968fe113	ded905b75f:18	allow	SCENARIO_OK	訂單查詢（命中「訂單」）
+2026-08-19T10:49:01.744Z	action-gate	395a4dea	bf389f664a:43	deny	NO_USER_BASIS	使用者原始請求裡沒有這個動作，要人確認

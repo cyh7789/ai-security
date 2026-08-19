@@ -40,9 +40,11 @@
 | 14 | [同一組攻擊，每次改完 prompt 都再打一遍](recipes/14-same-attacks-every-time/) | [Day 14](https://ithelp.ithome.com.tw/articles/10402753) | **可以跑了** |
 | 15 | [工具不是萬用鑰匙](recipes/15-tools-not-a-master-key/) | [Day 15](https://ithelp.ithome.com.tw/articles/10402942) | **可以跑了** |
 | 16 | [誰在檢查這張單是不是你的](recipes/16-who-checks-the-owner/) | [Day 16](https://ithelp.ithome.com.tw/articles/10403127) | **可以跑了** |
-| 17 | [模型講的話變成動作，中間那道閘](recipes/17-words-into-actions/) | Day 17 | **可以跑了** |
-| 18 | [四道閘，跟它們各自防的是什麼](recipes/18-not-a-free-chatgpt/) | Day 18 | **可以跑了** |
-| 19– | 隨連載加入 | Day 19–30 | 未完成 |
+| 17 | [模型講的話變成動作，中間那道閘](recipes/17-words-into-actions/) | [Day 17](https://ithelp.ithome.com.tw/articles/10403142) | **可以跑了** |
+| 18 | [四道閘，跟它們各自防的是什麼](recipes/18-not-a-free-chatgpt/) | [Day 18](https://ithelp.ithome.com.tw/articles/10403409) | **可以跑了** |
+| 19 | [字串直接進了 shell](recipes/19-straight-into-the-shell/) | [Day 19](https://ithelp.ithome.com.tw/articles/10403690) | **可以跑了** |
+| 20 | [判斷點自己寫下它擋了什麼](recipes/20-what-did-it-block/) | Day 20 | **可以跑了** |
+| 21– | 隨連載加入 | Day 21–30 | 未完成 |
 
 每一份都是 `bash recipes/<名字>/verify.sh`。一次跑全部：
 
