@@ -19,7 +19,9 @@ export const DENY_BY_DEFAULT = ["delete_order"];
 export const TOOL_ALLOWLIST = ["get_order", "delete_order"];
 export const TARGET_ALLOWLIST = [1001, 1002, 1003];
 
-const WORDS = {
+// export 出來是因為 recipe 20 要拿判準的內容算版本雜湊：判準改一個字，
+// 紀錄上的 policy_version 就跟著變，不必記得去改版本號。
+export const WORDS = {
   read: ["查", "看", "確認狀況", "狀態", "明細", "查詢"],
   delete: ["刪", "刪除", "移除", "清掉", "取消這筆", "銷單"],
 };
@@ -47,12 +49,12 @@ export function intentClass(call) {
 export function intentGate(call) {
   const said = classify(String(call.intent ?? ""));
   const doing = TOOL_CLASS[call.tool];
-  if (!doing) return { allow: false, reason: `不認得的工具 ${call.tool}` };
+  if (!doing) return { allow: false, code: "TOOL_UNKNOWN", reason: `不認得的工具 ${call.tool}` };
   if (said === "unknown" || said === "ambiguous") {
-    return { allow: false, reason: `意圖歸不了類（${said}）` };
+    return { allow: false, code: "INTENT_UNCLASSIFIED", reason: `意圖歸不了類（${said}）` };
   }
-  if (said !== doing) return { allow: false, reason: `宣稱 ${said}，實際 ${doing}` };
-  return { allow: true, reason: `宣稱與實際都是 ${doing}` };
+  if (said !== doing) return { allow: false, code: "INTENT_MISMATCH", reason: `宣稱 ${said}，實際 ${doing}` };
+  return { allow: true, code: "INTENT_MATCH", reason: `宣稱與實際都是 ${doing}` };
 }
 
 // 二、外部基準閘：高風險動作要在使用者「自己打的那句話」裡有依據。
@@ -64,27 +66,27 @@ export function intentGate(call) {
 // 也不核對原話裡的編號跟 call.args.id 是不是同一個。真要上線得換成結構化授權。
 export function externalGate(call, userRequest) {
   if (!DENY_BY_DEFAULT.includes(call.tool)) {
-    return { allow: true, reason: `${call.tool} 不在預設拒絕清單上` };
+    return { allow: true, code: "NOT_DENY_LISTED", reason: `${call.tool} 不在預設拒絕清單上` };
   }
   const asked = classify(String(userRequest ?? ""));
   if (asked !== "delete") {
-    return { allow: false, reason: "使用者原始請求裡沒有這個動作，要人確認" };
+    return { allow: false, code: "NO_USER_BASIS", reason: "使用者原始請求裡沒有這個動作，要人確認" };
   }
-  return { allow: true, reason: "使用者原始請求裡就有這個動作" };
+  return { allow: true, code: "USER_BASIS_OK", reason: "使用者原始請求裡就有這個動作" };
 }
 
 // 三、白名單閘：Day 15 的形狀搬過來。這道閘沒有壞，它回答的是另一個問題。
 export function allowlistGate(call) {
   if (!TOOL_ALLOWLIST.includes(call.tool)) {
-    return { allow: false, reason: `工具 ${call.tool} 不在清單上` };
+    return { allow: false, code: "TOOL_NOT_ALLOWED", reason: `工具 ${call.tool} 不在清單上` };
   }
   const id = Number(call.args?.id);
-  if (!TARGET_ALLOWLIST.includes(id)) return { allow: false, reason: `目標 ${id} 不在清單上` };
-  return { allow: true, reason: `${call.tool} 對 ${id} 都在清單上` };
+  if (!TARGET_ALLOWLIST.includes(id)) return { allow: false, code: "TARGET_NOT_ALLOWED", reason: `目標 ${id} 不在清單上` };
+  return { allow: true, code: "ALLOWLIST_OK", reason: `${call.tool} 對 ${id} 都在清單上` };
 }
 
 export const GATES = {
-  none: () => ({ allow: true, reason: "沒有閘" }),
+  none: () => ({ allow: true, code: "NO_GATE", reason: "沒有閘" }),
   intent: (call) => intentGate(call),
   external: (call, req) => externalGate(call, req),
   allowlist: (call) => allowlistGate(call),

@@ -38,11 +38,11 @@ export function rateGate(user, now = Date.now()) {
   const win = (hits.get(user) ?? []).filter((t) => now - t < 60_000);
   if (win.length >= LIMITS.perMinute) {
     hits.set(user, win);
-    return { allow: false, reason: `每分鐘上限 ${LIMITS.perMinute} 次，這是第 ${win.length + 1} 次` };
+    return { allow: false, code: "RATE_OVER", reason: `每分鐘上限 ${LIMITS.perMinute} 次，這是第 ${win.length + 1} 次` };
   }
   win.push(now);
   hits.set(user, win);
-  return { allow: true, reason: `這一分鐘第 ${win.length} 次` };
+  return { allow: true, code: "RATE_OK", reason: `這一分鐘第 ${win.length} 次` };
 }
 
 export function resetRate() {
@@ -52,8 +52,8 @@ export function resetRate() {
 export function lengthGate(text) {
   const n = [...String(text)].length;
   return n > LIMITS.maxChars
-    ? { allow: false, reason: `${n} 字超過上限 ${LIMITS.maxChars}` }
-    : { allow: true, reason: `${n} 字` };
+    ? { allow: false, code: "LEN_OVER", reason: `${n} 字超過上限 ${LIMITS.maxChars}` }
+    : { allow: true, code: "LEN_OK", reason: `${n} 字` };
 }
 
 // 允許清單之外還要一層擋掉「主題在範圍內、但要做的事不該由這個 bot 做」。
@@ -73,12 +73,12 @@ export const OUT_OF_SCOPE = ["騙", "詐", "冒充", "假冒", "偽裝成", "誘
 export function scenarioGate(text) {
   const t = String(text);
   const bad = OUT_OF_SCOPE.find((x) => t.includes(x));
-  if (bad) return { allow: false, reason: `要做的事不該由客服 bot 做（命中「${bad}」）` };
+  if (bad) return { allow: false, code: "SCOPE_BLOCK", reason: `要做的事不該由客服 bot 做（命中「${bad}」）` };
   for (const [name, words] of Object.entries(SCENARIO)) {
     const w = words.find((x) => t.includes(x));
-    if (w) return { allow: true, reason: `${name}（命中「${w}」）` };
+    if (w) return { allow: true, code: "SCENARIO_OK", reason: `${name}（命中「${w}」）` };
   }
-  return { allow: false, reason: "不在這個客服 bot 的場景清單上" };
+  return { allow: false, code: "SCENARIO_MISS", reason: "不在這個客服 bot 的場景清單上" };
 }
 
 export const GATES = { rate: rateGate, length: lengthGate, scenario: scenarioGate };
