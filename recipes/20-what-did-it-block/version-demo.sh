@@ -18,7 +18,7 @@ restore() { cp -f "$BAK" "$GATES"; rm -f "$BAK"; }
 trap restore EXIT INT TERM
 
 before=$(node -e 'import("./points.mjs").then(m=>console.log(m.INPUT_VERSION))')
-echo "改之前　input-gate 判準版本　$before"
+printf "改之前\tinput-gate 判準版本\t%s\n" "$before"
 
 python3 - "$GATES" <<'PY'
 import sys
@@ -31,12 +31,12 @@ open(p, "w").write(s.replace(old, new))
 PY
 
 after=$(node -e 'import("./points.mjs").then(m=>console.log(m.INPUT_VERSION))')
-echo "加一個詞　input-gate 判準版本　$after"
+printf "加一個詞\tinput-gate 判準版本\t%s\n" "$after"
 
 restore
 trap - EXIT INT TERM
 back=$(node -e 'import("./points.mjs").then(m=>console.log(m.INPUT_VERSION))')
-echo "還原之後　input-gate 判準版本　$back"
+printf "還原之後\tinput-gate 判準版本\t%s\n" "$back"
 
 fail=0
 [ "$before" != "$after" ] || { echo "紅：判準改了，版本號沒變。"; fail=1; }

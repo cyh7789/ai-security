@@ -52,6 +52,10 @@ console.log(`欄數出現過 ${widths.length} 種：${widths.join("、")}`);
 console.log("");
 console.log("== 二、理由的不重複數 ==");
 const byArm = new Map();
+// requests 欄記的是那一臂送了幾條輸入。要印它是因為「48 種理由」單獨看沒有意義，
+// 得知道那 48 次判的是幾條輸入：同一條輸入 48 種理由，跟 48 條輸入 48 種理由，
+// 是兩件完全不同的事，而表面上的數字一模一樣。
+const inputsOf = new Map();
 let total = 0;
 const all = [];
 for (const p of files) {
@@ -63,17 +67,21 @@ for (const p of files) {
     const arm = r.armname ?? "-";
     if (!byArm.has(arm)) byArm.set(arm, []);
     byArm.get(arm).push(reason);
+    if (!inputsOf.has(arm)) inputsOf.set(arm, new Set());
+    inputsOf.get(arm).add(r.requests ?? "?");
   }
 }
-console.log("臂\t列數\t不重複");
+console.log("臂\t輸入\t列數\t不重複");
 let sum = 0;
 for (const arm of [...byArm.keys()].sort()) {
   const rs = byArm.get(arm);
   const d = new Set(rs).size;
   sum += d;
-  console.log(`${arm}\t${rs.length}\t${d}`);
+  const inp = [...inputsOf.get(arm)].join("/");
+  console.log(`${arm}\t${inp}\t${rs.length}\t${d}`);
 }
-console.log(`整批\t${total}\t${new Set(all).size}`);
+const totalInputs = [...inputsOf.entries()].reduce((n, [, v]) => n + Number([...v][0] || 0), 0);
+console.log(`整批\t${totalInputs}\t${total}\t${new Set(all).size}`);
 console.log(`各臂不重複相加 ${sum}，跟整批的 ${new Set(all).size} ${sum === new Set(all).size ? "一樣" : "不一樣"}`);
 
 // 相加剛好等於整批，代表沒有任何一句理由跨臂重複過。

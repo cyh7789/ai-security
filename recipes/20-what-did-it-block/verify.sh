@@ -96,8 +96,8 @@ fi
 if want 5; then
   case_ "5 判準改一個字，版本號跟著變"
   if bash version-demo.sh > "${TMP}/ver.out" 2>&1; then
-    B=$(grep '^改之前' "${TMP}/ver.out" | sed 's/.*　//')
-    A=$(grep '^加一個詞' "${TMP}/ver.out" | sed 's/.*　//')
+    B=$(grep '^改之前' "${TMP}/ver.out" | col 3)
+    A=$(grep '^加一個詞' "${TMP}/ver.out" | col 3)
     ok "加一個詞之前 ${B}、之後 ${A}，還原之後回到 ${B}"
   else
     bad "version-demo.sh 報紅：$(tail -2 "${TMP}/ver.out")"
