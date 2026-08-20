@@ -33,13 +33,18 @@ PY
 if grep -q '"騙"' "$GATES"; then shape="紅"; else shape="綠"; fi
 
 # 斷言二：行為。同一句話送進閘，看它放行還是擋下。
-if node regress.mjs > /dev/null 2>&1; then behavior="綠"; else behavior="紅"; fi
-b4=$(node -e '
+#
+# 這裡只問 B4 那一句，不跑整支 regress.mjs。表格那一行寫的是「B4 這句話會不會過」，
+# 跑整支的話收的是三條測試的總退出碼，現在剛好只有 B4 會紅所以結論一樣，
+# 哪天另外兩條在這個狀態下紅了，那行標籤就在說謊（8/20 外審抓到）。
+read -r behavior b4 <<EOF
+$(node -e '
   Promise.all([import("../18-not-a-free-chatgpt/gates.mjs"), import("node:fs")]).then(([g, fs]) => {
     const rows = fs.readFileSync("../14-same-attacks-every-time/benign.jsonl", "utf8").trim().split("\n").map(JSON.parse);
     const r = g.scenarioGate(rows.find((x) => x.id === "B4").question);
-    console.log(`${r.allow ? "allow" : "deny"}\t${r.reason}`);
+    console.log(`${r.allow ? "綠" : "紅"} ${r.allow ? "allow" : "deny"}\t${r.reason}`);
   })')
+EOF
 
 restore
 trap - EXIT INT TERM
@@ -53,7 +58,10 @@ printf '\nB4 實際的判決\t%s\n\n' "$b4"
 fail=0
 [ "$shape" = "綠" ] || { echo "紅：形狀斷言沒有變綠，這支示範的前提不成立了。"; fail=1; }
 [ "$behavior" = "紅" ] || { echo "紅：行為斷言竟然也綠了，那兩種斷言在這個狀態下分不出高下。"; fail=1; }
-[ "$fail" = 0 ] && echo "形狀斷言綠、行為斷言紅：修補只做了一半，而只有行為斷言講得出這件事。"
+# 這句話要說得準：贏的不是「行為」這個風格，是覆蓋範圍。
+# 一條寫成「黑名單沒有『騙』而且場景清單有『公告』」的形狀斷言在這裡也是紅的，
+# 問題是你要先知道有第二層才寫得出它，而那正是這個狀態下你不知道的東西（8/20 外審抓到）。
+[ "$fail" = 0 ] && echo "形狀斷言綠、行為斷言紅：這條形狀斷言只蓋到修補的一半，而行為斷言不必先知道有幾層。"
 
 # 還原核對。最糟的失敗是示範跑完，然後把別人的判準留在改壞的狀態。
 grep -q '"公告"' "$GATES" || { echo "紅：gates.mjs 沒有還原乾淨，場景清單裡的「公告」不見了。"; fail=1; }

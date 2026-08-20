@@ -7,9 +7,14 @@
 // 而測試還是綠的——那時候它守的是我抄的那句，不是防線面對的那句。
 //
 // 斷言只有一種形狀：把那句話送進閘，看它放行還是擋下。
-// 不斷言 reason_code、不斷言黑名單裡有沒有哪個字。
-// 理由是 shape-vs-behavior.sh 會實際跑給你看：只做一半的修補，
-// 「黑名單裡沒有『騙』」那種斷言已經綠了，而 B4 照樣被擋。
+//
+// 不斷言黑名單裡有沒有哪個字，理由是 shape-vs-behavior.sh 會實際跑給你看：
+// 只做一半的修補，那種斷言已經綠了，而 B4 照樣被擋。
+//
+// reason_code 是另一回事，不要跟上面那條混在一起（8/20 外審抓到）。
+// 它咬得到這次的兩層修補：只修一半的時候，B4 的 code 是 SCENARIO_MISS 不是 SCENARIO_OK。
+// 這裡不斷言它，只是因為這三條問的是「放行還是擋下」，不是「為什麼」。
+// recipe 20 把規則閘的 code 當成穩定的統計鍵是對的，那一天沒有被今天推翻。
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

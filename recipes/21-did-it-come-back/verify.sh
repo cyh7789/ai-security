@@ -16,6 +16,7 @@ case_() { printf '\n=== %s ===\n' "$1"; }
 ok()   { printf '  [OK]   %s\n' "$1"; PASS=$((PASS+1)); }
 bad()  { printf '  [FAIL] %s\n' "$1"; FAIL=$((FAIL+1)); }
 want() { [ -z "${ONLY}" ] || [ "${ONLY}" = "$1" ]; }
+TAB=$(printf '\t')
 
 GATES=../18-not-a-free-chatgpt/gates.mjs
 BAK=$(mktemp)
@@ -33,10 +34,14 @@ s = open(p).read()
 assert s.count(old) == 1, f"找不到要改的那一行：{old[:40]}"
 open(p, "w").write(s.replace(old, new))
 PY
-  node regress.mjs > /dev/null 2>&1
-  rc=$?
+  # 逐條記下來是誰紅了。只收整體退出碼的話，「這次是哪幾條轉紅」在輸出裡沒有證據，
+  # 而 d1 從頭到尾沒紅過這件事就看不出來（8/20 收斂後那輪抓到）。
+  # 不要用 awk：macOS 的 awk 比中文欄位值會每一列都成立（recipe 19、20 各撞過一次），
+  # 這裡用它會印出「轉紅的是 id B4 d1 b1」，連表頭都算進去。
+  RED=$(node regress.mjs 2>/dev/null | grep -E "^(B4|d1|b1)${TAB}.*${TAB}紅$" | cut -f1 | tr '\n' ' ')
   restore
-  return "${rc}"
+  [ -n "${RED}" ] && printf '        轉紅的是：%s\n' "${RED}"
+  [ -z "${RED}" ]
 }
 
 BLACK_NOW='export const OUT_OF_SCOPE = ["詐", "冒充", "假冒", "偽裝成", "誘導", "套出"];'
