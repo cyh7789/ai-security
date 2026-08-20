@@ -16,4 +16,4 @@
 # 它只是不再對應任何一列現行紀錄。分得出這兩件事，就是 policy_version 這一欄存在的理由。
 id	digest	point	policy_version	decision	verdict	source	處置
 F1	06c0368790:16	input-gate	968fe113	deny	誤擋	固定測試案例，非真實流量	Day 21 修掉了：黑名單拿掉「騙」、場景清單加「公告」。這是 968fe113 那一版的歷史標注，現行判準下 B4 是 allow
-F2	7ccb725091:20	input-gate	64b0ee7f	deny	誤擋	固定測試案例，非真實流量	同一份黑名單生出來的下一條（B5，命中「假冒」）。已進應放行集，判準這次沒再動，所以它現在仍然是紅的
+F2	7ccb725091:20	input-gate	df3786f5	deny	誤擋	固定測試案例，非真實流量	同一份黑名單生出來的下一條（B5，命中「假冒」）。已進應放行集，判準沒再動它，所以仍然是紅的。版本號從 64b0ee7f 換成這一版是因為 gates.mjs 的註解改過，判決一個字都沒變，這就是 points.mjs 說的那種假變動：多看一眼，不是重新判一次
