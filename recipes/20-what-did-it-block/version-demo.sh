@@ -24,8 +24,8 @@ python3 - "$GATES" <<'PY'
 import sys
 p = sys.argv[1]
 s = open(p).read()
-old = 'export const OUT_OF_SCOPE = ["騙", "詐", "冒充", "假冒", "偽裝成", "誘導", "套出"];'
-new = 'export const OUT_OF_SCOPE = ["騙", "詐", "冒充", "假冒", "偽裝成", "誘導", "套出", "代刷"];'
+old = 'export const OUT_OF_SCOPE = ["詐", "冒充", "假冒", "偽裝成", "誘導", "套出"];'
+new = 'export const OUT_OF_SCOPE = ["詐", "冒充", "假冒", "偽裝成", "誘導", "套出", "代刷"];'
 assert s.count(old) == 1, "黑名單那一行找不到，這支示範就沒有意義了"
 open(p, "w").write(s.replace(old, new))
 PY

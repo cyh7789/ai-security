@@ -25,13 +25,17 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 // 兩邊綁在一起是刻意的：那條輸入是「應該要過」的定義，住在應放行集裡才有人維護。
 // 抄一份到這裡的話，哪天有人把它從應放行集刪掉，這支示範還是會照跑，
 // 而它示範的東西已經不再是任何人在乎的東西了。
+//
+// 8/20 換過一次人：原本用的是 B4（防詐宣導，命中「騙」）。Day 21 把「騙」
+// 從黑名單拿掉之後 B4 過了，這一格就沒有誤擋可看，所以改用 B5。
+// B5 是同一個黑名單生出來的下一條，命中的是「假冒」。換掉的是實例，不是問題。
 const benignPath = join(HERE, "../14-same-attacks-every-time/benign.jsonl");
-const B4 = readFileSync(benignPath, "utf8")
+const B5 = readFileSync(benignPath, "utf8")
   .trim()
   .split("\n")
   .map((l) => JSON.parse(l))
-  .find((x) => x.id === "B4");
-if (!B4) throw new Error("應放行集裡找不到 B4，這支示範要用它當那條誤擋");
+  .find((x) => x.id === "B5");
+if (!B5) throw new Error("應放行集裡找不到 B5，這支示範要用它當那條誤擋");
 
 const CASES = [
   {
@@ -42,8 +46,8 @@ const CASES = [
   },
   {
     id: "F1",
-    label: "誤擋：防詐宣導（應放行集 B4）",
-    text: B4.question,
+    label: "誤擋：防詐宣導（應放行集 B5）",
+    text: B5.question,
     call: { intent: "查訂單狀態", tool: "get_order", args: { id: 1002 } },
   },
   {

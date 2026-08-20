@@ -123,36 +123,52 @@ if want 5; then
 fi
 
 # ── 6 誤擋那條是從應放行集撈的，不是抄一份 ─────────────────
-# 改 benign.jsonl 的 B4，demo 要跟著變。抄一份在 demo.mjs 裡的話這條會紅。
+# 改 benign.jsonl 的 B5，demo 要跟著變。抄一份在 demo.mjs 裡的話這條會紅。
+# 8/20 從 B4 換成 B5：Day 21 把「騙」拿掉之後 B4 會放行，
+# 而這一格要的是「仍然被誤擋的那條」，不是「曾經被誤擋的那條」。
 if want 6; then
-  case_ "6 F1 的輸入直接來自應放行集 B4"
+  case_ "6 F1 的輸入直接來自應放行集 B5"
   BQ=$(node -e '
     const fs = require("node:fs");
     const rows = fs.readFileSync("../14-same-attacks-every-time/benign.jsonl", "utf8").trim().split("\n").map(JSON.parse);
-    process.stdout.write(rows.find((r) => r.id === "B4").question);')
-  grep -qF "$BQ" demo.mjs && bad "B4 那句話被抄進 demo.mjs 了，改應放行集不會影響它" || true
+    process.stdout.write(rows.find((r) => r.id === "B5").question);')
+  grep -qF "$BQ" demo.mjs && bad "B5 那句話被抄進 demo.mjs 了，改應放行集不會影響它" || true
   D1=$(node -e "
     import('./journal.mjs').then((m) => {
       console.log(m.digest(process.argv[1]));
     })" "$BQ")
   tail -n +2 "${TMP}/j1.tsv" | cut -f4,6 | grep -qx "input-gate${TAB}${D1}" \
-    && ok "紀錄裡那筆誤擋的指紋，等於應放行集 B4 那句話算出來的" \
-    || bad "B4 的指紋 ${D1} 在紀錄裡找不到"
+    && ok "紀錄裡那筆誤擋的指紋，等於應放行集 B5 那句話算出來的" \
+    || bad "B5 的指紋 ${D1} 在紀錄裡找不到"
 fi
 
-# ── 7 標注清單跟紀錄對得上 ──────────────────────────
-# 判準改過之後，舊的標注要重新確認。這條就是那個提醒：
-# labels.tsv 寫的 policy_version 跟現在跑出來的不一樣時報紅。
+# ── 7 標注清單裡要有對得上現行判準的那一筆 ────────────────
+# 這條原本硬看 F1。判準在 Day 21 改過之後 F1 變成歷史標注，
+# 硬看它就變成「永遠紅」，而永遠紅的檢查跟永遠綠的一樣沒用。
+# 現在問的是正確的問題：現行判準版本下有沒有人工標注，那筆的指紋在不在紀錄裡。
+# 舊版標注留在檔案裡不影響這條，那正是 policy_version 這一欄要做到的事。
 if want 7; then
-  case_ "7 labels.tsv 那筆誤擋，指紋與判準版本都對得上現況"
-  LD=$(grep '^F1' labels.tsv | col 2)
-  LV=$(grep '^F1' labels.tsv | col 4)
+  case_ "7 現行判準版本下有一筆人工標注，指紋對得上紀錄"
   NOW=$(node -e 'import("./points.mjs").then((m) => console.log(m.INPUT_VERSION))')
-  tail -n +2 "${TMP}/j1.tsv" | cut -f4,6 | grep -qx "input-gate${TAB}${LD}" \
-    && ok "指紋 ${LD} 在紀錄裡" || bad "指紋 ${LD} 在紀錄裡找不到"
-  [ "${LV}" = "${NOW}" ] \
-    && ok "標注時的判準版本 ${LV} 就是現在這一版" \
-    || bad "標注寫 ${LV}、現在是 ${NOW}：判準變過了，這筆標注要重新確認"
+  LD=$(python3 - "${NOW}" <<'PY'
+import sys
+now = sys.argv[1]
+for line in open("labels.tsv", encoding="utf8"):
+    if line.startswith("#") or line.startswith("id\t"):
+        continue
+    c = line.rstrip("\n").split("\t")
+    if len(c) > 4 and c[3] == now:
+        print(c[1])
+        break
+PY
+)
+  if [ -z "${LD}" ]; then
+    bad "labels.tsv 裡沒有任何一筆對得上現行判準版本 ${NOW}：判準改過了，標注要重新確認"
+  else
+    tail -n +2 "${TMP}/j1.tsv" | cut -f4,6 | grep -qx "input-gate${TAB}${LD}" \
+      && ok "現行版本 ${NOW} 有標注，指紋 ${LD} 也在紀錄裡" \
+      || bad "現行版本的標注指紋 ${LD} 在紀錄裡找不到"
+  fi
 fi
 
 # ── 8 drift 的數字，用另一條路重算一次 ───────────────────

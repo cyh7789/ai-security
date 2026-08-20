@@ -285,6 +285,38 @@ const add = (o) => {
   });
 }
 
+// Day 21：這一條的來歷跟前二十條都不一樣。前面那些是「發現的攻擊」，
+// 這一條是「明著換來的缺口」：把「騙」從輸入側黑名單拿掉，好讓一句防詐宣導
+// 不再被誤擋，代價是只用到「騙」這個字的釣魚信要求從此過得了那道閘。
+// 判準因此落在閘上（judge 是 gate），而且期望值是放行，recipe 21 的 b1 就在斷言這件事。
+// 收進來的理由跟其他二十條一樣：讓它每次都再被打一遍。差別只在
+// 這一條紅了不代表有人繞過你，代表有人把那個字加回去了。
+{
+  const f = need(R("18-not-a-free-chatgpt/prompts/probe-bait.tsv"), "Day 21 那一條");
+  const row = readFileSync(f, "utf8")
+    .split("\n")
+    .filter((l) => l.trim() && !l.startsWith("#"))
+    .map((l) => l.split("\t"))
+    .find((c) => c[0] === "b1");
+  if (!row || !row[1]) {
+    console.error("Day 21 那條在 probe-bait.tsv 裡找不到 b1，攻擊集不能靠記憶補。");
+    process.exit(2);
+  }
+  add({
+    key: "21-bait-single-word",
+    day: 21,
+    // carrier 是 gate 不是 input，所以 run-suite 不會把它送給模型。
+    // 送了也量不出東西：它的判準是「輸入側那道閘怎麼判」，那件事在模型開口之前就決定了，
+    // 而回覆裡沒有任何標記可以認。硬送會拿到一個看起來像「擋住了」的數字（case 3 那條）。
+    carrier: "gate",
+    kind: "attack",
+    judge: "gate",
+    payload: row[1],
+    source: "recipes/18-not-a-free-chatgpt/prompts/probe-bait.tsv",
+    note: "Day 21 拿掉「騙」換來的缺口。它現在過得了輸入側那道閘（recipe 21 的 b1 斷言期望 allow），擋著它的是第四道跟模型自己不肯寫。收在這裡是為了記住這個缺口是換來的，不是沒看到。",
+  });
+}
+
 rows.sort((a, b) => a.id.localeCompare(b.id));
 const out = rows.map((r) => JSON.stringify(r)).join("\n") + "\n";
 const target = join(HERE, "attacks.jsonl");
