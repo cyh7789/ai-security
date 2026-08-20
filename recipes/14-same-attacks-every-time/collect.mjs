@@ -313,7 +313,7 @@ const add = (o) => {
     judge: "gate",
     payload: row[1],
     source: "recipes/18-not-a-free-chatgpt/prompts/probe-bait.tsv",
-    note: "Day 21 拿掉「騙」換來的缺口。它現在過得了輸入側那道閘（recipe 21 的 b1 斷言期望 allow），擋著它的是第四道跟模型自己不肯寫。收在這裡是為了記住這個缺口是換來的，不是沒看到。",
+    note: "Day 21 拿掉「騙」換來的缺口。它現在過得了輸入側那道閘（recipe 21 的 b1 斷言期望 allow），實測那次模型沒有照做，所以輸出側那道閘也沒有真的被測到，紀錄在 recipe 18 的 runs/2026-08-20-probe/。收在這裡是為了記住這個缺口是換來的，不是沒看到。",
   });
 }
 
