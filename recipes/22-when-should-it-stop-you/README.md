@@ -25,8 +25,11 @@ fallback 一路掉到完整版 Chrome，而完整版起不來也不會結束：
 Trying to load the allocator multiple times. This is *not* supported.
 ```
 
-26 個檢查全部拿不到結果，跑滿 500 秒才紅。改成 glob 取最新一版之後：**4 秒 7 綠**。
-21 支的合計變成 **73 秒**。
+那 500 秒裡沒有一個檢查拿到結果。改成 glob 加 `sort -V` 取最新一版之後：**4 秒 7 綠**。
+
+重現方式：`evidence/reproduce-05-before.sh` 把修補之前那一版拉出來實跑，
+量到 **0 綠 24 紅、469 秒**。這一節的每個數字都在 `evidence/`，可以自己重跑。
+合計那個數字每次都不一樣，因為 `07` 那支要連外：同一天量過 73 秒與 90 秒兩次。
 
 所以「每次 push 跑二十分鐘所以按 skip」在這個 repo 不成立。分級不是為了省時間，
 是為了讓「紅」這個訊號保留意義。
@@ -104,7 +107,10 @@ exit 0
 
 ## 分級：四類，每一類對應一個 GitHub 機制
 
-正本是 `levels.tsv`，CI 從那裡讀。
+正本是 `levels.tsv`。**workflow 沒有在跑的時候讀它**，那兩份 matrix 還是手寫的；
+接起來的是這份 recipe 的 `verify.sh` 第 3 條，它比對表跟 workflow 有沒有分岔。
+這是刻意的取捨：讓 workflow 自己去讀表，就得在 CI 裡多一層動態產生 matrix 的機制，
+我寧願把「兩份手寫的東西必須一致」做成一道會紅的閘。
 
 | 級別 | CI 上怎麼做 | 紅了的處置 |
 |---|---|---|

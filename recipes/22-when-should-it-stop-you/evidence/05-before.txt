@@ -1,0 +1,10 @@
+# 這是 05 修好之前那一版（4c1d5db）跑出來的。
+# 產生方式：bash posts/day22/reproduce-05-before.sh
+
+$ cd recipes/05-innerhtml-fake-green && bash verify.sh
+    Trying to load the allocator multiple times. This is *not* supported.
+...
+
+════════ 0 綠 / 24 紅 / 0 跳過 ════════
+
+離開碼 1，跑了 469 秒，FAIL 有 24 行
