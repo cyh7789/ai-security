@@ -457,8 +457,12 @@ sect "4 probe.sh 的四種結束碼分得開，而且收窄真的擋得住"
   else
     # 這一條不需要網路也不需要 npx：PROBE_ROOT 指到 /tmp 以外，它該直接拒絕。
     # 那個守衛擋的是一個 rm -rf，所以它必須有人在看。
-    out=$(PROBE_ROOT="${WS}/not-in-tmp" bash "${HERE}/probe.sh" 2>&1); rc=$?
-    if [ "${rc}" = 2 ] && [ ! -e "${WS}/not-in-tmp" ]; then
+    # 這個路徑必須真的不在 /tmp 底下，所以不能用 ${WS}：
+    # Linux 的 mktemp -d 給的就是 /tmp/tmp.XXXX，守衛會正確放行，
+    # 而這一條期待它被拒絕。8/21 CI 第一次跑抓到（macOS 的 mktemp 給 /var/folders/...）。
+    NOTTMP="${HERE}/not-in-tmp"
+    out=$(PROBE_ROOT="${NOTTMP}" bash "${HERE}/probe.sh" 2>&1); rc=$?
+    if [ "${rc}" = 2 ] && [ ! -e "${NOTTMP}" ]; then
       ok "PROBE_ROOT 不在 /tmp 底下的時候直接拒絕（exit 2），而且沒有去建那個目錄"
     else
       bad "PROBE_ROOT 指到 /tmp 以外卻照樣跑了（rc=${rc}）：${out}"

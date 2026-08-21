@@ -205,8 +205,11 @@ fi
 if want 20; then
   case_ "20 彙總把壞掉的排除在分母外"
   OUT=$(node summarise.mjs samples/results-mixed.tsv)
-  printf '%s' "${OUT}" | grep -qE '^bare\t1\t0\t1\t1\t0' \
-    && printf '%s' "${OUT}" | grep -qE '^owned\t1\t1\t2\t0\t0' \
+  # grep -E 的 \t：macOS 當成 tab，GNU（Linux）當成字面的 t。
+  # 8/21 CI 第一次跑抓到，輸出明明對得上，比對卻失敗。用真的 tab 字元。
+  TAB=$(printf '\t')
+  printf '%s' "${OUT}" | grep -qE "^bare${TAB}1${TAB}0${TAB}1${TAB}1${TAB}0" \
+    && printf '%s' "${OUT}" | grep -qE "^owned${TAB}1${TAB}1${TAB}2${TAB}0${TAB}0" \
     && ok "兩發的 bare 扣掉一份壞的，分母是 1" || bad "$(printf '%s' "${OUT}" | head -3)"
 fi
 

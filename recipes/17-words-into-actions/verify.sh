@@ -261,7 +261,12 @@ if want 22; then
   case_ "22 改一列的 deleted，summarise 的數字要跟著動"
   B=$(node summarise.mjs "${TSV}" | grep -c .)
   T=$(mktemp); awk -F'\t' 'BEGIN{OFS="\t"} NR==2{$10="yes"} {print}' "${TSV}" > "${T}"
-  X=$(node summarise.mjs "${TSV}" | md5); Y=$(node summarise.mjs "${T}" | md5)
+  # md5 只有 macOS 有，Linux 是 md5sum。8/21 CI 第一次跑抓到：兩邊都 command not found，
+  # X 跟 Y 一起變空字串，"" != "" 為假，於是報「改了 deleted 但表沒動」，
+  # 指控 summarise.mjs 有 bug，而它完全正常。
+  sum_() { if command -v md5sum >/dev/null; then md5sum | cut -d" " -f1; else md5; fi; }
+  X=$(node summarise.mjs "${TSV}" | sum_); Y=$(node summarise.mjs "${T}" | sum_)
+  [ -n "${X}" ] || bad "算不出雜湊，這一條沒有結論"
   rm -f "${T}"
   [ "${X}" != "${Y}" ] && [ "${B}" -gt 2 ] \
     && ok "改一列，表就變了" || bad "改了 deleted 但表沒動"
