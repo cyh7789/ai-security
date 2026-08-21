@@ -115,7 +115,12 @@ for (const c of RUN) console.log(`${c.id}\t${c.why}`);
 console.log("");
 console.log(fail === 0 ? `${RUN.length} 綠 0 紅` : `${RUN.length - fail} 綠 ${fail} 紅（防線 ${failLine}、缺口樁 ${failStake}）`);
 
-// 離開碼：0 全綠、1 防線塌了、2 只有缺口樁動了（要人重新做取捨，不擋合併）
-if (failLine > 0) process.exit(1);
-if (failStake > 0) process.exit(2);
-process.exit(0);
+// 離開碼只有兩個意思，跟全 repo 的公約同一套：0 綠、1 有東西紅了。
+// 不要拿 2 表示「缺口樁動了」：2 在公約裡已經是「這一跑沒有結論」，
+// 借用它的話，讀這個數字的人分不出收到的是哪一件事，而那兩件的處置相反。
+// （8/21 外審抓到的：我在定完公約的同一天就自己借用了它。）
+//
+// 那「防線紅」跟「缺口樁紅」怎麼分？靠 --only，兩個 job 各跑各的那一類。
+// 擋不擋合併也不是這個數字決定的，是分支保護決定的：
+// 防線那個 job 在必要檢查清單裡，缺口樁那個不在。
+process.exit(fail === 0 ? 0 : 1);
