@@ -45,7 +45,8 @@ trap cleanup EXIT
 # ── 找瀏覽器 ─────────────────────────────────────────────────
 CH=""
 for c in \
-  "$HOME/.cache/puppeteer/chrome-headless-shell/mac_arm-151.0.7922.47/chrome-headless-shell-mac-arm64/chrome-headless-shell" \
+  "$(ls -d "$HOME"/.cache/puppeteer/chrome-headless-shell/*/chrome-headless-shell-mac-arm64/chrome-headless-shell 2>/dev/null | sort -V | tail -1)" \
+  "$(ls -d "$HOME"/.cache/puppeteer/chrome-headless-shell/*/chrome-headless-shell-linux64/chrome-headless-shell 2>/dev/null | sort -V | tail -1)" \
   "$(command -v chrome-headless-shell 2>/dev/null)" \
   "$(command -v google-chrome 2>/dev/null)" \
   "$(command -v chromium 2>/dev/null)" \
@@ -54,6 +55,17 @@ for c in \
   "/Applications/Chromium.app/Contents/MacOS/Chromium" ; do
   [ -n "$c" ] && [ -x "$c" ] && { CH=$c; break; }
 done
+
+# 挑到完整版 Chrome 的話先講清楚。2026-08-21 踩過：上面第一個候選原本把
+# puppeteer 的版本號寫死（mac_arm-151.0.7922.47），它自己升到 152 之後那個路徑
+# 就不存在，一路掉到這裡，而完整版 Chrome 在這台機器上起不來也不會結束
+# （Trying to load the allocator multiple times），26 個檢查全部拿不到結果，
+# 跑滿 500 秒才紅，訊息完全不指向真正的原因。
+case "$CH" in
+  *chrome-headless-shell) : ;;
+  *) printf '  [i] 用的是完整版瀏覽器 %s，不是 chrome-headless-shell。\n' "$CH"
+     printf '      它起不來的話先跑 npx @puppeteer/browsers install chrome-headless-shell@stable\n' ;;
+esac
 
 if [ -z "$CH" ]; then
   cat <<'EOT'
@@ -344,4 +356,11 @@ if [ $((PASS + FAIL + SKIP)) -eq 0 ]; then
   printf '一項檢查都沒有執行，這不算通過\n' >&2
   exit 1
 fi
-[ "$FAIL" = 0 ]
+
+# 離開碼的意思，全 repo 一致（Day 22 定的）：
+#   0 綠，而且真的驗過了
+#   1 紅，這是你要它擋你的那種
+#   2 環境不到位或有節被跳過，沒有結論。跳過不是通過
+[ "${FAIL}" != 0 ] && exit 1
+[ "${SKIP}" != 0 ] && exit 2
+exit 0
