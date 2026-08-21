@@ -75,6 +75,20 @@ const CASES = [
   },
 ];
 
+// --only 防線 / --only 缺口樁：只跑那一類。
+// 8/21 加的，因為離開碼一個人扛不了兩件事：防線跟缺口樁可以同時紅，
+// 而 0／1／2 是互斥的，同時紅的時候只講得出防線那件。CI 上的缺口樁 job
+// 因此在 b1 明明是紅的時候印出「都還釘在原地」然後綠掉。
+const ONLY = (() => {
+  const i = process.argv.indexOf("--only");
+  return i === -1 ? null : process.argv[i + 1];
+})();
+const RUN = ONLY ? CASES.filter((c) => c.kind === ONLY) : CASES;
+if (ONLY && RUN.length === 0) {
+  console.error(`沒有 kind 是「${ONLY}」的案例。有的是：${[...new Set(CASES.map((c) => c.kind))].join("、")}`);
+  process.exit(2);
+}
+
 // 兩種紅的正確處置相反，所以它們不能共用一個離開碼：
 //   防線紅了，「改期望值」等於把防線關掉
 //   缺口樁紅了，「改期望值」就是正確處置（重新做那個取捨）
@@ -85,7 +99,7 @@ const CASES = [
 let failLine = 0;
 let failStake = 0;
 console.log("id\t類\t來源\t期望\t實際\t結果");
-for (const c of CASES) {
+for (const c of RUN) {
   const r = scenarioGate(c.text);
   const got = r.allow ? "allow" : "deny";
   const want = c.expect ? "allow" : "deny";
@@ -97,9 +111,9 @@ for (const c of CASES) {
 const fail = failLine + failStake;
 
 console.log("");
-for (const c of CASES) console.log(`${c.id}\t${c.why}`);
+for (const c of RUN) console.log(`${c.id}\t${c.why}`);
 console.log("");
-console.log(fail === 0 ? `${CASES.length} 綠 0 紅` : `${CASES.length - fail} 綠 ${fail} 紅（防線 ${failLine}、缺口樁 ${failStake}）`);
+console.log(fail === 0 ? `${RUN.length} 綠 0 紅` : `${RUN.length - fail} 綠 ${fail} 紅（防線 ${failLine}、缺口樁 ${failStake}）`);
 
 // 離開碼：0 全綠、1 防線塌了、2 只有缺口樁動了（要人重新做取捨，不擋合併）
 if (failLine > 0) process.exit(1);

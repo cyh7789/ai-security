@@ -76,15 +76,16 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      # 只有離開碼 1 才擋。2 是「缺口樁動了」，那由下面那個 job 負責講。
-      # 8/21 開 PR 實測到：兩個 job 都跑整支的話，b1 的紅照樣污染這一個，
-      # 拆在 CI 那一層是假的分，真的分在 regress.mjs 的離開碼。
+      # 只跑防線那一類。8/21 這裡改過兩次：
+      #   一開始兩個 job 都跑整支 verify.sh，b1 的紅照樣污染這一個
+      #   接著讓 regress.mjs 用離開碼分 1／2，但那兩類可以同時紅，
+      #   而離開碼是互斥的，同時紅的時候缺口樁那個 job 什麼都看不到
+      # 所以兩個 job 各跑各的那一類，不共用一個回傳值。
       - run: |
           cd recipes/21-did-it-come-back
-          rc=0
-          bash verify.sh || rc=$?
-          [ "${rc}" = 1 ] && exit 1
-          exit 0
+          node regress.mjs --only 防線
+      # 突變測試（把修補拿掉會不會紅）跟還原檢查在整支裡，那些也要跑。
+      - run: cd recipes/21-did-it-come-back && bash verify.sh 3 && bash verify.sh 4 && bash verify.sh 8
 
   gap-stake:
     name: C 21 的缺口樁（b1）
@@ -95,8 +96,8 @@ jobs:
         run: |
           cd recipes/21-did-it-come-back
           rc=0
-          node regress.mjs || rc=$?
-          if [ "${rc}" = 2 ]; then
+          node regress.mjs --only 缺口樁 || rc=$?
+          if [ "${rc}" != 0 ]; then
             {
               echo "### 缺口樁 b1 動了"
               echo "輸入側對那句話的判決變了。這不必然是有人做錯事："
@@ -132,11 +133,17 @@ jobs:
         if: matrix.recipe == '05-innerhtml-fake-green'
         run: |
           mkdir -p "${HOME}/.cache/puppeteer"
+          # @stable 是浮動的：上游出新版的時候，這個 repo 一行都沒改，
+          # 這一支的結果就可能變。05 現在是 B 級（不擋合併）所以先這樣，
+          # 哪天要把它升成必要檢查，這裡得先釘死版本。
           npx --yes @puppeteer/browsers install chrome-headless-shell@stable --path "${HOME}/.cache/puppeteer"
           ls -d "${HOME}"/.cache/puppeteer/chrome-headless-shell/*/ 
       # Ubuntu 23.10 之後預設用 AppArmor 擋掉非特權的 user namespace，
       # Chrome 的沙箱就起不來（FATAL: No usable sandbox!）。
       # 05 拒絕用 --no-sandbox 換綠燈，所以這裡把 userns 開回來讓它真的跑得到。
+      # 這一行只適合一次性的託管 runner：它關掉的是主機層級的限制。
+      # 自架或長駐的 runner 不要照貼，那會影響同一台機器上的其他工作，
+      # 那種環境要改用隔離的 runner，或另外配置 Chrome 的沙箱。
       - name: 讓 Chrome 的沙箱起得來
         if: matrix.recipe == '05-innerhtml-fake-green'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
