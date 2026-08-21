@@ -124,8 +124,23 @@ jobs:
           mkdir -p "${HOME}/.cache/puppeteer"
           npx --yes @puppeteer/browsers install chrome-headless-shell@stable --path "${HOME}/.cache/puppeteer"
           ls -d "${HOME}"/.cache/puppeteer/chrome-headless-shell/*/ 
+      # Ubuntu 23.10 之後預設用 AppArmor 擋掉非特權的 user namespace，
+      # Chrome 的沙箱就起不來（FATAL: No usable sandbox!）。
+      # 05 拒絕用 --no-sandbox 換綠燈，所以這裡把 userns 開回來讓它真的跑得到。
+      - name: 讓 Chrome 的沙箱起得來
+        if: matrix.recipe == '05-innerhtml-fake-green'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: 跑
-        run: cd "recipes/${{ matrix.recipe }}" && bash verify.sh
+        run: |
+          cd "recipes/${{ matrix.recipe }}"
+          rc=0
+          bash verify.sh || rc=$?
+          case "${rc}" in
+            0) echo "${{ matrix.recipe }} 綠" >> "${GITHUB_STEP_SUMMARY}" ;;
+            2) echo "${{ matrix.recipe }} 沒有結論（環境不到位）。跳過不是通過。" >> "${GITHUB_STEP_SUMMARY}" ;;
+            *) echo "**${{ matrix.recipe }} 紅**" >> "${GITHUB_STEP_SUMMARY}" ;;
+          esac
+          exit "${rc}"
 
   # 這道閘原本掛在 18-not-a-free-chatgpt/verify.sh:371 上，18 一沒跑它就不見了。
   gates:

@@ -170,7 +170,7 @@ if want 2; then
   else
     ok "掛載到位、腳本在容器裡（這句由驗證腳本自己的探針證明，不是 suspect.sh 說的）"
     if [ "$NC" = 0 ]; then
-      bad "沒有 canary 可用（本機一個檔案都讀不到），探針那條「讀不到」沒有意義"
+      skip "沒有 canary 可用（本機一個檔案都讀不到），探針那條「讀不到」沒有意義"
     elif [ "$(cnt "$P" ABSENT)" = "$NC" ]; then
       ok "探針去找那 ${NC} 個檔案，${NC} 個都不存在。家目錄真的沒進來"
     elif [ "$(cnt "$P" READ)" != 0 ]; then
@@ -239,7 +239,7 @@ if want 4; then
   printf '\n=== 4. 只多加一行 -v，第 2 節的結論就沒了 ===\n'
   # 跟第 2 節唯一的差別：家目錄掛在 /host。網路一樣關著，唯讀一樣開著
   if [ "$NC" = 0 ]; then
-    bad "沒有 canary 可用（本機一個檔案都讀不到），這一節的對照做不起來"
+    skip "沒有 canary 可用（本機一個檔案都讀不到），這一節的對照做不起來"
   else
     MAPPED=$(printf '%s\n' "$HOST_READ" | sed "s|^$HOME|/host|" | tr '\n' ' ')
     TP=$(probe -v "$HOME:/host:ro" -e "CANARY_PATHS=$MAPPED")
@@ -276,6 +276,8 @@ if want 4; then
     ok "掛了家目錄之後，容器讀得到的跟本機一模一樣。容器還在，隔離沒了"
   elif [ -n "$TRAP_READ" ]; then
     ok "掛了家目錄之後容器又讀得到家目錄的檔案了（清單跟本機不完全一致，看上面）"
+  elif [ -z "$HOST_READ" ]; then
+    skip "本機一個 canary 都沒有，掛不掛家目錄都讀不到，這一條問不出東西"
   else
     bad "掛了家目錄卻還是讀不到，那第 2 節的綠燈是別的原因造成的，要查清楚"
   fi

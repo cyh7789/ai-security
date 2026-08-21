@@ -108,6 +108,30 @@ EOT
 fi
 printf '瀏覽器：%s\n' "$("$CH" --version 2>/dev/null)"
 
+# 先試跑一次，確認這台機器讓 Chrome 起得來。起不來的話後面二十幾條會各自報
+# 「這一格沒跑出結果」，那些訊息指控的是 recipe 的結論，實際上是環境的事。
+#
+# 8/21 在 GitHub 的 ubuntu-24.04 runner 上撞到：
+#   FATAL ... No usable sandbox! ... unprivileged user namespaces with AppArmor
+# Ubuntu 23.10 之後預設擋掉非特權的 user namespace，而這支拒絕用 --no-sandbox：
+# 關掉沙箱是把瀏覽器最外層那道隔離拿掉，不該為了讓一份資安 recipe 變綠而做。
+# 所以這裡回 2（沒有結論），不回 1（紅）。要在 CI 上真的跑，開 userns：
+#   sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+SMOKE=$(mktemp -d)
+if ! "$CH" --headless --disable-gpu --user-data-dir="$SMOKE/p" \
+     --virtual-time-budget=1000 --dump-dom 'data:text/html,<p>ok' > "$SMOKE/out" 2> "$SMOKE/err"; then
+  printf '\nChrome 在這台機器上起不來，這一跑沒有結論。它自己說：\n' >&2
+  sed 's/^/  /' "$SMOKE/err" | head -4 >&2
+  if grep -q 'No usable sandbox' "$SMOKE/err"; then
+    printf '\n這台機器擋掉了非特權的 user namespace（Ubuntu 23.10 以後的預設）。\n' >&2
+    printf '這支不會加 --no-sandbox 換綠燈。要在這裡跑就把 userns 開回來：\n' >&2
+    printf '  sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0\n' >&2
+  fi
+  rm -rf "$SMOKE"
+  exit 2
+fi
+rm -rf "$SMOKE"
+
 # ── 產一份測試站台 ───────────────────────────────────────────
 # 不比對程式碼長相，跑它。只有 api.js 換掉，render.js 一個字都沒動。
 #   before/ after/      payload 從輸入框進去，ask() 是回聲（讀者手動走的那條路）
