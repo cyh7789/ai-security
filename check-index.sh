@@ -5,7 +5,8 @@
 #
 # 為什麼需要它：那張表在 8/16 以前停在 06 停了十二天，中間補了十二份 recipe。
 # 每天都有人跑 verify.sh，沒有人重讀 README，所以這件事只能靠閘。
-# 每一份 recipe 的 verify.sh 最後一條會呼叫它，順便帶著它一起跑。
+# 8/21 查到的實際狀況：全 repo 只有 18-not-a-free-chatgpt/verify.sh:371 呼叫它，
+# 這道閘等於掛在那一支身上，18 一沒跑它就不見了。CI 改成單獨跑這支。
 set -u
 cd "$(dirname "$0")"
 
