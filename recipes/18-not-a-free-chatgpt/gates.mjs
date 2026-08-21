@@ -74,7 +74,7 @@ export function lengthGate(text) {
 // （recipe 21 的 b1 就是那句）。實測那次擋著它的是模型沒有照做，
 // 紀錄在 runs/2026-08-20-probe/：那一跑沒有測到輸出側那道閘，因為沒有釣魚內容送到它面前。
 // 這個缺口沒有被修掉，它被寫成一條測試釘在那裡。
-export const OUT_OF_SCOPE = ["詐", "冒充", "假冒", "偽裝成", "誘導", "套出"];
+export const OUT_OF_SCOPE = ["騙", "詐", "冒充", "假冒", "偽裝成", "誘導", "套出"];
 
 export function scenarioGate(text) {
   const t = String(text);
