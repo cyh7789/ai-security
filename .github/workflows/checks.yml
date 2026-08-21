@@ -54,8 +54,11 @@ jobs:
       - name: 跑
         run: |
           cd "recipes/${{ matrix.recipe }}"
-          bash verify.sh
-          rc=$?
+          # Actions 的 shell 是 bash -e，直接寫 `bash verify.sh` 再讀 $? 讀不到：
+          # 非零會當場中止，下面整段分流從來不會執行（8/21 第一次跑就是這樣，
+          # 五個紅的 job 一個 summary 都沒印）。
+          rc=0
+          bash verify.sh || rc=$?
           case "${rc}" in
             0) echo "${{ matrix.recipe }} 綠" >> "${GITHUB_STEP_SUMMARY}" ;;
             2) echo "**${{ matrix.recipe }} 沒有結論**（環境不到位或有節被跳過）。跳過不是通過。" >> "${GITHUB_STEP_SUMMARY}" ;;
@@ -112,9 +115,15 @@ jobs:
       - uses: actions/checkout@v4
       # 05 在本機找的是 puppeteer 的 chrome-headless-shell。runner 上沒有那份快取，
       # 它會掉到預裝的完整版 Chrome，而完整版正是 8/21 在本機起不來的那個。
+      # --path 不能省：不給的話它裝到工作目錄底下，而 05 找的是 ~/.cache/puppeteer。
+      # 8/21 第一次跟第二次跑都裝錯位置，兩次都 fallback 到 runner 預裝的完整版 Chrome，
+      # 而那個在 Linux 上時好時壞（dbus 卡住），同一個 commit 一次綠一次紅。
       - name: 裝 chrome-headless-shell
         if: matrix.recipe == '05-innerhtml-fake-green'
-        run: npx --yes @puppeteer/browsers install chrome-headless-shell@stable
+        run: |
+          mkdir -p "${HOME}/.cache/puppeteer"
+          npx --yes @puppeteer/browsers install chrome-headless-shell@stable --path "${HOME}/.cache/puppeteer"
+          ls -d "${HOME}"/.cache/puppeteer/chrome-headless-shell/*/ 
       - name: 跑
         run: cd "recipes/${{ matrix.recipe }}" && bash verify.sh
 

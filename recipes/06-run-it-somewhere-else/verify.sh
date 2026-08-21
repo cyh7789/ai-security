@@ -60,7 +60,10 @@ fi
 if [ -n "$HOST_READ" ]; then
   want 1 && ok "本機讀得到 $(printf '%s\n' "$HOST_READ" | grep -c .) 個家目錄裡的檔案，後面的比較有對照組"
 else
-  bad "本機這五個路徑一個都讀不到，這台機器上這組比較沒有鑑別力。請改 suspect.sh 的清單成你真的有的檔案"
+  # 這是「沒有結論」不是「抓到問題」：沒有對照組，後面的比較量不出東西。
+  # 8/21 之前這裡只能報紅，因為離開碼只有 0 跟 1，報綠等於假綠。
+  # 有了 2 之後就不必再選那個妥協。CI 的 runner 家目錄是空的，第一次跑就撞到。
+  skip "本機這五個路徑一個都讀不到，這台機器上這組比較沒有鑑別力。請改 suspect.sh 的清單成你真的有的檔案"
 fi
 if want 1; then
   if online "$HOST_OUT"; then ok "本機連得到外面"
@@ -87,8 +90,10 @@ finish() {
 # ── 沒有可用的容器 CLI 就到此為止 ────────────────────────
 if [ -z "$DOCKER" ]; then
   if [ -n "$ENGINE_DOWN" ]; then
-    # 這不是「這台機器不適用」，是「你要驗的東西壞了」，所以報紅不報跳過
-    for n in 2 3 4; do want $n && bad "找到${ENGINE_DOWN} 但引擎沒有回應。先把它叫起來，這不是可以跳過的情況"; done
+    # 原本這裡報紅，理由是「這不是這台機器不適用，是你要驗的東西壞了」。
+    # 8/21 改成 2：公約定義的是「這一跑有沒有結論」，不是「該不該有人去修」。
+    # 引擎沒回應的時候這支沒有結論，那是事實；「先把它叫起來」訊息裡講就好。
+    for n in 2 3 4; do want $n && skip "找到${ENGINE_DOWN} 但引擎沒有回應。先把它叫起來，這一跑沒有結論"; done
   else
     for n in 2 3 4; do want $n && skip "這台機器沒有裝 docker／podman／nerdctl"; done
   fi
