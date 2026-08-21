@@ -107,7 +107,7 @@ jobs:
             } >> "${GITHUB_STEP_SUMMARY}"
             exit 1
           fi
-          echo "缺口樁 b1、B5 都還釘在原地（綠 = 狀態沒變）" >> "${GITHUB_STEP_SUMMARY}"
+          echo "缺口樁 b1 還釘在原地（綠 = 那個缺口的狀態沒變）" >> "${GITHUB_STEP_SUMMARY}"
 
   # B 級不用 continue-on-error。那個旗標會把紅燈顯示成綠燈，
   # 三週之後沒人點進去看，跟按 skip 的差別只在誰按。
