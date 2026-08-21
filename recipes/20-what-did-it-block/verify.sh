@@ -217,7 +217,10 @@ if want 10; then
   case_ "10 欄數 9 到 12 是從檔案數出來的"
   REAL=$(for f in ../18-not-a-free-chatgpt/runs/*/*.tsv; do
     head -1 "$f" | grep -q 'outreason' && head -1 "$f" | tr '\t' '\n' | grep -c .
-  done | sort -n | uniq | tr '\n' '、' | sed 's/、$//')
+  # 不要用 tr 接多位元組字元：BSD 的 tr（macOS）會換成完整的三個 byte，
+  # GNU 的 tr（Linux）只換第一個，產出無效 UTF-8。8/21 CI 第一次跑抓到，
+  # 本機是「9、10、11、12」，runner 上是「9?10?11?12?」。
+  done | sort -n | uniq | awk 'NR>1{printf "、"} {printf "%s", $0} END{print ""}')
   SAID=$(grep '^欄數出現過' "${TMP}/drift.out" | sed 's/.*：//')
   [ -n "${SAID}" ] && [ "${REAL}" = "${SAID}" ] && ok "drift 說 ${SAID}，實際數出來也是 ${REAL}" \
     || bad "drift 說 ${SAID}，實際是 ${REAL}"
@@ -402,7 +405,9 @@ fi
 # ── 21 有 code 的也要真的抽樣，而且抽法是決定性的 ─────────────
 if want 21; then
   case_ "21 有 code 的抽樣覆核真的抽得出東西"
-  node demo.mjs >/dev/null 2>&1
+  # 這裡也要帶 JOURNAL_NOW：漏了的話 journal.tsv 每跑一次就換一次時間戳，
+  # 跑檢查變成一個會改 repo 的動作。8/21 CI 的「跑完 repo 要乾淨」那條抓到的就是這裡。
+  JOURNAL_NOW=FIXED node demo.mjs >/dev/null 2>&1
   A=$(node triage.mjs | grep -c "抽樣覆核" || true)
   B=$(node triage.mjs); C=$(node triage.mjs)
   [ "${A}" -ge 1 ] || bad "triage 沒有抽樣那一段"

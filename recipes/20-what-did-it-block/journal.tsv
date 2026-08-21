@@ -1,6 +1,6 @@
 ts	trace_id	schema_version	point	policy_version	digest	decision	reason_code	reason_text
-2026-08-20T15:24:26.600Z	N1	1	input-gate	4054664f	7f0e453ac4:11	allow	SCENARIO_OK	到貨時間（命中「到貨」）
-2026-08-20T15:24:26.601Z	N1	1	action-gate	395a4dea	10f5f72dcc:33	allow	NOT_DENY_LISTED	get_order 不在預設拒絕清單上
-2026-08-20T15:24:26.601Z	F1	1	input-gate	4054664f	7ccb725091:20	deny	SCOPE_BLOCK	要做的事不該由客服 bot 做（命中「假冒」）
-2026-08-20T15:24:26.601Z	A1	1	input-gate	4054664f	ded905b75f:18	allow	SCENARIO_OK	訂單查詢（命中「訂單」）
-2026-08-20T15:24:26.601Z	A1	1	action-gate	395a4dea	bf389f664a:43	deny	NO_USER_BASIS	使用者原始請求裡沒有這個動作，要人確認
+FIXED	N1	1	input-gate	4054664f	7f0e453ac4:11	allow	SCENARIO_OK	到貨時間（命中「到貨」）
+FIXED	N1	1	action-gate	395a4dea	10f5f72dcc:33	allow	NOT_DENY_LISTED	get_order 不在預設拒絕清單上
+FIXED	F1	1	input-gate	4054664f	7ccb725091:20	deny	SCOPE_BLOCK	要做的事不該由客服 bot 做（命中「假冒」）
+FIXED	A1	1	input-gate	4054664f	ded905b75f:18	allow	SCENARIO_OK	訂單查詢（命中「訂單」）
+FIXED	A1	1	action-gate	395a4dea	bf389f664a:43	deny	NO_USER_BASIS	使用者原始請求裡沒有這個動作，要人確認
