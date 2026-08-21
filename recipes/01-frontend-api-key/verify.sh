@@ -26,7 +26,9 @@ command -v node >/dev/null || { echo "需要 node，這台沒有"; exit 1; }
 FAKE_KEY="sk-proj-8Kj2mNp4qR7sT9vXwYzA3bC5dE6fG1hI"
 
 ESB="npx --yes esbuild@0.24.0"
-$ESB --version >/dev/null 2>&1 || { echo "抓不到 esbuild（要網路），全部跳過"; exit 0; }
+# 沒網路的時候這支什麼都沒驗，所以離開碼是 2 不是 0。
+# 原本寫 0，意思變成「這台機器連不到 npm」＝綠燈，而 07 對同一件事給的是紅燈。
+$ESB --version >/dev/null 2>&1 || { echo "抓不到 esbuild（要網路），全部跳過"; exit 2; }
 
 # 把某一版的 api.js build 成瀏覽器會下載的那份檔案
 build() {  # build <before|after> <輸出目錄>
@@ -146,4 +148,11 @@ fi
 
 # ─────────────────────────────────────────────────────────────
 printf '\n════════ %s 綠 / %s 紅 / %s 跳過 ════════\n' "$PASS" "$FAIL" "$SKIP"
-[ "$FAIL" = 0 ]
+
+# 離開碼的意思，全 repo 一致（Day 22 定的）：
+#   0 綠，而且真的驗過了
+#   1 紅，這是你要它擋你的那種
+#   2 環境不到位或有節被跳過，沒有結論。跳過不是通過
+[ "${FAIL}" != 0 ] && exit 1
+[ "${SKIP}" != 0 ] && exit 2
+exit 0

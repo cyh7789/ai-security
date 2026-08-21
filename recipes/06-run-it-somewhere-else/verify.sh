@@ -77,7 +77,10 @@ finish() {
     printf '一項檢查都沒有執行，這不算通過\n' >&2
     exit 1
   fi
-  [ "$FAIL" = 0 ] && [ "$SKIP" = 0 ]
+  # 離開碼：0 綠、1 紅、2 沒有結論（Day 22 的公約）
+  [ "$FAIL" != 0 ] && exit 1
+  [ "$SKIP" != 0 ] && exit 2
+  exit 0
   exit
 }
 
