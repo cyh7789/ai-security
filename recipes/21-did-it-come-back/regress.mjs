@@ -49,6 +49,7 @@ const CASES = [
     id: "B4",
     from: "14/benign.jsonl",
     text: fromBenign("B4"),
+    kind: "防線",
     expect: true,
     why: "Day 20 那條誤擋：一句防詐宣導被自己的閘擋死。修好了它就該過",
   },
@@ -56,6 +57,7 @@ const CASES = [
     id: "d1",
     from: "18/prompts/direct.tsv",
     text: fromPrompts("direct.tsv", "d1"),
+    kind: "防線",
     expect: false,
     why: "放寬判準的另一半：原本擋得住的釣魚信，不能跟著鬆掉",
   },
@@ -63,6 +65,7 @@ const CASES = [
     id: "b1",
     from: "18/prompts/probe-bait.tsv",
     text: fromPrompts("probe-bait.tsv", "b1"),
+    kind: "缺口樁",
     expect: true,
     why: "這條釘的是缺口，不是防線。拿掉「騙」之後它會過輸入側，"
       + "擋著它的是模型那次沒有照做（紀錄在 recipe 18 的 runs/2026-08-20-probe/），"
@@ -72,20 +75,33 @@ const CASES = [
   },
 ];
 
-let fail = 0;
-console.log("id\t來源\t期望\t實際\t結果");
+// 兩種紅的正確處置相反，所以它們不能共用一個離開碼：
+//   防線紅了，「改期望值」等於把防線關掉
+//   缺口樁紅了，「改期望值」就是正確處置（重新做那個取捨）
+// 走同一個離開碼、同一封通知，人會被訓練成「紅了就去改 expect」，
+// 三週後遇到 B4 紅會用同一個手勢。2026-08-21 開 PR 實測到這件事：
+// CI 上開了兩個 job，但兩個都跑整支，b1 的紅照樣污染防線那個 job。
+// 分在 CI 那一層是假的分，要分在這裡。
+let failLine = 0;
+let failStake = 0;
+console.log("id\t類\t來源\t期望\t實際\t結果");
 for (const c of CASES) {
   const r = scenarioGate(c.text);
   const got = r.allow ? "allow" : "deny";
   const want = c.expect ? "allow" : "deny";
   const pass = r.allow === c.expect;
-  if (!pass) fail += 1;
-  console.log(`${c.id}\t${c.from}\t${want}\t${got}\t${pass ? "綠" : "紅"}`);
-  if (!pass) console.log(`\t\t\t\t${r.reason}`);
+  if (!pass) (c.kind === "防線" ? failLine++ : failStake++);
+  console.log(`${c.id}\t${c.kind}\t${c.from}\t${want}\t${got}\t${pass ? "綠" : "紅"}`);
+  if (!pass) console.log(`\t\t\t\t\t${r.reason}`);
 }
+const fail = failLine + failStake;
 
 console.log("");
 for (const c of CASES) console.log(`${c.id}\t${c.why}`);
 console.log("");
-console.log(fail === 0 ? `${CASES.length} 綠 0 紅` : `${CASES.length - fail} 綠 ${fail} 紅`);
-process.exit(fail === 0 ? 0 : 1);
+console.log(fail === 0 ? `${CASES.length} 綠 0 紅` : `${CASES.length - fail} 綠 ${fail} 紅（防線 ${failLine}、缺口樁 ${failStake}）`);
+
+// 離開碼：0 全綠、1 防線塌了、2 只有缺口樁動了（要人重新做取捨，不擋合併）
+if (failLine > 0) process.exit(1);
+if (failStake > 0) process.exit(2);
+process.exit(0);

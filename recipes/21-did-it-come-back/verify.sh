@@ -11,10 +11,11 @@ cd "$(dirname "$0")"
 ONLY="${1:-}"
 command -v node >/dev/null || { echo "這份要 Node 才能跑，先裝 Node 再來。"; exit 2; }
 
-PASS=0; FAIL=0
+PASS=0; FAIL=0; SKIP=0
 case_() { printf '\n=== %s ===\n' "$1"; }
 ok()   { printf '  [OK]   %s\n' "$1"; PASS=$((PASS+1)); }
 bad()  { printf '  [FAIL] %s\n' "$1"; FAIL=$((FAIL+1)); }
+skip() { printf '  [SKIP] %s\n' "$1"; SKIP=$((SKIP+1)); }
 want() { [ -z "${ONLY}" ] || [ "${ONLY}" = "$1" ]; }
 TAB=$(printf '\t')
 
@@ -55,11 +56,15 @@ SCEN_OLD='客服信件: ["客服信", "回覆客戶", "通知信", "信件開頭
 # ── 1 三條現在全綠 ────────────────────────────────
 if want 1; then
   case_ "1 三條回歸測試在現行判準下全綠"
-  if node regress.mjs > /tmp/r21.out 2>&1; then
-    ok "$(tail -1 /tmp/r21.out)"
-  else
-    bad "還有紅的：$(grep 紅 /tmp/r21.out | head -3 | tr '\n' ' ')"
-  fi
+  # regress.mjs 的離開碼分三種：0 全綠、1 防線塌了、2 只有缺口樁動了。
+  # 這裡要分開接：缺口樁動了不是這支的紅，那是要人回去重新做取捨的事。
+  RC=0
+  node regress.mjs > /tmp/r21.out 2>&1 || RC=$?
+  case "${RC}" in
+    0) ok "$(tail -1 /tmp/r21.out)" ;;
+    2) skip "缺口樁動了（$(grep -E '^b1' /tmp/r21.out | head -1 | cut -f1,5)）：防線沒塌，但那個缺口的狀態變了，回去跟 B4 一起看" ;;
+    *) bad "防線紅了：$(grep -E '^(B4|d1)\t.*紅$' /tmp/r21.out | cut -f1,5 | tr '\n' ' ')" ;;
+  esac
 fi
 
 # ── 2 綁的輸入是撈來的，不是抄的 ─────────────────────
@@ -173,5 +178,13 @@ if want 8; then
   fi
 fi
 
-printf '\n%d 綠 %d 紅\n' "${PASS}" "${FAIL}"
-[ "${FAIL}" = 0 ]
+printf '\n%d 綠 %d 紅 %d 跳過\n' "${PASS}" "${FAIL}" "${SKIP}"
+
+# 離開碼的意思，全 repo 一致（Day 22 定的）：
+#   0 綠，而且真的驗過了
+#   1 紅，這是你要它擋你的那種
+#   2 環境不到位或有節被跳過，沒有結論。缺口樁動了也走這裡：
+#     那要人回去重新做取捨，不是要它擋住合併
+[ "${FAIL}" != 0 ] && exit 1
+[ "${SKIP}" != 0 ] && exit 2
+exit 0

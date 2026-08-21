@@ -76,7 +76,15 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: cd recipes/21-did-it-come-back && bash verify.sh
+      # 只有離開碼 1 才擋。2 是「缺口樁動了」，那由下面那個 job 負責講。
+      # 8/21 開 PR 實測到：兩個 job 都跑整支的話，b1 的紅照樣污染這一個，
+      # 拆在 CI 那一層是假的分，真的分在 regress.mjs 的離開碼。
+      - run: |
+          cd recipes/21-did-it-come-back
+          rc=0
+          bash verify.sh || rc=$?
+          [ "${rc}" = 1 ] && exit 1
+          exit 0
 
   gap-stake:
     name: C 21 的缺口樁（b1）
@@ -86,7 +94,9 @@ jobs:
       - name: 這個 job 不進必要檢查，但一定要看得見
         run: |
           cd recipes/21-did-it-come-back
-          if node regress.mjs | grep -qE '^b1.*紅$'; then
+          rc=0
+          node regress.mjs || rc=$?
+          if [ "${rc}" = 2 ]; then
             {
               echo "### 缺口樁 b1 動了"
               echo "輸入側對那句話的判決變了。這不必然是有人做錯事："
