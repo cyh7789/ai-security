@@ -1,0 +1,32 @@
+# 21 支檢查的分級。這是判準的正本，CI 的 workflow 從這裡讀。
+#
+# 級別：
+#   A  擋合併。紅了代表這個 PR 弄壞了已經談好的東西
+#   B  只警告。照樣跑、照樣顯示紅，不列進必要檢查。多半是環境的事
+#   C  缺口樁。釘的是現況不是願望，紅了代表缺口狀態變了，要人重新做取捨
+#   D  定時。不綁 PR，外面自己會變的東西
+#
+# 秒數是 2026-08-21 在 macOS 上序列跑一次量的（posts/day22/timing.tsv），
+# runner 上會不一樣，這一欄只用來看數量級。
+recipe	級別	秒	為什麼
+01-frontend-api-key	B	3	要 npx 抓 esbuild。沒網路的時候它現在回 2（8/21 之前回 0，綠得什麼都沒驗）
+02-secret-scan-blind-spots	A	1	全離線，驗的是掃描的六個假通過
+03-revoke-verification	D	5	打 api.github.com 抓 gitleaks、打 api.anthropic.com。那件事在外面自己變
+04-what-not-to-paste	A	0	離線、決定性
+05-innerhtml-fake-green	B	4	要瀏覽器。剛從 500 秒 26 紅修成 4 秒 7 綠，先跑穩再升 A
+06-run-it-somewhere-else	B	2	要容器引擎。本機紅是 Docker Desktop 沒開，那不是這個 PR 的事
+07-does-it-even-exist	D	18	打 registry.npmjs.org。最慢的一支，而且問的是外面的狀態
+08-what-can-it-touch	A	6	離線。裡面的 docker 全是設定檔字串，不需要引擎（8/21 實測 74 綠）
+09-which-side-validated	A	1	離線，兩台 127.0.0.1 的 server
+10-instructions-vs-data	A	1	離線，不打模型
+11-what-the-model-reads	A	5	離線
+12-read-the-description	A	2	離線
+13-who-wrote-your-knowledge-base	A	1	離線
+14-same-attacks-every-time	A	11	固定攻擊集的回歸，正是要擋合併那類
+15-tools-not-a-master-key	A	1	離線
+16-who-checks-the-owner	A	5	離線。Day 16 那條偵測規則本身是另一個 D 的工作，不是這支
+17-words-into-actions	A	1	離線
+18-not-a-free-chatgpt	A	3	四道閘的行為基準
+19-straight-into-the-shell	A	1	離線
+20-what-did-it-block	A	1	離線
+21-did-it-come-back	A	1	已修過的洞的回歸，整套裡最該擋你的一支。但 b1 那條例外，見下

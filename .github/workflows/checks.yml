@@ -1,0 +1,142 @@
+name: 檢查
+
+# 分級的正本是 recipes/22-when-should-it-stop-you/levels.tsv，不是這個檔。
+# 級別的意思：
+#   A 擋合併    紅了 = 這個 PR 弄壞了已經談好的東西
+#   B 只警告    照樣跑、照樣顯示紅，不進必要檢查。多半是環境的事
+#   C 缺口樁    釘的是現況，紅了 = 缺口狀態變了，要人重新做取捨
+#   D 定時      不綁 PR（在 nightly.yml）
+#
+# 離開碼公約（Day 22 定的，閘在 22/check-convention.sh）：
+#   0 綠而且真的驗過了    1 紅    2 環境不到位或有節被跳過，沒有結論
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # 一個 recipe 一個 job。這不只是為了平行：GitHub 每個 job 是獨立的 runner、
+  # 獨立 checkout，而這 21 支裡有四個地方會寫別人的檔案
+  # （21/verify.sh:21、21/shape-vs-behavior.sh:15、20/version-demo.sh:14、14/verify.sh:265）。
+  # 本機實測共用目錄平行跑 10 輪：18 紅 1、20 紅 7、21 紅 9；
+  # 各自一份完整 repo 複本平行跑 10 輪全綠（posts/day22 的 parallel.tsv 與 isolated.tsv）。
+  # 隔離的邊界是整個 repo 不是 recipe 目錄：只複製 recipes/ 的話 18 每輪都紅，
+  # 因為它要 repo 根目錄的 check-index.sh。
+  blocking:
+    name: A ${{ matrix.recipe }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        recipe:
+          - 02-secret-scan-blind-spots
+          - 04-what-not-to-paste
+          - 08-what-can-it-touch
+          - 09-which-side-validated
+          - 10-instructions-vs-data
+          - 11-what-the-model-reads
+          - 12-read-the-description
+          - 13-who-wrote-your-knowledge-base
+          - 14-same-attacks-every-time
+          - 15-tools-not-a-master-key
+          - 16-who-checks-the-owner
+          - 17-words-into-actions
+          - 18-not-a-free-chatgpt
+          - 19-straight-into-the-shell
+          - 20-what-did-it-block
+    steps:
+      - uses: actions/checkout@v4
+      - name: 跑
+        run: |
+          cd "recipes/${{ matrix.recipe }}"
+          bash verify.sh
+          rc=$?
+          case "${rc}" in
+            0) echo "${{ matrix.recipe }} 綠" >> "${GITHUB_STEP_SUMMARY}" ;;
+            2) echo "**${{ matrix.recipe }} 沒有結論**（環境不到位或有節被跳過）。跳過不是通過。" >> "${GITHUB_STEP_SUMMARY}" ;;
+            *) echo "**${{ matrix.recipe }} 紅**" >> "${GITHUB_STEP_SUMMARY}" ;;
+          esac
+          exit "${rc}"
+
+  # 21 拆成兩個 job，因為它的三條測試裡有兩種紅：
+  #   B4、d1 紅了 = 防線塌了，改期望值等於把防線關掉
+  #   b1  紅了 = 那個已知缺口的狀態變了，正確處置就是改期望值
+  # 走同一個離開碼、同一封通知，你會被訓練成「紅了就去改 expect」，
+  # 三週後遇到 B4 紅會用同一個手勢。
+  regression-line:
+    name: A 21 的防線（B4、d1）
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: cd recipes/21-did-it-come-back && bash verify.sh
+
+  gap-stake:
+    name: C 21 的缺口樁（b1）
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: 這個 job 不進必要檢查，但一定要看得見
+        run: |
+          cd recipes/21-did-it-come-back
+          if node regress.mjs | grep -qE '^b1.*紅$'; then
+            {
+              echo "### 缺口樁 b1 動了"
+              echo "輸入側對那句話的判決變了。這不必然是有人做錯事："
+              echo "可能是有人把「騙」加回黑名單（誤擋回來了），"
+              echo "也可能是有人寫了更準的組合判斷（缺口補上了，那是改善）。"
+              echo "回去跟 B4 一起看，重新決定誤擋跟缺口這次哪個貴，把決定寫進 commit。"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 1
+          fi
+          echo "缺口樁 b1、B5 都還釘在原地（綠 = 狀態沒變）" >> "${GITHUB_STEP_SUMMARY}"
+
+  # B 級不用 continue-on-error。那個旗標會把紅燈顯示成綠燈，
+  # 三週之後沒人點進去看，跟按 skip 的差別只在誰按。
+  # 讓它紅，只是不列進分支保護的必要檢查。
+  advisory:
+    name: B ${{ matrix.recipe }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        recipe:
+          - 01-frontend-api-key
+          - 05-innerhtml-fake-green
+          - 06-run-it-somewhere-else
+    steps:
+      - uses: actions/checkout@v4
+      # 05 在本機找的是 puppeteer 的 chrome-headless-shell。runner 上沒有那份快取，
+      # 它會掉到預裝的完整版 Chrome，而完整版正是 8/21 在本機起不來的那個。
+      - name: 裝 chrome-headless-shell
+        if: matrix.recipe == '05-innerhtml-fake-green'
+        run: npx --yes @puppeteer/browsers install chrome-headless-shell@stable
+      - name: 跑
+        run: cd "recipes/${{ matrix.recipe }}" && bash verify.sh
+
+  # 這道閘原本掛在 18-not-a-free-chatgpt/verify.sh:371 上，18 一沒跑它就不見了。
+  gates:
+    name: A 兩道全域的閘
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: README 索引對得上 recipes/
+        run: bash check-index.sh
+      - name: 離開碼公約
+        run: cd recipes/22-when-should-it-stop-you && bash check-convention.sh
+      # 跑檢查不該改到 repo。20 的 journal.tsv 每跑一次就重寫時間戳，
+      # 這一條會抓到那種汙染。
+      - name: 跑完 repo 要是乾淨的
+        run: |
+          for r in 14-same-attacks-every-time 18-not-a-free-chatgpt 20-what-did-it-block 21-did-it-come-back; do
+            (cd "recipes/${r}" && bash verify.sh > /dev/null 2>&1) || true
+          done
+          if ! git diff --quiet; then
+            echo "跑完之後工作目錄不乾淨：" >> "${GITHUB_STEP_SUMMARY}"
+            git diff --stat | tee -a "${GITHUB_STEP_SUMMARY}"
+            exit 1
+          fi
