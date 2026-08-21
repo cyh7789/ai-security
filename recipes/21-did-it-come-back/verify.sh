@@ -56,15 +56,19 @@ SCEN_OLD='客服信件: ["客服信", "回覆客戶", "通知信", "信件開頭
 # ── 1 三條現在全綠 ────────────────────────────────
 if want 1; then
   case_ "1 三條回歸測試在現行判準下全綠"
-  # regress.mjs 的離開碼分三種：0 全綠、1 防線塌了、2 只有缺口樁動了。
-  # 這裡要分開接：缺口樁動了不是這支的紅，那是要人回去重新做取捨的事。
-  RC=0
-  node regress.mjs > /tmp/r21.out 2>&1 || RC=$?
-  case "${RC}" in
-    0) ok "$(tail -1 /tmp/r21.out)" ;;
-    2) skip "缺口樁動了（$(grep -E '^b1' /tmp/r21.out | head -1 | cut -f1,5)）：防線沒塌，但那個缺口的狀態變了，回去跟 B4 一起看" ;;
-    *) bad "防線紅了：$(grep -E '^(B4|d1)\t.*紅$' /tmp/r21.out | cut -f1,5 | tr '\n' ' ')" ;;
-  esac
+  # 兩類分開問，不要從一個離開碼反推。8/22 踩過：這裡原本讀 rc=2 當
+  # 「缺口樁動了」，而 regress.mjs 早就改成只回 0／1，結果只有 b1 紅的時候
+  # 它報「防線紅了：」而冒號後面是空的，指控的正是沒事的那一邊。
+  node regress.mjs > /tmp/r21.out 2>&1 || true
+  LINE_RC=0; node regress.mjs --only 防線   >/dev/null 2>&1 || LINE_RC=$?
+  STAKE_RC=0; node regress.mjs --only 缺口樁 >/dev/null 2>&1 || STAKE_RC=$?
+  if [ "${LINE_RC}" != 0 ]; then
+    bad "防線紅了：$(grep -E "^(B4|d1)${TAB}.*紅$" /tmp/r21.out | cut -f1,5 | tr '\n' ' ')"
+  elif [ "${STAKE_RC}" != 0 ]; then
+    skip "缺口樁動了（$(grep -E "^b1${TAB}" /tmp/r21.out | head -1 | cut -f1,5)）：防線沒塌，但那個缺口的狀態變了，回去跟 B4 一起看"
+  else
+    ok "$(tail -1 /tmp/r21.out)"
+  fi
 fi
 
 # ── 2 綁的輸入是撈來的，不是抄的 ─────────────────────
