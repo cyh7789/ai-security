@@ -46,7 +46,7 @@ row() {
   esac
 }
 
-printf 'id\t入口\t危險動作\t停在哪\n'
+printf 'id\t入口\t這一列量到哪裡為止\t停在哪\n'
 
 # ── 一、客服信件輸出這一類 ─────────────────────────────
 # intake.mjs 印七欄，最後一欄就是停在哪。
@@ -59,9 +59,9 @@ stop() {
   [ -n "$out" ] && printf '%s\n' "$out" || echo 沒驗過:intake.mjs 沒印出第七欄
 }
 
-row R1 使用者打的那句話 客服信件輸出 "$(stop --doc docs/order-shot.txt)"
-row R2 佐證文件附件 客服信件輸出 "$(stop --doc docs/injected.txt)"
-row R3 佐證文件附件_附件也進閘 客服信件輸出 "$(stop --doc docs/injected.txt --gate both)"
+row R1 使用者打的那句話 交付邊界 "$(stop --doc docs/order-shot.txt)"
+row R2 佐證文件附件 交付邊界 "$(stop --doc docs/injected.txt)"
+row R3 佐證文件附件_附件也進閘 交付邊界 "$(stop --doc docs/injected.txt --gate both)"
 
 # ── 二、會改狀態的工具這一類 ───────────────────────────
 # 17 的 agent 印八欄：steps tools intent gate executed deleted mismatch。

@@ -92,7 +92,10 @@ async function main() {
     // 佐證文件就是這樣進上下文的：接在使用者那句話後面，當成同一段輸入。
     const reply = await ask(`${system}\n\n使用者：${TYPED}\n\n[使用者附件 ${docPath}]\n${doc}`);
     out = await classify(reply, ccmd);
-    stopped = out.verdict === "ok" ? "到達輸出" : "閘:classify";
+    // 「抵達交付邊界」不是「送出去了」。這一支沒有寄信、沒有 HTTP、
+    // 也不印信件正文，它只證明內容過了現有的四道檢查，
+    // 後面真的接上寄送呼叫的話就不會再被攔。（2026-08-22 外審指出原本寫「到達輸出」講得比實作滿）
+    stopped = out.verdict === "ok" ? "抵達交付邊界" : "閘:classify";
   }
 
   process.stdout.write(
