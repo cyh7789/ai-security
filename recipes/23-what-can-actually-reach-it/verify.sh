@@ -101,8 +101,16 @@ HASASSERT=$(grep -lE 'assert|strictEqual|deepEqual' skeletons/*.test.mjs 2>/dev/
 [ -z "$HASASSERT" ] && ok "骨架裡沒有 assert 條件" || bad "骨架裡出現 assert 條件" "$HASASSERT"
 
 # 骨架不准偷偷混進 Day 14 的固定攻擊集。
-grep -q '23-what-can-actually-reach-it' ../14-same-attacks-every-time/attacks.jsonl 2>/dev/null \
-  && bad "骨架混進 14/attacks.jsonl 了，那是 Day 24 才動的" || ok "14/attacks.jsonl 沒有被動到"
+# grep 的離開碼 2（檔案讀不到）跟 1（沒找到）不能走同一個分支，
+# 不然檔案不見的時候這條會印綠，而那是「跑不動卻宣稱驗過」。
+A14=../14-same-attacks-every-time/attacks.jsonl
+if [ ! -r "$A14" ]; then
+  echo "  讀不到 ${A14}，沒有結論"; rm -f /tmp/d23-reach.$$; exit 2
+elif grep -q '23-what-can-actually-reach-it' "$A14"; then
+  bad "骨架混進 14/attacks.jsonl 了，那是 Day 24 才動的"
+else
+  ok "14/attacks.jsonl 沒有被動到"
+fi
 
 echo "── 五、白箱那半"
 
@@ -147,8 +155,13 @@ T=$(node intake.mjs --doc docs/injected.txt 2>/dev/null | cut -f4)
   || bad "R2 與 R3 的差別不成立" "typed=${T} both=${B}"
 
 # 兩份佐證文件只差最後那段。差太多的話 R2 量到的就不只是那一段。
+# 釘死行數，不用上限。上限放得過「只改一份」那種單邊修改，
+# 而單邊修改會讓 R2 量到的不只是夾帶那一段（2026-08-22 審查指出這條沒有突變覆蓋）。
 D=$(diff docs/order-shot.txt docs/injected.txt | grep -c '^>')
-[ "$D" -le 6 ] && ok "兩份佐證文件只差 ${D} 行" || bad "兩份佐證文件差 ${D} 行，太多了"
+E=$(diff docs/order-shot.txt docs/injected.txt | grep -c '^<')
+[ "$D" = 4 ] && [ "$E" = 0 ] \
+  && ok "兩份佐證文件只差夾帶的那 4 行，其餘逐字相同" \
+  || bad "兩份佐證文件多了 ${D} 行、少了 ${E} 行，不是只差夾帶那一段"
 
 echo
 echo "${PASS} 綠 ${FAIL} 紅"

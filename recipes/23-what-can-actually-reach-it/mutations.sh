@@ -135,6 +135,11 @@ p.write_text('\n'.join(l for l in ls if not l.startswith('R8\t')))"
 bite "把一條收改判成重複" \
   sub whitebox/verdicts.tsv "$(printf '2\t收')" "$(printf '2\t重複')"
 
+# 十三、只改一份佐證文件。兩份就不再是「只差夾帶那一段」，
+# R2 量到的東西會混進別的差異。舊寫法用上限所以放得過去。
+bite "只改一份佐證文件的物流單號" \
+  sub docs/injected.txt 'SF-77410326' 'SF-77410999'
+
 echo "── 不該紅的（反向控制）"
 
 # 十、改註解不影響任何判準。

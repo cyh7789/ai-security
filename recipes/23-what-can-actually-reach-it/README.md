@@ -11,7 +11,7 @@
 ```bash
 bash verify.sh          # 16 條檢查
 bash reach.sh           # 對每一條路徑真的送一次輸入，印它停在哪
-bash mutations.sh       # 證明上面那 16 條真的會咬
+bash mutations.sh       # 15 個突變，證明 16 條裡有 13 條真的會咬
 node intake.mjs --doc docs/injected.txt          # 佐證文件那條路徑走一次
 node intake.mjs --doc docs/injected.txt --gate both
 ```
@@ -33,7 +33,7 @@ node intake.mjs --doc docs/injected.txt --gate both
 | `whitebox/` | 兩個外部模型從程式碼追出來的路徑候選，加我逐條的判決 |
 | `gen-skeletons.mjs` | 對標「是」的每一列生一份測試骨架 |
 | `skeletons/` | 九份骨架。裡面沒有 assert 條件，那是 Day 24 的事 |
-| `verify.sh`／`mutations.sh` | 閘（16 條），以及證明閘會咬（14 個突變） |
+| `verify.sh`／`mutations.sh` | 閘（16 條），以及證明閘會咬（15 個突變，覆蓋其中 13 條） |
 
 ## 可達只有三個值
 
@@ -45,7 +45,7 @@ node intake.mjs --doc docs/injected.txt --gate both
 
 ## 量出來的
 
-十五列：八條到得了、四條被擋死、三條沒驗過。被擋死那四條裡有三條是同一條路徑換一道閘的對照（R5 對 R4、R13 對 R10），留著是為了說明那個洞不是無解。
+十五列：八條到得了、四條被擋死、三條沒驗過。被擋死那四條裡有兩條是同一條路徑換一道閘的對照（R5 對 R4、R13 對 R10），留著是為了說明那個洞不是無解；另外兩條（R8、R9）不是對照，是本來就過不去。
 
 三條「沒驗過」各自說得出為什麼量不到：R7 只量到閘的判決（`17/agent.mjs` 的 TARGET 寫死 1002，叫不動它去讀 1001），R15 的罐頭模型驅動不到刪除那一步，R11 的起點還不存在（客服 bot 沒接檢索）。R7 原本我填「到得了」，是技術審查把它降回來的。
 
@@ -100,6 +100,12 @@ awk version 20200816、Darwin 25.5.0 實測。ASCII 比對正常，只有非 ASC
 `skeletons/` 底下九份，對應 surface.tsv 上標「是」的九列。裡面沒有 assert 條件，只有一個 throw。
 
 這是照規格分的：成功條件由人定，而那是 Day 24 動作 2。今天就把判準寫進去，等於讓出題的跟改卷的變成同一個。骨架也不進 `14/attacks.jsonl`，那份是固定攻擊集，Day 24 才動它。
+
+## 突變沒覆蓋到的三條
+
+`mutations.sh` 的 15 個突變打得到 16 條裡的 13 條。沒打到的是第 1 條（列數對帳）、第 3 條（證據欄引到的檔案存不存在）、第 10 條（`14/attacks.jsonl` 沒被動到）。
+
+第 10 條要寫別人的檔案才測得到，而這個 repo 已經有四個地方會寫別人的檔案（Day 22 記過那筆帳），不想再加第五個。前兩條的突變會跟已有的那幾個重疊，先不加。**寫在這裡是因為「16 條都會咬」原本寫在上面那行指令的註解裡，而它不是真的。**
 
 ## 還沒付的帳
 

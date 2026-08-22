@@ -21,6 +21,19 @@ rc=0
 
 # 「沒驗過:還沒接檢索」是結論（那條路徑的起點不存在），不是量測失敗，不影響離開碼。
 # 其他任何「沒驗過:」都是這一跑沒有結論，整支要回 2，不能讓 verify.sh 拿它當「被擋死」對帳。
+# 旗標不是閘名。--gate on 是模式旗標，真正擋下來的是網址白名單；
+# --gate safe 擋下來的是逐跳重驗。清單那一欄的規矩是「附是哪一道閘擋的」，
+# 直接印旗標的話 R9 會寫成「閘:on」，那不是任何一道閘的名字。
+gatename() {
+  case "$1" in
+    on)       echo allowlist ;;
+    safe)     echo per-hop-recheck ;;
+    intent)   echo intent ;;
+    external) echo external ;;
+    *)        echo "$1" ;;
+  esac
+}
+
 row() {
   printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4"
   # 這兩種「沒驗過」是結論（那條路徑目前量不到終點），不是這一跑失敗，不影響離開碼。
@@ -68,7 +81,7 @@ agent() {
   x=$(printf '%s' "$out" | awk -F'\t' '{print $5}')
   d=$(printf '%s' "$out" | awk -F'\t' '{print $6}')
   if [ "$d" = yes ]; then echo 到達動作
-  elif [ "$v" = deny ] && [ "$x" = blocked ]; then printf '閘:%s\n' "$gate"
+  elif [ "$v" = deny ] && [ "$x" = blocked ]; then printf '閘:%s\n' "$(gatename "$gate")"
   else printf '沒驗過:沒走到終點（閘 %s、執行 %s）\n' "$v" "$x"
   fi
 }
@@ -86,7 +99,7 @@ case "$R15" in 沒驗過*) R15="沒驗過:罐頭模型驅動不到刪除那一�
 row R15 使用者自己要求刪除 delete_order_外部基準閘 "$R15"
 
 # ── 三、讀到別人的資源這一類 ───────────────────────────
-# 1002 的擁有者是 2、1001 是 1（16/store.mjs）。客服 agent 的白名單同時放行三張，
+# 1002 的擁有者是 2、1001 是 1（17/store.mjs 的 SEED，跟 16 同一批訂單）。客服 agent 的白名單同時放行三張，
 # 而 17 的 execute() 只吃 id，沒有任何一處比對發問者是誰。
 # 這一支只問得到「白名單准不准碰這個編號」。它問不到兩件事：
 # 讀取有沒有真的發生，以及那一筆是不是別人的。
@@ -103,7 +116,7 @@ ownercheck() {
 }
 row R7 使用者填的訂單編號 讀到別人的訂單 "$(ownercheck 1001)"
 row R8 使用者填的請款單編號 讀到別人的請款單 "$(
-  # 請款單身上沒有 ownerId（16/store.mjs 的 invoices），要 join 才知道是誰的。
+  # 請款單身上沒有 ownerId（16/store.mjs 的 invoices，17 沒有這張表），要 join 才知道是誰的。
   # 但這個 agent 的工具清單上沒有 get_invoice，路徑到不了起點。
   v=$(cd "$R/17-words-into-actions" && node gate.mjs allowlist '{"tool":"get_invoice","args":{"id":5001}}' 2>/dev/null | cut -f1)
   [ "$v" = deny ] && echo 閘:allowlist || echo 沒驗過
@@ -129,7 +142,7 @@ fetchprobe() {
   f=$(printf '%s' "$out" | awk -F'\t' '{print $4}')
   m=$(printf '%s' "$out" | awk -F'\t' '{print $6}')
   if [ "$m" = yes ]; then echo 到達動作
-  elif [ "$g" = deny ] && [ "$f" = no ]; then printf '閘:%s\n' "$gate"
+  elif [ "$g" = deny ] && [ "$f" = no ]; then printf '閘:%s\n' "$(gatename "$gate")"
   else printf '沒驗過:連出去了但沒拿到標記（閘 %s、抓取 %s）\n' "$g" "$f"
   fi
 }
