@@ -1,0 +1,42 @@
+name: 定時
+
+# D 級：不綁 PR，因為它們問的是外面的狀態，那件事在外面自己會變。
+# 分級的正本是 recipes/22-when-should-it-stop-you/levels.tsv。
+#
+# 這個檔是 2026-08-22 補的。在那之前 levels.tsv 跟 checks.yml 的檔頭都寫著
+# 「D 級在 nightly.yml」，而那個檔不存在，所以那兩支從來沒有被排定跑過。
+# 發現它的是 check-convention.sh 新加的那道比對（分級表對 workflow）。
+#
+# 離開碼公約跟 checks.yml 同一套：0 綠、1 紅、2 環境不到位沒有結論。
+
+on:
+  schedule:
+    - cron: "17 19 * * *" # UTC，台北時間每天 03:17
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  nightly:
+    name: D ${{ matrix.recipe }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        recipe:
+          - 03-revoke-verification
+          - 07-does-it-even-exist
+    steps:
+      - uses: actions/checkout@v4
+      - name: 跑
+        run: |
+          cd "recipes/${{ matrix.recipe }}"
+          rc=0
+          bash verify.sh || rc=$?
+          case "${rc}" in
+            0) echo "${{ matrix.recipe }} 綠" >> "${GITHUB_STEP_SUMMARY}" ;;
+            2) echo "${{ matrix.recipe }} 沒有結論（外部服務不到位）。跳過不是通過。" >> "${GITHUB_STEP_SUMMARY}" ;;
+            *) echo "**${{ matrix.recipe }} 紅**：外面的狀態變了，回去看那一支在問什麼。" >> "${GITHUB_STEP_SUMMARY}" ;;
+          esac
+          exit "${rc}"
