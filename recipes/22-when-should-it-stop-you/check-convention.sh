@@ -53,6 +53,31 @@ else
   bad "只有 ${N} 支寫了，改的人看不到公約就會照舊寫"
 fi
 
+# 分級表跟 workflow 兩邊都是手寫的，沒有東西讀對方。22 自己就是這樣漏掉一天的：
+# 這一份定了公約，卻沒被加進矩陣，而沒有任何一條檢查會發現。
+printf '\n=== 分級表的每一支都在 workflow 或 nightly 裡 ===\n'
+LV=${R}/22-when-should-it-stop-you/levels.tsv
+WF=$(cat "${R}/../.github/workflows/checks.yml" "${R}/../.github/workflows/nightly.yml" 2>/dev/null)
+MISS=""; EXTRA=""
+while IFS="	" read -r name level _rest; do
+  case "${name}" in ''|'#'*|recipe) continue ;; esac
+  # 兩種寫法都算數：矩陣那一行，或自己一個 job 裡 cd 進去。
+  # 不可以只認「名字有出現」，因為 checks.yml 最後那個清潔檢查也會列名字，
+  # 認名字的話從矩陣拿掉一支照樣綠（2026-08-22 實測，這條因此重寫過一次）。
+  printf '%s' "${WF}" | grep -qE -- "^ +- ${name}\$|recipes/${name}" \
+    || MISS="${MISS} ${name}(${level})"
+done < "${LV}"
+# 反過來：矩陣上有、分級表沒有的
+for n in $(printf '%s' "${WF}" | sed -n 's/^ *- \([0-9][0-9]-[a-z0-9-]*\)$/\1/p' | sort -u); do
+  grep -q "^${n}	" "${LV}" || EXTRA="${EXTRA} ${n}"
+done
+if [ -z "${MISS}" ] && [ -z "${EXTRA}" ]; then
+  ok "分級表與 workflow 的 recipe 清單一致"
+else
+  [ -n "${MISS}" ] && bad "分級表有、workflow 沒有：${MISS}"
+  [ -n "${EXTRA}" ] && bad "workflow 有、分級表沒有：${EXTRA}"
+fi
+
 printf '\n%d 綠 %d 紅\n' "${PASS}" "${FAIL}"
 [ "${FAIL}" != 0 ] && exit 1
 exit 0

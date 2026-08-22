@@ -14,7 +14,9 @@ BACKUP=$(mktemp -d)/snap.tar
 tar cf "${BACKUP}" surface.tsv reach.sh intake.mjs gen-skeletons.mjs verify.sh \
   docs/injected.txt docs/order-shot.txt whitebox/verdicts.tsv whitebox/sol-paths.tsv \
   skeletons
-restore() { tar xf "${BACKUP}"; }
+# tar 蓋得掉修改與刪除，蓋不掉「新增」出來的檔（18/mutations.sh 的註解記過這個坑）。
+# 骨架那個目錄整個砍掉重來，不然「多生一份骨架」那種突變會留下來。
+restore() { rm -rf skeletons; tar xf "${BACKUP}"; }
 trap 'restore; rm -rf "$(dirname "${BACKUP}")"' EXIT
 
 sub() { python3 - "$@" <<'SUBPY'
@@ -105,6 +107,11 @@ p.write_text('\n'.join(l for l in ls if not l.startswith('21\t')))"
 bite "判決指到清單上沒有的 id" \
   sub whitebox/verdicts.tsv "$(printf '15\t引用對不上')" "$(printf '15\t收')"
 
+# 十、多生一份骨架。它同時在驗兩件事：verify 的骨架對帳會咬，
+# 而且 restore 收得掉新增出來的檔（收不掉的話下一列會連鎖紅）。
+bite "多生一份 surface.tsv 上沒有的骨架" \
+  cp skeletons/R2.test.mjs skeletons/R99.test.mjs
+
 echo "── 不該紅的（反向控制）"
 
 # 十、改註解不影響任何判準。
@@ -114,9 +121,11 @@ import pathlib
 p=pathlib.Path('surface.tsv'); p.write_text('# 這行是反向控制\n'+p.read_text())"
 
 # 十一、佐證文件裡改一個跟判準無關的欄位。
-hold "改佐證文件的物流單號" \
+both_docs() {
   sub docs/injected.txt 'SF-77410326' 'SF-77410999' \
-  && sub docs/order-shot.txt 'SF-77410326' 'SF-77410999'
+    && sub docs/order-shot.txt 'SF-77410326' 'SF-77410999'
+}
+hold "改兩份佐證文件的物流單號" both_docs
 
 echo
 echo "${PASS} 咬到 ${FAIL} 沒咬到"
