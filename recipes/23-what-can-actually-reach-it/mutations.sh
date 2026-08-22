@@ -30,27 +30,39 @@ p.write_text(s)
 SUBPY
 }
 
+# 只有離開碼 1 算咬到。2 是「環境不到位、沒有結論」，把它算成咬到的話，
+# 一個跑不動的環境會讓所有突變都顯示咬到（2026-08-22 審查在複製出來的
+# 工作目錄裡實測到這個：verify.sh 回 2，十個突變全綠、兩個反向對照全誤咬）。
 bite() {
-  local name=$1; shift
+  local name=$1 rc=0; shift
   "$@" || { printf '  [SKIP] %-46s 改不動（算失敗）\n' "${name}"; FAIL=$((FAIL+1)); return; }
-  if bash verify.sh >/dev/null 2>&1; then
-    printf '  [FAIL] %-46s 沒咬到\n' "${name}"; FAIL=$((FAIL+1))
-  else
-    printf '  [OK]   %-46s 咬到\n' "${name}"; PASS=$((PASS+1))
-  fi
+  bash verify.sh >/dev/null 2>&1 || rc=$?
+  case "${rc}" in
+    1) printf '  [OK]   %-46s 咬到\n' "${name}"; PASS=$((PASS+1)) ;;
+    0) printf '  [FAIL] %-46s 沒咬到\n' "${name}"; FAIL=$((FAIL+1)) ;;
+    *) printf '  [SKIP] %-46s verify 回 %s，沒有結論（算失敗）\n' "${name}" "${rc}"; FAIL=$((FAIL+1)) ;;
+  esac
   restore
 }
 
 hold() {
-  local name=$1; shift
+  local name=$1 rc=0; shift
   "$@" || { printf '  [SKIP] %-46s 改不動（算失敗）\n' "${name}"; FAIL=$((FAIL+1)); return; }
-  if bash verify.sh >/dev/null 2>&1; then
-    printf '  [OK]   %-46s 維持綠\n' "${name}"; PASS=$((PASS+1))
-  else
-    printf '  [FAIL] %-46s 誤咬\n' "${name}"; FAIL=$((FAIL+1))
-  fi
+  bash verify.sh >/dev/null 2>&1 || rc=$?
+  case "${rc}" in
+    0) printf '  [OK]   %-46s 維持綠\n' "${name}"; PASS=$((PASS+1)) ;;
+    1) printf '  [FAIL] %-46s 誤咬\n' "${name}"; FAIL=$((FAIL+1)) ;;
+    *) printf '  [SKIP] %-46s verify 回 %s，沒有結論（算失敗）\n' "${name}" "${rc}"; FAIL=$((FAIL+1)) ;;
+  esac
   restore
 }
+
+# 基線要先是綠的。基線就已經紅（或沒有結論）的話，下面每一格都不算數。
+BASE=0; bash verify.sh >/dev/null 2>&1 || BASE=$?
+if [ "${BASE}" != 0 ]; then
+  printf '未突變的基線就回 %s，這一輪不算數。先把 verify.sh 弄綠再來。\n' "${BASE}" >&2
+  exit "${BASE}"
+fi
 
 echo "── 會紅的"
 
@@ -111,6 +123,17 @@ bite "判決指到清單上沒有的 id" \
 # 而且 restore 收得掉新增出來的檔（收不掉的話下一列會連鎖紅）。
 bite "多生一份 surface.tsv 上沒有的骨架" \
   cp skeletons/R2.test.mjs skeletons/R99.test.mjs
+
+# 十一、刪掉清單一列但不重跑 reach.log。舊寫法只驗「至少幾列」，這樣走得掉。
+bite "從清單刪掉一列，reach.log 不動" \
+  python3 -c "
+import pathlib
+p=pathlib.Path('surface.tsv'); ls=p.read_text().split('\n')
+p.write_text('\n'.join(l for l in ls if not l.startswith('R8\t')))"
+
+# 十二、把一條「收」改判成「重複」。舊寫法只驗「收在 0 到 21 之間」，這樣走得掉。
+bite "把一條收改判成重複" \
+  sub whitebox/verdicts.tsv "$(printf '2\t收')" "$(printf '2\t重複')"
 
 echo "── 不該紅的（反向控制）"
 

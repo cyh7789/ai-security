@@ -25,8 +25,12 @@ data() { grep -v '^#' surface.tsv | grep -v '^id	'; }
 
 echo "── 一、清單本身"
 
+# 不要寫成「至少幾列」。下限擋不了刪兩列走人，而列數正是這份清單的產出本身。
+# 這裡跟 reach.log 的資料列數互相釘，兩邊要一起改才動得了。
 N=$(data | grep -c .)
-[ "$N" -ge 12 ] && ok "surface.tsv 有 ${N} 列" || bad "surface.tsv 只有 ${N} 列"
+NR_=$(grep -vc '^id	' reach.log 2>/dev/null || echo 0)
+[ "$N" = "$NR_" ] && ok "surface.tsv 與 reach.log 都是 ${N} 列" \
+  || bad "surface.tsv ${N} 列、reach.log ${NR_} 列，兩邊對不上（reach.log 要重跑：bash reach.sh > reach.log）"
 
 # 「可達」只有三個值。這一條擋的是「應該可以」那種寫法混進來。
 BADV=$(data | awk -F'\t' '$5!="到得了" && $5!="被擋死" && $5!="沒驗過" {print $1"="$5}')
@@ -34,7 +38,16 @@ BADV=$(data | awk -F'\t' '$5!="到得了" && $5!="被擋死" && $5!="沒驗過" 
 
 # 每一列都要有證據。空的那格等於憑感覺填的。
 NOEV=$(data | awk -F'\t' '$6=="" || $6=="-" {print $1}')
-[ -z "$NOEV" ] && ok "每一列都有證據" || bad "這些列沒有證據" "$NOEV"
+# 「非空」擋不掉隨便寫一句。每一列的證據要指得到一個真的存在的檔案，
+# 不然那一格只是話術。這裡抓 xx-name/file.ext 這種寫法逐一確認。
+GHOSTF=$(data | awk -F'\t' '{print $1"\t"$6}' | while IFS='	' read -r id ev; do
+  for f in $(printf '%s' "$ev" | grep -oE '[0-9]{2}/[a-z0-9.-]+\.(mjs|cjs|sh|tsv|txt|jsonl)'); do
+    d=$(printf '%s' "$f" | cut -d/ -f1); b=$(printf '%s' "$f" | cut -d/ -f2)
+    ls ../"${d}"-*/"${b}" >/dev/null 2>&1 || echo "${id}:${f}"
+  done
+done)
+if [ -z "$NOEV" ] && [ -z "$GHOSTF" ]; then ok "每一列都有證據，引到的檔案都存在"
+else bad "證據欄有問題" "空的：${NOEV:-無}／指不到的檔：${GHOSTF:-無}"; fi
 
 echo "── 二、可達性要跟 reach.sh 跑出來的對得上"
 
@@ -100,21 +113,28 @@ VROWS=$(grep -v '^#' whitebox/verdicts.tsv | grep -vc '^它列的')
 [ "$MROWS" = "$VROWS" ] && ok "模型列 ${MROWS} 條，判決也是 ${VROWS} 條" \
   || bad "模型列 ${MROWS} 條，判決只有 ${VROWS} 條，有沒判的"
 
+# 這三個數字是文章直接引用的，不能只驗「在合理區間」。釘死，改判決就要一起改這裡。
 TAKE=$(grep -v '^#' whitebox/verdicts.tsv | awk -F'\t' '$2=="收"' | grep -c .)
-[ "$TAKE" -gt 0 ] && [ "$TAKE" -lt "$MROWS" ] \
-  && ok "收 ${TAKE} 條、擋掉 $((MROWS-TAKE)) 條" \
-  || bad "收下的比例不合理（收 ${TAKE} / 共 ${MROWS}）"
+FIX=$(grep -v '^#' whitebox/verdicts.tsv | awk -F'\t' '$2=="更正後收"' | grep -c .)
+IN=$((TAKE+FIX))
+[ "$TAKE" = 10 ] && [ "$FIX" = 1 ] && [ "$IN" -lt "$MROWS" ] \
+  && ok "收 ${TAKE}、更正後收 ${FIX}，進清單 ${IN} 條、擋掉 $((MROWS-IN)) 條" \
+  || bad "判決分佈變了（收 ${TAKE}、更正後收 ${FIX}、共 ${MROWS}），文章那張表要跟著改"
 
 # 判「收」的那些列，對應欄指的 id 要真的在清單上。
-GHOST=$(grep -v '^#' whitebox/verdicts.tsv | awk -F'\t' '$2=="收"{print $4}' | sort -u \
+GHOST=$(grep -v '^#' whitebox/verdicts.tsv | awk -F'\t' '$2=="收"||$2=="更正後收"{print $4}' | sort -u \
         | while read -r i; do data | cut -f1 | grep -qx "$i" || echo "$i"; done)
 [ -z "$GHOST" ] && ok "判決指到的 id 都在清單上" || bad "判決指到清單上沒有的 id" "$GHOST"
 
 # 判「引用對不上」的那兩列，要自己重現得了：那些檔案真的不存在。
 STILL=$(grep -v '^#' whitebox/verdicts.tsv | awk -F'\t' '$2=="引用對不上"{print $3}' \
         | grep -oE '1[0-9]-[a-z-]+/[a-z-]+\.(mjs|cjs)' | sort -u \
-        | while read -r f; do [ -e "../$f" ] && echo "$f 其實存在"; done)
-[ -z "$STILL" ] && ok "判成引用對不上的檔案確實不存在" || bad "判錯了" "$STILL"
+        | while read -r f; do
+            [ -e "../$f" ] && echo "$f 其實存在"
+            # 那個路徑要真的是模型寫的，不然編一個不存在的檔名就能拿到這個判決
+            grep -q "$f" whitebox/sol-paths.tsv || echo "$f 不在模型交的原文裡"
+          done)
+[ -z "$STILL" ] && ok "判成引用對不上的檔案確實不存在，而且真的是模型寫的" || bad "判錯了" "$STILL"
 
 echo "── 六、佐證文件那條路徑"
 
