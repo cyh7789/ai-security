@@ -1,4 +1,4 @@
-# 21 支檢查的分級。這是判準的正本，CI 的 workflow 從這裡讀。
+# 23 支檢查的分級。這是判準的正本，CI 的 workflow 從這裡讀。
 #
 # 級別：
 #   A  擋合併。紅了代表這個 PR 弄壞了已經談好的東西
@@ -30,3 +30,5 @@ recipe	級別	秒	為什麼
 19-straight-into-the-shell	A	1	離線
 20-what-did-it-block	A	1	離線
 21-did-it-come-back	A	1	已修過的洞的回歸，整套裡最該擋你的一支。但 b1 那條例外，見下
+22-when-should-it-stop-you	A	2	離線。8/22 補上：這一份定了離開碼公約，自己卻沒進矩陣
+23-what-can-actually-reach-it	A	1	離線，只起 127.0.0.1 上的示範服務。它比對的是攻擊面清單跟實跑，清單造假會紅
