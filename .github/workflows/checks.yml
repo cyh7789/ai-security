@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   # 一個 recipe 一個 job。這不只是為了平行：GitHub 每個 job 是獨立的 runner、
-  # 獨立 checkout，而這 23 支裡有四個地方會寫別人的檔案
+  # 獨立 checkout，而這 24 支裡有四個地方會寫別人的檔案
   # （21/verify.sh:21、21/shape-vs-behavior.sh:15、20/version-demo.sh:14、14/verify.sh:265）。
   # 本機實測共用目錄平行跑 10 輪：18 紅 1、20 紅 7、21 紅 9；
   # 各自一份完整 repo 複本平行跑 10 輪全綠（posts/day22 的 parallel.tsv 與 isolated.tsv）。
@@ -51,6 +51,7 @@ jobs:
           - 20-what-did-it-block
           - 22-when-should-it-stop-you
           - 23-what-can-actually-reach-it
+          - 24-green-or-never-hit
     steps:
       - uses: actions/checkout@v4
       - name: 跑
@@ -175,7 +176,7 @@ jobs:
       # 這一條會抓到那種汙染。
       - name: 跑完 repo 要是乾淨的
         run: |
-          for r in 14-same-attacks-every-time 18-not-a-free-chatgpt 20-what-did-it-block 21-did-it-come-back 23-what-can-actually-reach-it; do
+          for r in 14-same-attacks-every-time 18-not-a-free-chatgpt 20-what-did-it-block 21-did-it-come-back 23-what-can-actually-reach-it 24-green-or-never-hit; do
             (cd "recipes/${r}" && bash verify.sh > /dev/null 2>&1) || true
           done
           if ! git diff --quiet; then
