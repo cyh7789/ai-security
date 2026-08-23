@@ -39,6 +39,10 @@ if (!["typed", "both"].includes(scope)) {
   process.exit(2);
 }
 const docPath = arg("--doc", "docs/order-shot.txt");
+// 使用者打的那句話也可以換掉。Day 24 要讓 recipe 21 那條誘餌句真的走完這條入口，
+// 而不是只問輸入側那道閘怎麼判：閘的判決不等於那句話走到哪裡。
+// 換進來的那句話要從它原本住的檔案撈，不要在呼叫端抄一份。
+const typed = arg("--typed", TYPED);
 const cmd = process.env.MODEL_CMD ?? "bash ../18-not-a-free-chatgpt/stub-model.sh";
 const ccmd = process.env.CLASSIFY_CMD ?? cmd;
 
@@ -70,7 +74,7 @@ async function main() {
     "utf8",
   ).trim();
 
-  const typedVerdict = runGates(TYPED);
+  const typedVerdict = runGates(typed);
   // both 的時候附件走同一組閘。rate 已經在上一行用掉一次，這裡只問內容那兩道，
   // 不然同一次對話會被自己的頻率閘算成兩次。
   let docVerdict = { allow: true, gate: "-", code: "NOT_GATED", reason: "附件不在閘的範圍內" };
@@ -90,7 +94,7 @@ async function main() {
 
   if (!blocked) {
     // 佐證文件就是這樣進上下文的：接在使用者那句話後面，當成同一段輸入。
-    const reply = await ask(`${system}\n\n使用者：${TYPED}\n\n[使用者附件 ${docPath}]\n${doc}`);
+    const reply = await ask(`${system}\n\n使用者：${typed}\n\n[使用者附件 ${docPath}]\n${doc}`);
     out = await classify(reply, ccmd);
     // 「抵達交付邊界」不是「送出去了」。這一支沒有寄信、沒有 HTTP、
     // 也不印信件正文，它只證明內容過了現有的四道檢查，

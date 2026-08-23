@@ -52,7 +52,9 @@ done
 
 case_ "2 不認得的案例回「跑不動」，不回「擋住」"
 # 這一條護的是上面那條的判準。*) 分支要是回「擋住」，漏寫的案例會變成一條漂亮的綠。
-grep -qE '^ *\*\) *echo 跑不動' run.sh \
+# 只看 runcase 那一段，不要 grep 整個檔案。判準函式裡也有 *) echo 跑不動，
+# grep 整份的話，把 runcase 那處改掉它照樣命中別處而印綠（自己跑出來的）。
+sed -n '/^runcase() {/,/^}/p' run.sh | grep -qE '^ *\*\) *echo 跑不動' \
   && ok "runcase 的 *) 分支回跑不動" || bad "runcase 的 *) 分支不是回跑不動"
 
 case_ "3 判準不看模型講了什麼"
@@ -82,7 +84,7 @@ NORESULT=$(printf '%s' "${RUN}" | awk -F'\t' '$6=="沒有結論"{print $1}' | tr
 
 case_ "6 缺口的條數釘死，不是「至少幾條」"
 # 寫「至少一條」的話，六條掉到剩一條也是綠的，而那時候這份清單已經不是同一份了。
-NB=$(data | awk -F'\t' '$4=="擋" && $6=="沒擋"' | grep -c . || true)
+NB=$(data | awk -F'\t' '$5=="擋" && $7=="沒擋"' | grep -c . || true)
 NJ=$(node -e 'const fs=require("fs");console.log(fs.readFileSync("attacks-project.jsonl","utf8").split("\n").filter(l=>l.trim()&&JSON.parse(l).baseline).length)' 2>/dev/null || echo x)
 [ "${NB}" = 7 ] && [ "${NJ}" = 7 ] \
   && ok "cases.tsv 與 attacks-project.jsonl 都是 7 條基線" || bad "cases.tsv ${NB} 條、jsonl ${NJ} 條，要 7"
@@ -300,7 +302,19 @@ else
 fi
 rm -rf "$T"
 
-case_ "19 弄壞一道真的防線，測試入口要紅"
+case_ "19 層級欄講的層，跑法真的落在那一層"
+# 這一欄是外審逼出來的：我拿「那是閘的判決，不是那句話真的走完入口」退掉三條變體，
+# 然後自己收了三條同型的。標「流程」的那幾條，跑法就必須真的走完入口。
+M=""
+[ "$(data | awk -F'\t' '$4=="流程"' | grep -c .)" = 10 ] || M="${M} 流程不是10條"
+[ "$(data | awk -F'\t' '$4=="元件"' | grep -c .)" = 1 ] || M="${M} 元件不是1條"
+[ "$(data | awk -F'\t' '$4=="資料"' | grep -c .)" = 1 ] || M="${M} 資料不是1條"
+# C10 是這一條的由來：它以前走 regress.mjs（那支直接呼叫 scenarioGate），現在要走 intake.mjs。
+grep -q 'node regress.mjs' run.sh && M="${M} run.sh還在實際呼叫regress.mjs"
+grep -q 'node intake.mjs --typed' run.sh || M="${M} C10沒走完整條入口"
+[ -z "${M}" ] && ok "10 條流程、1 條元件、1 條資料，而且 C10 走的是 intake.mjs" || bad "${M}"
+
+case_ "20 弄壞一道真的防線，測試入口要紅"
 # 第 18 條改的是紀錄那一欄，測得到對帳，測不到「測試入口本身會不會誤導人」。
 # 這一條把 C04 從擋得住的閘換成擋不住的，真的造一次退步。
 # 判準是 node --test 的離開碼：斷言退回排除式的話那邊會是 13 pass 離開碼 0。

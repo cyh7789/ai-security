@@ -33,7 +33,7 @@ assert.ok(cases.length > 0, "cases.tsv 一條都讀不到");
 // 也就是這一天要處理的那個錯覺，出現在我自己的產出上。
 const state = (want, now) => (want === "擋" && now === "沒擋" ? "缺口" : want === "可接受" ? "選擇不擋" : "擋住");
 
-for (const [id, path, one, want, , now] of cases) {
+for (const [id, path, one, , want, , now] of cases) {
   test(`${id}（${path}｜${state(want, now)}）${one}`, () => {
     // run.sh 的離開碼 1 是設計：清單上有已知的缺口。所以這裡不看它的離開碼，
     // 看那一列的「結果」欄。用 execFileSync 的離開碼判會讓每一條都紅。
@@ -59,8 +59,8 @@ for (const [id, path, one, want, , now] of cases) {
 }
 
 // 收尾這一條的名字自己會講話。少了它，上面十二個勾看起來就是十二條防線。
-const gaps = cases.filter(([, , , w, , n]) => w === "擋" && n === "沒擋").length;
-const accepted = cases.filter(([, , , w]) => w === "可接受").length;
+const gaps = cases.filter(([, , , , w, , n]) => w === "擋" && n === "沒擋").length;
+const accepted = cases.filter(([, , , , w]) => w === "可接受").length;
 test(`收尾：${cases.length} 條裡有 ${gaps} 條是已知缺口、${accepted} 條是選擇不擋，只有 ${cases.length - gaps - accepted} 條真的擋住了`, () => {
   assert.ok(gaps > 0, "一條基線案例都沒有。一份全綠的攻擊集分不出防得住跟根本沒打到。");
   // 攻擊集固定成檔案這件事，要跟來源對得上才算固定。
