@@ -47,15 +47,33 @@ for (const c of cases) {
   }
 }
 
-// ── 對帳二：清單上標「是．」的每一列，都要配到案例或掛在 open-questions 上 ──
-// 這條是這支存在的主要理由。少了它，一條路徑可以無聲無息地從清單掉出去：
-// surface.tsv 上寫著「是．本日主線」，而今天的攻擊集裡一條都沒有。
-// path 那一欄是明著填的，不從散文撈。第一版拿 /R\d+/ 去 match 來源欄，
-// R11 那一列的來源寫的是「24/retrieve.mjs」，撈不到，於是 R11 靜靜地
-// 從涵蓋清單掉出去（這支第一次跑就咬到了，所以那一格不是裝飾）。
+// ── 對帳二：清單上標「是．」的每一列，都要配到案例或掛在 open-questions ──
+// 少了它，一條路徑可以無聲無息地從清單掉出去：surface.tsv 上寫著「是．本日主線」，
+// 而今天的攻擊集裡一條都沒有。
 const covered = new Set([...cases.map((c) => c.path), ...open.map((q) => q.path)]);
 const missing = surface.filter((r) => r.Day24出案例?.startsWith("是") && !covered.has(r.id)).map((r) => r.id);
 if (missing.length) die(`清單上標「是」卻一條案例都沒有：${missing.join("、")}`);
+
+// ── 對帳二之二：那一欄自己也要對得起實跑 ──
+// 只做上面那條的話，把 surface.tsv 的「是．…」改成「否．…」再刪掉對應的案例，
+// 兩邊一起改就無聲繞過了（審查實跑過，--check 回「跟來源一致」）。
+// 所以第三份來源要進來：reach.log 是實跑的結果，不是任何人的判斷。
+// 規矩是「到得了的路徑一定要有著落」，而到不到得了由那份日誌說了算。
+const REACH = join(HERE, "..", "23-what-can-actually-reach-it", "reach.log");
+if (!existsSync(REACH)) die(`找不到 ${REACH}（實跑的結果，這一份的第三個來源）`);
+const reached = new Set(
+  readFileSync(REACH, "utf8")
+    .split("\n")
+    .filter((l) => l.trim() && !l.startsWith("id\t"))
+    .map((l) => l.split("\t"))
+    .filter((c) => /^(到達|抵達)/.test(c[3] ?? ""))
+    .map((c) => c[0]),
+);
+if (!reached.size) die("reach.log 裡一條到得了的路徑都沒有，那份日誌八成是舊的或壞的");
+const dodged = [...reached].filter((id) => !covered.has(id));
+if (dodged.length) {
+  die(`reach.log 說這幾條到得了，而它們既不在 cases.tsv 也不在 open-questions.tsv：${dodged.join("、")}`);
+}
 
 // ── 對帳三：至少一條已知會被打穿的基線案例（規格的硬性要求）──
 const baseline = cases.filter((c) => c.期望 === "擋" && c.現在 === "沒擋");

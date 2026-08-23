@@ -7,12 +7,12 @@
 
 一套資安教材的示範程式。裡面有一個玩具客服 bot，散在幾個 recipe 目錄裡：
 
-- `repo/recipes/18-not-a-free-chatgpt/` — 輸入側三道閘（頻率、長度、場景）與輸出側一道分類器
-- `repo/recipes/17-words-into-actions/` — agent 迴圈與三種動作閘（意圖核對、外部基準、白名單）
-- `repo/recipes/15-tools-not-a-master-key/` — 抓取工具與網域白名單
-- `repo/recipes/13-who-wrote-your-knowledge-base/` — 知識庫與來源清點
-- `repo/recipes/23-what-can-actually-reach-it/` — 攻擊面清單（`surface.tsv`）與可達性量測（`reach.sh`）
-- `repo/recipes/24-green-or-never-hit/` — 今天新增的 `retrieve.mjs`
+- `repo/recipes/18-not-a-free-chatgpt/`：輸入側三道閘（頻率、長度、場景）與輸出側一道分類器
+- `repo/recipes/17-words-into-actions/`：agent 迴圈與三種動作閘（意圖核對、外部基準、白名單）
+- `repo/recipes/15-tools-not-a-master-key/`：抓取工具與網域白名單
+- `repo/recipes/13-who-wrote-your-knowledge-base/`：知識庫與來源清點
+- `repo/recipes/23-what-can-actually-reach-it/`：攻擊面清單（`surface.tsv`）與可達性量測（`reach.sh`）
+- `repo/recipes/24-green-or-never-hit/`：今天新增的 `retrieve.mjs`
 
 ## 二、我的框架，請先攻擊它再回答
 

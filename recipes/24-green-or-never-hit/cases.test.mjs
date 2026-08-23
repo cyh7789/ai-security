@@ -29,7 +29,7 @@ const cases = readFileSync(join(HERE, "cases.tsv"), "utf8")
 assert.ok(cases.length > 0, "cases.tsv 一條都讀不到");
 
 // 測試名字裡一定要帶狀態。第一版沒帶，跑起來是「12 pass」，
-// 而其中六條是已知缺口 —— 那行字跟「十二條全都防住了」逐字相同，
+// 而其中六條是已知缺口，那行字跟「十二條全都防住了」逐字相同，
 // 也就是這一天要處理的那個錯覺，出現在我自己的產出上。
 const state = (want, now) => (want === "擋" && now === "沒擋" ? "缺口" : want === "可接受" ? "選擇不擋" : "擋住");
 

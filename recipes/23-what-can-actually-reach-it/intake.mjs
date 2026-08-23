@@ -4,7 +4,7 @@
 //   node intake.mjs --doc docs/injected.txt              # 同一份，末尾多一段講給助理聽的話
 //   node intake.mjs --doc docs/injected.txt --gate both  # 把附件也送進同一組閘
 //
-// 印一行 TSV：載體、閘的範圍、輸入側判決、有沒有到模型、輸出側判決、停在哪。
+// 印一行 TSV：載體、閘的範圍、輸入側判決、附件判決、有沒有到模型、輸出側判決、停在哪。
 //
 // 為什麼要有這一支：Day 18 那條鏈的三道閘簽章都是 gate(text)，吃一個字串
 // （`../18-not-a-free-chatgpt/gates.mjs`）。客服流程裡使用者本來就會附東西

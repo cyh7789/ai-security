@@ -5,7 +5,7 @@
 #
 # 一條檢查沒有被咬過，它就只是一段跑得動的程式，不是一道閘。
 # 每個突變破壞的是機制本身（判準看錯欄、對帳拿掉、閘門永遠說好），
-# 不是刪掉我自己加的那幾行 —— 刪除式的突變會咬到，但它證明不了那條檢查有在看什麼。
+# 不是刪掉我自己加的那幾行。刪除式的突變會咬到，但它證明不了那條檢查有在看什麼。
 set -u
 cd "$(dirname "$0")"
 export LC_ALL=C
@@ -17,11 +17,13 @@ restore() { cp "${BACKUP}"/* .; }
 trap 'restore; rm -rf "${BACKUP}"' EXIT
 
 G=0; B=0
+# 樣式裡的 \n 當成換行。有些突變非跨行不可：run.sh 裡「else echo 沒打到; fi」
+# 出現兩次（agent_delete 與 fetchprobe），只有把下一行帶上才指得準是哪一個。
 sub() { python3 -c '
 import io,sys
 p=sys.argv[1]; s=io.open(p,encoding="utf8").read()
 for i in range(2,len(sys.argv),2):
-    a,b=sys.argv[i],sys.argv[i+1]
+    a,b=[x.replace("\\n","\n") for x in (sys.argv[i],sys.argv[i+1])]
     if s.count(a)!=1: sys.exit(f"樣式不只一處或找不到：{a!r}")
     s=s.replace(a,b)
 io.open(p,"w",encoding="utf8").write(s)' "$@"; }
@@ -88,7 +90,14 @@ bite "檢索改讀本地抄來的知識庫" 15 retrieve.mjs \
   '../13-who-wrote-your-knowledge-base/demo/kb.jsonl' 'demo/kb.jsonl'
 bite "測試名字不再帶狀態" 16 cases.test.mjs \
   'test(`${id}（${path}｜${state(want, now)}）${one}`' 'test(`${id}（${path}）${one}`'
-bite "run.sh 不再拿紀錄跟實測對帳" 17 run.sh \
+bite "「沒打到」折回「跑不動」" 12 run.sh \
+  '  else echo 沒打到; fi\n}\n\n# R7：讀取有沒有真的發生' '  else echo 跑不動; fi\n}\n\n# R7：讀取有沒有真的發生'
+bite "方向不分期望，可接受那類也用同一套" 17 run.sh \
+  '    [ "$2" = 沒擋 ] && echo 誤擋了 || echo 放行了' \
+  '    [ "$2" = 沒擋 ] && echo 補起來了 || echo 退步了'
+bite "collect.mjs 不再拿 reach.log 對帳" 11b collect.mjs \
+  'if (dodged.length) {' 'if (false) {'
+bite "run.sh 不再拿紀錄跟實測對帳" 18 run.sh \
   '  elif [ "$got" != "$now" ]; then' '  elif false; then'
 
 echo

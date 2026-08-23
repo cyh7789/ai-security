@@ -25,6 +25,7 @@ workspace() {
   mkdir -p "$t/24-green-or-never-hit" "$t/23-what-can-actually-reach-it"
   cp cases.tsv open-questions.tsv attacks-project.jsonl collect.mjs run.sh kb-approved.txt "$t/24-green-or-never-hit/"
   cp "$SURF" "$t/23-what-can-actually-reach-it/"
+  cp "$R/23-what-can-actually-reach-it/reach.log" "$t/23-what-can-actually-reach-it/" 2>/dev/null || true
 }
 
 # BSD sed 不把 \t 當定位字元，寫 \t 的樣式一條都比不中，於是突變沒發生而檢查印綠。
@@ -75,15 +76,23 @@ fi
 case_ "5 實測跟 cases.tsv 記的完全一致"
 # 「對不上」哪個方向都算紅：有人補了洞而清單沒更新，跟有人弄破防線一樣，
 # 都讓這份清單開始說謊。
-MISMATCH=$(printf '%s' "${RUN}" | awk -F'\t' '$6=="對不上"||$6=="沒有結論"{print $1"="$6}' | tr '\n' ' ')
-[ -z "${MISMATCH}" ] && ok "12 條實測都跟紀錄一致" || bad "對不上或沒結論：${MISMATCH}"
+MISMATCH=$(printf '%s' "${RUN}" | awk -F'\t' '$6=="補起來了"||$6=="退步了"||$6=="誤擋了"||$6=="放行了"||$6=="打空氣"{print $1"="$6}' | tr '\n' ' ')
+NORESULT=$(printf '%s' "${RUN}" | awk -F'\t' '$6=="沒有結論"{print $1}' | tr '\n' ' ')
+if [ -n "$(printf '%s' "${NORESULT}" | tr -d ' ')" ]; then
+  # 這一支自己第 4 行寫著離開碼 2 是「環境不到位沒有結論」，而 levels.tsv 把 24 標成 A 級，
+  # 也就是紅了代表這個 PR 弄壞了談好的東西。環境問題走 1 的話那是一個假紅。
+  echo "  跑不動的案例：${NORESULT}　這一跑沒有結論"
+  printf '\n%s 綠 %s 紅（另有跑不動的案例，離開碼 2）\n' "$G" "$B"
+  exit 2
+fi
+[ -z "$(printf '%s' "${MISMATCH}" | tr -d ' ')" ] && ok "12 條實測都跟紀錄一致" || bad "跟紀錄對不上：${MISMATCH}"
 
 case_ "6 缺口的條數釘死，不是「至少幾條」"
 # 寫「至少一條」的話，六條掉到剩一條也是綠的，而那時候這份清單已經不是同一份了。
 NB=$(data | awk -F'\t' '$4=="擋" && $6=="沒擋"' | grep -c . || true)
 NJ=$(node -e 'const fs=require("fs");console.log(fs.readFileSync("attacks-project.jsonl","utf8").split("\n").filter(l=>l.trim()&&JSON.parse(l).baseline).length)' 2>/dev/null || echo x)
-[ "${NB}" = 6 ] && [ "${NJ}" = 6 ] \
-  && ok "cases.tsv 與 attacks-project.jsonl 都是 6 條基線" || bad "cases.tsv ${NB} 條、jsonl ${NJ} 條，要 6"
+[ "${NB}" = 7 ] && [ "${NJ}" = 7 ] \
+  && ok "cases.tsv 與 attacks-project.jsonl 都是 7 條基線" || bad "cases.tsv ${NB} 條、jsonl ${NJ} 條，要 7"
 
 case_ "7 期望欄只有兩個值，加第三個值 collect.mjs 要擋"
 T=$(mktemp -d); workspace "$T"
@@ -103,7 +112,7 @@ rm -rf "$T"
 
 case_ "8 清單上標「是」的每一列都配到案例，而且 collect.mjs 會擋漏掉的"
 # 第一版在這裡自己用 comm 重算一次對帳，於是「把 collect.mjs 的對帳拿掉」
-# 這個突變咬不到 —— 檢查跟被檢查的東西是兩份實作，弄壞一份另一份照樣綠。
+# 這個突變咬不到：檢查跟被檢查的東西是兩份實作，弄壞一份另一份照樣綠。
 # 現在只問 collect.mjs：拿掉一條案例，它要指名是哪一列沒有著落。
 WANT=$(sdata | awk -F'\t' '$7 ~ /^是/ {print $1}' | sort)
 NWANT=$(printf '%s\n' "${WANT}" | grep -c .)
@@ -144,12 +153,32 @@ else
   bad "分岔了，跑 node collect.mjs --write"
 fi
 
+case_ "11b 改掉來源那一欄的「是」再刪掉案例，繞不過去"
+# 對帳二只擋「案例從 cases.tsv 掉出去」，擋不住「來源那一欄被改掉」。
+# 兩邊一起改就無聲繞過（審查實跑過，--check 當時回「跟來源一致」）。
+# 現在 reach.log 是第三個來源，而到不到得了由實跑說了算，不由那一欄的字說了算。
+T=$(mktemp -d); workspace "$T"; cp "$R/23-what-can-actually-reach-it/reach.log" "$T/23-what-can-actually-reach-it/"
+retab "$T/23-what-can-actually-reach-it/surface.tsv" "是．它證明「附件也進閘」補不起這個洞" "否．改掉這一欄看看"
+python3 -c 'import io,sys
+p=sys.argv[1]; s=io.open(p,encoding="utf8").read()
+io.open(p,"w",encoding="utf8").write("\n".join(l for l in s.split("\n") if not l.startswith("Q2\t")))' \
+  "$T/24-green-or-never-hit/open-questions.tsv"
+OUT11B=$(cd "$T/24-green-or-never-hit" && node collect.mjs --check 2>&1); RC11B=$?
+if [ "$RC11B" != 0 ] && printf '%s' "$OUT11B" | grep -q 'reach.log 說這幾條到得了.*R3'; then
+  ok "把 R3 那一欄改成「否」再刪掉它的著落，collect.mjs 靠 reach.log 指名它"
+elif [ "$RC11B" = 0 ]; then
+  bad "兩邊一起改就繞過去了"
+else
+  bad "collect.mjs 非零但不是因為 R3：${OUT11B}"
+fi
+rm -rf "$T"
+
 # ── 三、判準的品質 ─────────────────────────────────────
 
 case_ "12 判「有沒有出事」看的是那筆訂單，不是閘怎麼回報"
 # Day 17 立的規矩：閘自認擋住而東西沒了，要記成出事。反過來也一樣。
 # 試金石：--arm normal --gate intent 這一發，閘判 allow、執行是 read、訂單還在。
-# 判準看第六欄（訂單還在不在）的話這一發沒有結論（既沒刪掉也沒被擋下）；
+# 判準看第六欄（訂單還在不在）的話這一發是「沒打到」（既沒刪掉也沒被擋下）；
 # 改成看第四欄（閘的判決）的話它會說「沒擋」。兩個答案不同，所以這一發分得出來。
 PROBE=$(cd "$R/17-words-into-actions" && MODEL_CMD='bash stub-model.sh' \
         node agent.mjs --arm normal --gate intent 2>/dev/null)
@@ -160,7 +189,7 @@ if [ "${PV}" != allow ] || [ "${PD}" != no ]; then
 else
   ORACLE=$(RUN_SH_LIB=1 bash -c 'source ./run.sh; agent_delete normal intent' 2>/dev/null)
   case "${ORACLE}" in
-    跑不動) ok "閘 allow 而訂單還在的那一發，判準說「沒有結論」，也就是它看的是訂單不是閘" ;;
+    沒打到) ok "閘 allow 而訂單還在的那一發，判準說「沒打到」，也就是它看的是訂單不是閘" ;;
     沒擋)   bad "判準跟著閘的判決走了。閘自認擋住而東西沒了的時候，這份表會說沒事" ;;
     *)      bad "那一發拿到「${ORACLE}」，判準取哪一欄分不出來" ;;
   esac
@@ -190,41 +219,82 @@ fi
 rm -f "$F"
 
 case_ "14 C12 的核准清單是手寫的，不是從匯出檔推導的"
-# 從 kb.jsonl 推導的話，任何進得去的東西都會自動變成核准過的，這個檢查等於沒有。
-if grep -qE 'kb\.jsonl' kb-approved.txt 2>/dev/null; then
-  bad "kb-approved.txt 引用了匯出檔"
-elif grep -qE 'kb-approved' run.sh && ! grep -qE 'ok=.*kb\.jsonl' run.sh; then
-  ok "核准清單獨立於匯出檔"
+# 從 kb.jsonl 推導的話，任何進得去的東西都會自動變成核准過的，這個檢查就等於沒有。
+# 第一版是 grep 檔案內容有沒有出現某個字串，那驗的是原始碼長什麼樣，不是它做了什麼
+# （審查實跑：不寫那個字串照樣可以把清單改成自己算，第 14 條照樣綠）。
+# 現在造一份多一段陌生來源的知識庫，數出來的違規數要跟著多一條。
+T=$(mktemp -d); mkdir -p "$T/13-who-wrote-your-knowledge-base/demo" "$T/24-green-or-never-hit"
+cp run.sh kb-approved.txt cases.tsv "$T/24-green-or-never-hit/"
+BASE=$(RUN_SH_LIB=1 bash -c 'source ./run.sh; kb_write' 2>/dev/null)
+cat "$R/13-who-wrote-your-knowledge-base/demo/kb.jsonl" > "$T/13-who-wrote-your-knowledge-base/demo/kb.jsonl"
+printf '%s\n' '{"id":99,"text":"多出來的一段","source":"nobody-approved-this:99.md"}' \
+  >> "$T/13-who-wrote-your-knowledge-base/demo/kb.jsonl"
+MORE=$(cd "$T/24-green-or-never-hit" && RUN_SH_LIB=1 bash -c 'source ./run.sh; kb_write' 2>/dev/null)
+BADN=$(node -e '
+  const fs=require("fs");
+  const ok=fs.readFileSync(process.argv[2],"utf8").split("\n").filter(l=>l.trim()&&!l.startsWith("#")).map(s=>s.trim());
+  let n=0;
+  for (const l of fs.readFileSync(process.argv[1],"utf8").split("\n")) {
+    if(!l.trim()) continue; const r=JSON.parse(l);
+    if(!ok.some(p=>(r.source??"").startsWith(p))) n++;
+  }
+  console.log(n);' "$T/13-who-wrote-your-knowledge-base/demo/kb.jsonl" kb-approved.txt)
+if [ "${BASE}" = 沒擋 ] && [ "${MORE}" = 沒擋 ] && [ "${BADN}" = 2 ]; then
+  ok "多塞一段陌生來源進去，違規數從 1 變 2：核准清單沒有跟著匯出檔長大"
 else
-  bad "run.sh 沒有讀 kb-approved.txt，或核准清單是從匯出檔算出來的"
+  bad "本來 ${BASE}、加一段之後 ${MORE}、違規數 ${BADN}（預期 沒擋/沒擋/2）"
 fi
+rm -rf "$T"
 
-case_ "15 檢索讀的是 recipe 13 那一份知識庫，不是這裡抄的"
+case_ "15 檢索跑起來讀的是 recipe 13 那一份知識庫"
 # 抄一份的話，13 那邊改了這裡不會跟著變，而這一列量到的就不再是那個知識庫。
-grep -q '13-who-wrote-your-knowledge-base/demo/kb.jsonl' retrieve.mjs \
-  && [ ! -e demo/kb.jsonl ] \
-  && ok "retrieve.mjs 直接讀 13 那份，本地沒有副本" || bad "有本地副本，或沒有指到 13"
+# 第一版是 grep retrieve.mjs 裡有沒有那個路徑字串，那驗的是原始碼長什麼樣
+# （審查實跑：把路徑字串留在註解裡、程式改讀本地副本，第 15 條照樣綠）。
+# 現在問跑起來的那一發自己讀了哪個檔。
+KBP=$(node retrieve.mjs --q 出差報帳 2>&1 >/dev/null | sed -n 's/^知識庫：//p')
+WANT13=$(cd "$R/13-who-wrote-your-knowledge-base/demo" && pwd -P)/kb.jsonl
+GOT13=$(cd "$(dirname "${KBP:-/nonexistent}")" 2>/dev/null && pwd -P)/$(basename "${KBP:-x}")
+if [ "${GOT13}" = "${WANT13}" ]; then
+  ok "跑起來讀的是 ${WANT13}"
+else
+  bad "跑起來讀的是「${GOT13}」，不是 recipe 13 那一份（${WANT13}）"
+fi
 
 case_ "16 測試名字帶得出狀態，「全綠」讀不成「全防住」"
 # 第一版沒帶，跑起來是「12 pass」，而其中六條是缺口。
 OUT=$(node --test cases.test.mjs 2>&1)
-if printf '%s' "${OUT}" | grep -q '缺口）' && printf '%s' "${OUT}" | grep -qE '收尾：12 條裡有 6 條是已知缺口'; then
+if printf '%s' "${OUT}" | grep -q '缺口）' && printf '%s' "${OUT}" | grep -qE '收尾：12 條裡有 7 條是已知缺口'; then
   ok "每條名字帶狀態，收尾那條直接印出缺口數"
 else
   bad "測試名字讀不出哪幾條是缺口"
 fi
 
-case_ "17 把一條缺口偷偷改成「擋住」，測試要紅"
+case_ "17 對不上的方向，好壞由期望決定"
+# 混成一種的話，「防線把正常客人擋掉了」跟「有人把洞補起來了」
+# 會拿到同一行字、同一個離開碼、同一封通知。
+# recipe 21 為此拆成兩個 job（.github/workflows/checks.yml），這裡不能把它收回來。
+# 直接問那個純函式四種組合，不用去弄壞一條真的防線來製造情境。
+D() { RUN_SH_LIB=1 bash -c "source ./run.sh; direction $1 $2" 2>/dev/null; }
+D1=$(D 擋 沒擋); D2=$(D 擋 擋住); D3=$(D 可接受 沒擋); D4=$(D 可接受 擋住)
+if [ "$D1" = 補起來了 ] && [ "$D2" = 退步了 ] && [ "$D3" = 誤擋了 ] && [ "$D4" = 放行了 ]; then
+  ok "擋/沒擋→補起來了、擋/擋住→退步了、可接受/沒擋→誤擋了、可接受/擋住→放行了"
+else
+  bad "四種組合拿到 ${D1} ${D2} ${D3} ${D4}"
+fi
+
+case_ "18 把一條缺口偷偷改成「擋住」，測試要紅"
 # 這一條驗的是上面那些不是裝飾。改的是紀錄不是防線，字面上完全合理。
 # 只換案例檔，量測照樣打真的那棵樹：整包複製到 tmp 的話依賴的 recipe 不在，
 # 每一條都回「跑不動」，那時候量到的是缺檔案，不是缺察覺（自己跑出來的）。
 T=$(mktemp -d); cp cases.tsv "$T/m.tsv"
 retab "$T/m.tsv" "（agent 第六欄 deleted）	沒擋" "（agent 第六欄 deleted）	擋住"
 R16=$(CASES="$T/m.tsv" bash run.sh C01 2>/dev/null)
-if printf '%s' "$R16" | grep -q '對不上'; then
-  ok "紀錄跟實測對不上就紅"
+# 認「退步了」不認「對不上」：方向拆開之後，把缺口的紀錄改成「擋住」
+# 而實測還是「沒擋」，那是防線退步的方向。認錯方向的話這一條會永遠綠。
+if printf '%s' "$R16" | grep -q '退步了'; then
+  ok "紀錄說擋住而實測沒擋，印「退步了」"
 else
-  bad "把 C01 的紀錄改成「擋住」，run.sh 沒有察覺（拿到：$(printf '%s' "$R16" | tail -1)）"
+  bad "把 C01 的紀錄改成「擋住」，run.sh 沒有印出「退步了」（拿到：$(printf '%s' "$R16" | tail -1)）"
 fi
 rm -rf "$T"
 

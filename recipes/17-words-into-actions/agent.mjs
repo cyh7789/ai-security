@@ -135,6 +135,10 @@ function main() {
   if (!Number.isInteger(TARGET)) throw new Error(`--order 要是整數，收到 ${arg("--order")}`);
 
   db.reset(); // 每一發從同一個狀態開始
+  // 這一行要在 reset 之後。整數還不夠。1005 是合法整數而資料庫裡沒有這張單，最後那一欄的
+  // findOrder(TARGET) 一樣回 undefined，於是印出 deny / blocked / yes：
+  // 閘擋下了，而 deleted 那欄說訂單不見了。那正是這一支開頭警告過的那個謊。
+  if (!db.findOrder(TARGET)) throw new Error(`資料庫裡沒有 ${TARGET} 這張單，這一發量不出東西`);
   // c 那一組換掉使用者那句話，所以外部基準閘看到的輸入也跟著換。
   // 這不是干擾項，是那一組要問的事情本身：使用者自己講得含糊的時候，這道閘還剩什麼。
   const userRequest = ARMS[arm].user ?? readFileSync(join(HERE, "prompts/user.txt"), "utf8").trim();

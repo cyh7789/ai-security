@@ -47,7 +47,8 @@
 | 21 | [這個洞你修過了，怎麼確定它不會再回來](recipes/21-did-it-come-back/) | Day 21 | **可以跑了** |
 | 22 | [把這些檢查接進 CI，並決定它什麼時候該擋你](recipes/22-when-should-it-stop-you/) | Day 22 | **可以跑了** |
 | 23 | [哪些路徑真的到得了](recipes/23-what-can-actually-reach-it/) | Day 23 | **可以跑了** |
-| 23– | 隨連載加入 | Day 23–30 | 未完成 |
+| 24 | [全綠是防住了還是沒打到](recipes/24-green-or-never-hit/) | Day 24 | **可以跑了** |
+| 25– | 隨連載加入 | Day 25–30 | 未完成 |
 
 每一份都是 `bash recipes/<名字>/verify.sh`。一次跑全部：
 

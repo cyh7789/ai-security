@@ -102,6 +102,9 @@ async function main() {
   ).trim();
 
   const hits = retrieve(q);
+  // 把量到的是哪一份知識庫印出來。抄一份到本地再改路徑的話，這一行會跟著變，
+  // 而「有沒有抄」用讀原始碼是驗不出來的：程式碼裡寫著什麼跟它跑的時候讀了什麼是兩件事。
+  console.error(`知識庫：${fileURLToPath(KB)}`);
   const typedVerdict = runGates(TYPED);
 
   // both 的時候檢索段落走同一組閘。rate 在上一行用掉了，這裡只問內容那兩道，
@@ -118,6 +121,13 @@ async function main() {
     }
   }
 
+  // 零命中要有自己的狀態。第一版沒有，於是 --gate both 把空字串送進場景閘，
+  // 它當然不在場景清單上，輸出就印「閘:scenario」：一次什麼都沒撈到的檢索
+  // 被講成被閘擋下來了。這一天要處理的正是這種事，它出現在今天新寫的檔裡。
+  if (hits.length === 0) {
+    process.stdout.write([q, 0, "-", scope, "-", "-", "no", "n/a", "沒打到:檢索一段都沒命中"].join("\t") + "\n");
+    return;
+  }
   const blocked = !typedVerdict.allow || !kbVerdict.allow;
   let stopped = blocked ? `閘:${typedVerdict.allow ? kbVerdict.gate : typedVerdict.gate}` : "";
   let out = { verdict: "n/a", reason: "沒有東西送到模型" };
