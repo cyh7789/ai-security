@@ -302,7 +302,27 @@ else
 fi
 rm -rf "$T"
 
-case_ "19 層級欄講的層，跑法真的落在那一層"
+case_ "19 mutations.sh 沒有落單的參數行，而且那個檢查咬得到"
+# 那一支曾經留下兩行舊參數（改寫某個突變時新舊都留著），shell 把它們當成指令執行、
+# 印 command not found，而它照樣回 0 印「20 種咬到 0 種沒咬到」。
+# bash -n 抓不到，那個語法完全合法。這一天講的假綠，出現在證明沒有假綠的那支腳本上。
+#
+# 這條不做成突變：任何拿來當錨點的字串，一寫進突變參數就在檔案裡變成兩處，
+# 而 sub 要求剛好一處。所以反例在這裡自己造。
+if ! python3 check-mutations.py mutations.sh >/dev/null 2>&1; then
+  bad "有參數行落單：$(python3 check-mutations.py mutations.sh 2>&1 | head -1)"
+else
+  T=$(mktemp -d)
+  awk 'NR==1{print; print "  '"'"'舊參數殘留'"'"' '"'"'被當成指令執行'"'"'"; next} {print}' mutations.sh > "$T/m.sh"
+  if python3 check-mutations.py "$T/m.sh" >/dev/null 2>&1; then
+    bad "造了一行落單的參數，檢查器沒咬到"
+  else
+    ok "沒有落單的參數行，而且塞一行進去它會咬到"
+  fi
+  rm -rf "$T"
+fi
+
+case_ "20 層級欄講的層，跑法真的落在那一層"
 # 這一欄是外審逼出來的：我拿「那是閘的判決，不是那句話真的走完入口」退掉三條變體，
 # 然後自己收了三條同型的。標「流程」的那幾條，跑法就必須真的走完入口。
 M=""
@@ -314,7 +334,7 @@ grep -q 'node regress.mjs' run.sh && M="${M} run.sh還在實際呼叫regress.mjs
 grep -q 'node intake.mjs --typed' run.sh || M="${M} C10沒走完整條入口"
 [ -z "${M}" ] && ok "10 條流程、1 條元件、1 條資料，而且 C10 走的是 intake.mjs" || bad "${M}"
 
-case_ "20 弄壞一道真的防線，測試入口要紅"
+case_ "21 弄壞一道真的防線，測試入口要紅"
 # 第 18 條改的是紀錄那一欄，測得到對帳，測不到「測試入口本身會不會誤導人」。
 # 這一條把 C04 從擋得住的閘換成擋不住的，真的造一次退步。
 # 判準是 node --test 的離開碼：斷言退回排除式的話那邊會是 13 pass 離開碼 0。
