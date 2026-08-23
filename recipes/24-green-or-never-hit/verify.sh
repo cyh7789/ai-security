@@ -300,6 +300,16 @@ else
 fi
 rm -rf "$T"
 
+case_ "19 弄壞一道真的防線，測試入口要紅"
+# 第 18 條改的是紀錄那一欄，測得到對帳，測不到「測試入口本身會不會誤導人」。
+# 這一條把 C04 從擋得住的閘換成擋不住的，真的造一次退步。
+# 判準是 node --test 的離開碼：斷言退回排除式的話那邊會是 13 pass 離開碼 0。
+if bash prove-red.sh >/dev/null 2>&1; then
+  ok "真的退步一次，node --test 跟著紅"
+else
+  bad "弄壞一道防線之後 node --test 沒紅，跑 bash prove-red.sh 看細節"
+fi
+
 printf '\n%s 綠 %s 紅\n' "$G" "$B"
 
 # 離開碼 2 只留給「全綠而且有案例跑不動」。有紅就是 1，因為那是有結論的。

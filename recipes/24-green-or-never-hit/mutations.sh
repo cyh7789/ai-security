@@ -11,7 +11,7 @@ cd "$(dirname "$0")"
 export LC_ALL=C
 
 BACKUP=$(mktemp -d)
-FILES="cases.tsv open-questions.tsv attacks-project.jsonl collect.mjs run.sh verify.sh cases.test.mjs kb-approved.txt retrieve.mjs"
+FILES="cases.tsv open-questions.tsv attacks-project.jsonl collect.mjs run.sh verify.sh cases.test.mjs kb-approved.txt retrieve.mjs prove-red.sh"
 cp $FILES "${BACKUP}/"
 restore() { cp "${BACKUP}"/* .; }
 trap 'restore; rm -rf "${BACKUP}"' EXIT
@@ -102,6 +102,8 @@ bite "方向不分期望，可接受那類也用同一套" 17 run.sh \
   '    [ "$2" = 沒擋 ] && echo 補起來了 || echo 退步了'
 bite "collect.mjs 不再拿 reach.log 對帳" 11b collect.mjs \
   'if (dodged.length) {' 'if (false) {'
+bite "斷言退回排除式（測試入口不再咬得到真的退步）" 19 cases.test.mjs \
+  '      ["符合", "缺口"].includes(result),' '      true ||["符合", "缺口"].includes(result),'
 bite "run.sh 不再拿紀錄跟實測對帳" 18 run.sh \
   '  elif [ "$got" != "$now" ]; then' '  elif false; then'
 
