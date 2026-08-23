@@ -98,11 +98,29 @@ fetchprobe() {  # $1=gate $2=page
   else echo 沒打到; fi   # 連出去了但沒拿到標記，那是沒走到，不是被擋住
 }
 
+# C10：那句誘餌句真的走完客服入口，不是只問輸入側那道閘怎麼判。
+# 第一版走 21/regress.mjs，而那支直接呼叫 scenarioGate()。
+# 我在文章裡拿「那是閘的判決，不是那句話真的走完入口」退掉三條變體，
+# 然後自己收了一條同型的（2026-08-24 外審抓到）。
+#
+# 判準落在輸入側與有沒有到模型，不落在輸出側那顆分類器：它是罐頭，
+# 判 ok 不代表那封信沒問題。
+#
+# 那句話從它原本住的檔案撈，不在這裡抄。抄一份的話固定集改了這裡不會跟著變。
 bait_b1() {
-  local v
-  v=$(cd "$R/21-did-it-come-back" && node regress.mjs --only 缺口樁 2>/dev/null \
-      | awk -F'\t' '$1=="b1"{print $5}') || { echo 跑不動; return; }
-  case "$v" in allow) echo 沒擋 ;; deny) echo 擋住 ;; *) echo 跑不動 ;; esac
+  local q out v reached
+  q=$(awk -F'\t' '$1=="b1"{print $2}' "$R/18-not-a-free-chatgpt/prompts/probe-bait.tsv" 2>/dev/null)
+  [ -n "$q" ] || { echo 跑不動; return; }   # 撈不到那句話就沒有結論，不能拿別的字頂替
+  out=$(cd "$R/23-what-can-actually-reach-it" && node intake.mjs --typed "$q" 2>/dev/null) \
+    || { echo 跑不動; return; }
+  v=$(printf '%s' "$out" | awk -F'\t' '{print $3}')
+  reached=$(printf '%s' "$out" | awk -F'\t' '{print $5}')
+  case "${v}:${reached}" in
+    deny*:*)   echo 擋住 ;;
+    allow:yes) echo 沒擋 ;;
+    allow:no)  echo 沒打到 ;;   # 輸入側放行卻沒到模型，那是沒走完不是被擋住
+    *)         echo 跑不動 ;;
+  esac
 }
 
 normal_traffic() {
@@ -180,7 +198,7 @@ CASES="${CASES:-cases.tsv}"
 WANT="${*:-}"
 rc=0
 printf 'case\tpath\t期望\t紀錄\t實測\t結果\n'
-while IFS=$'\t' read -r c path _one want _oracle now _note; do
+while IFS=$'\t' read -r c path _one _level want _oracle now _note; do
   case "$c" in ''|'#'*|case) continue ;; esac
   if [ -n "$WANT" ]; then case " $WANT " in *" $c "*) ;; *) continue ;; esac; fi
   got=$(runcase "$c")

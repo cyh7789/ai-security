@@ -82,6 +82,8 @@ if (!baseline.length) die("一條基線案例都沒有。一份全綠的攻擊�
 // ── 對帳四：「期望」只有兩個值 ──
 // 加第三個值的那一天，就是這份清單開始收留「永遠不紅也不綠」的列的那一天。
 for (const c of cases) {
+  // 層級只有三個值。加第四個值的那天，「這條打到哪一層」就會開始變成形容詞。
+  if (!["流程", "元件", "資料"].includes(c.層級)) die(`${c.case} 的層級是「${c.層級}」，只有流程／元件／資料`);
   if (!["擋", "可接受"].includes(c.期望)) die(`${c.case} 的期望是「${c.期望}」，只有「擋」與「可接受」`);
   if (!["擋住", "沒擋"].includes(c.現在)) die(`${c.case} 的現在是「${c.現在}」，只有「擋住」與「沒擋」`);
 }
@@ -89,6 +91,7 @@ for (const c of cases) {
 const rows = cases.map((c) => ({
   id: c.case,
   path: c.path,
+  level: c.層級,
   one: c.一句話,
   expect: c.期望,
   oracle: c["判準看哪個可觀察的東西"],
