@@ -16,8 +16,8 @@ bash prove-red.sh              # 弄壞一道真的防線，看測試入口會�
 bash run.sh C01 C05            # 只跑指定幾條
 node --test cases.test.mjs     # 同一組，node 的測試入口
 node collect.mjs --check       # 攻擊集跟來源有沒有分岔
-bash verify.sh                 # 這份 recipe 自己的檢查，21 條
-bash mutations.sh              # 19 個機制突變加 1 個反向對照，看那 21 條會不會紅
+bash verify.sh                 # 這份 recipe 自己的檢查，23 項
+bash mutations.sh              # 21 個機制突變加 1 個反向對照，看那 23 項會不會紅
 ```
 
 **`run.sh` 正常情況下就是回離開碼 1。** 那是設計：清單上有七條已知的缺口。

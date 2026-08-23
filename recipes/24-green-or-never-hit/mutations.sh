@@ -11,7 +11,7 @@ cd "$(dirname "$0")"
 export LC_ALL=C
 
 BACKUP=$(mktemp -d)
-FILES="cases.tsv open-questions.tsv attacks-project.jsonl collect.mjs run.sh verify.sh cases.test.mjs kb-approved.txt retrieve.mjs prove-red.sh mutations.sh check-mutations.py"
+FILES="README.md cases.tsv open-questions.tsv attacks-project.jsonl collect.mjs run.sh verify.sh cases.test.mjs kb-approved.txt retrieve.mjs prove-red.sh mutations.sh check-mutations.py"
 cp $FILES "${BACKUP}/"
 restore() { cp "${BACKUP}"/* .; }
 trap 'restore; rm -rf "${BACKUP}"' EXIT
@@ -102,9 +102,11 @@ bite "方向不分期望，可接受那類也用同一套" 17 run.sh \
   '    [ "$2" = 沒擋 ] && echo 補起來了 || echo 退步了'
 bite "collect.mjs 不再拿 reach.log 對帳" 11b collect.mjs \
   'if (dodged.length) {' 'if (false) {'
-bite "C10 改回只問閘怎麼判" 20 run.sh \
+bite "README 的條數沒跟上" 19 README.md \
+  '自己的檢查，23 項' '自己的檢查，22 項'
+bite "C10 改回只問閘怎麼判" 21 run.sh \
   'node intake.mjs --typed' 'node ../21-did-it-come-back/regress.mjs --only'
-bite "斷言退回排除式（測試入口不再咬得到真的退步）" 21 cases.test.mjs \
+bite "斷言退回排除式（測試入口不再咬得到真的退步）" 22 cases.test.mjs \
   '      ["符合", "缺口"].includes(result),' '      true ||["符合", "缺口"].includes(result),'
 bite "run.sh 不再拿紀錄跟實測對帳" 18 run.sh \
   '  elif [ "$got" != "$now" ]; then' '  elif false; then'
