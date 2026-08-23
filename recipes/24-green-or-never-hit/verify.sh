@@ -78,13 +78,6 @@ case_ "5 實測跟 cases.tsv 記的完全一致"
 # 都讓這份清單開始說謊。
 MISMATCH=$(printf '%s' "${RUN}" | awk -F'\t' '$6=="補起來了"||$6=="退步了"||$6=="誤擋了"||$6=="放行了"||$6=="打空氣"{print $1"="$6}' | tr '\n' ' ')
 NORESULT=$(printf '%s' "${RUN}" | awk -F'\t' '$6=="沒有結論"{print $1}' | tr '\n' ' ')
-if [ -n "$(printf '%s' "${NORESULT}" | tr -d ' ')" ]; then
-  # 這一支自己第 4 行寫著離開碼 2 是「環境不到位沒有結論」，而 levels.tsv 把 24 標成 A 級，
-  # 也就是紅了代表這個 PR 弄壞了談好的東西。環境問題走 1 的話那是一個假紅。
-  echo "  跑不動的案例：${NORESULT}　這一跑沒有結論"
-  printf '\n%s 綠 %s 紅（另有跑不動的案例，離開碼 2）\n' "$G" "$B"
-  exit 2
-fi
 [ -z "$(printf '%s' "${MISMATCH}" | tr -d ' ')" ] && ok "12 條實測都跟紀錄一致" || bad "跟紀錄對不上：${MISMATCH}"
 
 case_ "6 缺口的條數釘死，不是「至少幾條」"
@@ -143,10 +136,15 @@ case_ "11 attacks-project.jsonl 跟來源沒分岔，而且 --check 抓得到分
 if node collect.mjs --check >/dev/null 2>&1; then
   T=$(mktemp -d); workspace "$T"
   retab "$T/24-green-or-never-hit/attacks-project.jsonl" '"id":"C01"' '"id":"C99"'
-  if (cd "$T/24-green-or-never-hit" && node collect.mjs --check >/dev/null 2>&1); then
+  # 只看非零是假閘門：collect.mjs 現在硬相依 reach.log，而 workspace() 對缺檔容忍，
+  # 哪天它多讀一個沒複製的檔，這一條就永遠綠而且沒人會發現。
+  O11=$(cd "$T/24-green-or-never-hit" && node collect.mjs --check 2>&1); RC11=$?
+  if [ "$RC11" = 0 ]; then
     bad "把 jsonl 裡的 C01 改成 C99，--check 照樣說一致"
+  elif printf '%s' "$O11" | grep -q '跟來源分岔了'; then
+    ok "--check 過，而且改一個 id 它就說分岔了"
   else
-    ok "--check 過，而且改一個 id 它就抓到分岔"
+    bad "--check 非零但不是因為分岔：${O11}"
   fi
   rm -rf "$T"
 else
@@ -210,8 +208,8 @@ else
   SELF=$(RUN_SH_LIB=1 bash -c 'source ./run.sh; agent_read_other 1002' 2>/dev/null)
   if [ "${OWNER}" != 1 ]; then
     bad "讀 1001 拿到 ownerId=${OWNER}，預期 1"
-  elif [ "${SELF}" = 擋住 ]; then
-    ok "讀 1001 拿到別人的（ownerId=1），而讀 1002 判準說「擋住」：它比對的是誰的單"
+  elif [ "${SELF}" = 沒打到 ]; then
+    ok "讀 1001 拿到別人的（ownerId=1），而讀 1002 判準說「沒打到」：它比對的是誰的單"
   else
     bad "叫它讀發問者自己那張 1002，判準卻說「${SELF}」。它只看有沒有讀到東西"
   fi
@@ -262,9 +260,13 @@ fi
 
 case_ "16 測試名字帶得出狀態，「全綠」讀不成「全防住」"
 # 第一版沒帶，跑起來是「12 pass」，而其中六條是缺口。
-OUT=$(node --test cases.test.mjs 2>&1)
-if printf '%s' "${OUT}" | grep -q '缺口）' && printf '%s' "${OUT}" | grep -qE '收尾：12 條裡有 7 條是已知缺口'; then
-  ok "每條名字帶狀態，收尾那條直接印出缺口數"
+OUT=$(node --test cases.test.mjs 2>&1); RCT=$?
+# 離開碼也要看。只 grep 名字的話，斷言死掉、一條真的退步的防線照樣綠，
+# 而那一行「13 pass」跟「十三條防線」逐字相同（審查實跑抓到）。
+if [ "${RCT}" != 0 ]; then
+  bad "node --test 離開碼 ${RCT}，有測試紅了"
+elif printf '%s' "${OUT}" | grep -q '缺口）' && printf '%s' "${OUT}" | grep -qE '收尾：12 條裡有 7 條是已知缺口'; then
+  ok "每條名字帶狀態、收尾印出缺口數，而且 node --test 離開碼 0"
 else
   bad "測試名字讀不出哪幾條是缺口"
 fi
@@ -299,4 +301,13 @@ fi
 rm -rf "$T"
 
 printf '\n%s 綠 %s 紅\n' "$G" "$B"
-[ "$B" = 0 ] || exit 1
+
+# 離開碼 2 只留給「全綠而且有案例跑不動」。有紅就是 1，因為那是有結論的。
+# 第一版在第 5 條就 exit 2，於是一條「run.sh 少了 C13 的分支」這種純程式缺陷
+# 被 CI 講成環境不到位，而且後面十幾條檢查完全沒跑（審查實跑抓到）。
+# 第 1 條的註解自己寫著要分開「我忘了寫」跟「環境問題」，早退把它抵銷掉了。
+if [ "$B" != 0 ]; then exit 1; fi
+if [ -n "$(printf '%s' "${NORESULT}" | tr -d ' ')" ]; then
+  echo "跑不動的案例：${NORESULT}　這一跑對它們沒有結論"
+  exit 2
+fi

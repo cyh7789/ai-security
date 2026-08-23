@@ -82,12 +82,17 @@ bite "open-questions 有一列答不出補法" 10 open-questions.tsv \
 bite "collect.mjs 的 --check 永遠說一致" 11 collect.mjs \
   '  if (cur === out) {' '  if (true) {'
 bite "C05 不再比對讀到的是誰的單" 13 run.sh \
-  '  [ "$owner" != 2 ] && echo 沒擋 || echo 擋住' \
-  '  [ -n "$owner" ] && echo 沒擋 || echo 擋住'
+  '  [ "$owner" != 2 ] && echo 沒擋 || echo 沒打到' \
+  '  [ -n "$owner" ] && echo 沒擋 || echo 沒打到'
 bite "核准清單改成從匯出檔自己算" 14 kb-approved.txt \
   'handbook:' '（這一份改成讀 demo/kb.jsonl 自己算）'
-bite "檢索改讀本地抄來的知識庫" 15 retrieve.mjs \
+# 這一條要先在本地放一份真的讀得到的副本，再把指向換過去。
+# 直接換成不存在的路徑的話，readFileSync 當場 ENOENT，咬到的是「程式掛了」，
+# 不是「它讀了別的檔」，而第 15 條問的是後者。
+mkdir -p demo && cp ../13-who-wrote-your-knowledge-base/demo/kb.jsonl demo/kb.jsonl
+bite "檢索改讀本地抄來的知識庫（副本真的讀得到）" 15 retrieve.mjs \
   '../13-who-wrote-your-knowledge-base/demo/kb.jsonl' 'demo/kb.jsonl'
+rm -rf demo
 bite "測試名字不再帶狀態" 16 cases.test.mjs \
   'test(`${id}（${path}｜${state(want, now)}）${one}`' 'test(`${id}（${path}）${one}`'
 bite "「沒打到」折回「跑不動」" 12 run.sh \

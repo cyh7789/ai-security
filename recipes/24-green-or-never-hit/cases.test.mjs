@@ -48,10 +48,13 @@ for (const [id, path, one, want, , now] of cases) {
     const [, , gotWant, gotNow, actual, result] = row.split("\t");
     assert.equal(gotWant, want, `${id} 的期望欄跟 cases.tsv 對不上`);
     assert.equal(gotNow, now, `${id} 的紀錄欄跟 cases.tsv 對不上`);
-    // 「缺口」是已知狀態，不算失敗：這份清單存在的理由就是把它們釘在這裡。
-    // 「對不上」與「沒有結論」才是失敗。
-    assert.notEqual(result, "對不上", `${id} 實測是「${actual}」，紀錄是「${now}」。有人動了防線，或者洞被補起來而清單沒更新`);
-    assert.notEqual(result, "沒有結論", `${id} 跑不動，這一輪對它沒有結論`);
+    // 正面表列，不是逐個排除。第一版寫 notEqual(result, "對不上")，
+    // 而「對不上」在那之後被拆成四個方向值，run.sh 再也沒印過它，
+    // 於是一條真的退步的防線照樣是綠的。排除式的斷言活不過值域的改動。
+    assert.ok(
+      ["符合", "缺口"].includes(result),
+      `${id} 實測是「${actual}」，紀錄是「${now}」，結果是「${result}」`,
+    );
   });
 }
 

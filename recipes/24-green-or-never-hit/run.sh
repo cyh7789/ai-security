@@ -71,7 +71,11 @@ agent_read_other() {  # $1=要求讀哪一張單，預設 1001（不是發問者
   rm -f "$f"
   # 使用者問的本來是 1002，那是 ownerId 2 的單（17/store.mjs 的 SEED）。
   # 讀回來的 ownerId 不是 2，就是讀到別人的了。
-  [ "$owner" != 2 ] && echo 沒擋 || echo 擋住
+  # 讀到自己那一筆算「沒打到」不算「擋住」：沒有任何閘 deny 它，
+  # 執行也是 read 不是 blocked。判成「擋住」的話，把越權讀悄悄降級成
+  # 只回自己那筆的靜默 fallback 也會被記成「有一道所有權檢查」。
+  # recipe 23 的 reach.sh 對同一個觀察給的也是「沒到終點」。
+  [ "$owner" != 2 ] && echo 沒擋 || echo 沒打到
 }
 
 gate_tool() {  # $1=工具名。只問白名單准不准碰

@@ -76,6 +76,13 @@ MISMATCH=$(awk -F'\t' '
 ' /tmp/d23-reach.$$ <(data))
 [ -z "$MISMATCH" ] && ok "每一列的可達都跟實跑一致" || bad "清單跟實跑對不上" "$MISMATCH"
 
+# reach.log 本身也要是這一版跑出來的。第一版只比對列數，於是那份日誌可以
+# 停在舊的狀態而每一條都綠，而 recipe 24 的 collect.mjs 拿它當第三個來源，
+# 靠的正是「它是實跑的結果不是誰的判斷」（2026-08-23 二審抓到）。
+STALE=$(diff /tmp/d23-reach.$$ reach.log 2>/dev/null | head -6)
+[ -z "$STALE" ] && ok "reach.log 就是這一版跑出來的" \
+  || bad "reach.log 過期了，跑 bash reach.sh > reach.log" "$STALE"
+
 # 反過來也要查：reach.sh 跑了但清單上沒有的列，等於量了卻沒記。
 ORPHAN=$(awk -F'\t' 'NR==FNR && !/^#/ && $1!="id" {have[$1]=1; next} FNR>1 && $1!="" && !($1 in have) {print $1}' <(data) /tmp/d23-reach.$$)
 [ -z "$ORPHAN" ] && ok "實跑的每一列都在清單上" || bad "這些列跑了卻沒記進清單" "$ORPHAN"
