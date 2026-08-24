@@ -86,10 +86,16 @@ gate_tool() {  # $1=工具名。只問白名單准不准碰
 }
 
 # 15 的 agent 印六欄：called url gate fetched final mark
-fetchprobe() {  # $1=gate $2=page
-  local out g f m
+#
+# $1 傳 default 就整個不給 --gate。那量的是不看說明書的人拿到什麼，
+# 跟明確傳一個值是兩件事：改出廠預設救得了前者，救不了後者。
+fetchprobe() {  # $1=gate（default＝不傳）$2=page
+  local out g f m gateopt="--gate $1"
+  [ "$1" = default ] && gateopt=""
+  # 這裡的 $gateopt 是故意不加引號的：空字串要展開成沒有參數。
+  # 值只來自 runcase 的三個字面值，沒有外面進來的東西。
   out=$(cd "$R/15-tools-not-a-master-key" && MODEL_CMD='bash stub-model.sh' \
-        node agent.mjs --gate "$1" --page "$2" --guard none 2>/dev/null) || { echo 跑不動; return; }
+        node agent.mjs $gateopt --page "$2" --guard none 2>/dev/null) || { echo 跑不動; return; }
   g=$(printf '%s' "$out" | awk -F'\t' '{print $3}')
   f=$(printf '%s' "$out" | awk -F'\t' '{print $4}')
   m=$(printf '%s' "$out" | awk -F'\t' '{print $6}')
@@ -182,6 +188,7 @@ runcase() {
     C10) bait_b1 ;;
     C11) normal_traffic ;;
     C12) kb_write ;;
+    C13) fetchprobe default redirect ;;
     *)   echo 跑不動 ;;
   esac
 }
