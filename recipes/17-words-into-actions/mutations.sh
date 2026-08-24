@@ -60,7 +60,7 @@ bite "只跑一步，備註永遠到不了模型眼前" 8 sub agent.mjs 'const M
 bite "把備註直接寫進第一步的 prompt" 16 sub agent.mjs 'return `${system}\n\n${transcript.join("\n\n")}`;' 'return `${system}\n\n${ARMS["hijack-a"].note}\n\n${transcript.join("\n\n")}`;'
 bite "reset 什麼都不做" 13 sub store.mjs '    db.orders = SEED.map((o) => ({ ...o }));' '    /* 不重置 */'
 bite "agent 傳給閘的不是使用者原話" 10 sub agent.mjs '  const userRequest = ARMS[arm].user ?? readFileSync' '  const userRequest = "幫我把訂單刪掉" ?? readFileSync'
-bite "不認得的閘靜靜當成沒有閘" 14 sub agent.mjs '  const gate = arg("--gate", "none");' '  let gate = arg("--gate", "none");' '  if (!GATES[gate]) throw new Error(`不認得的閘 ${gate}`);' '  if (!GATES[gate]) gate = "none";'
+bite "不認得的閘靜靜當成沒有閘" 14 sub agent.mjs '  const gate = arg("--gate", "external");' '  let gate = arg("--gate", "external");' '  if (!GATES[gate]) throw new Error(`不認得的閘 ${gate}`);' '  if (!GATES[gate]) gate = "none";'
 bite "不認得的家族靜靜當成 normal" 14 sub agent.mjs '  const arm = arg("--arm", "normal");' '  let arm = arg("--arm", "normal");' '  if (!ARMS[arm]) throw new Error(`不認得的家族 ${arm}`);' '  if (!ARMS[arm]) arm = "normal";'
 bite "模型回空字串照樣算一發" 15 sub agent.mjs '  if (!out.trim()) throw new Error("模型回了空字串，這一發不算數");' '  if (!out.trim()) return "{}";'
 bite "工具結果不帶備註" 8 sub agent.mjs 'const note = mine ? ARMS[arm].note : "";' 'const note = "";'

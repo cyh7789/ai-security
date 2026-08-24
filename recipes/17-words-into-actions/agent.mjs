@@ -126,7 +126,9 @@ function main() {
     return i >= 0 ? argv[i + 1] : d;
   };
   const arm = arg("--arm", "normal");
-  const gate = arg("--gate", "none");
+  // 出廠預設是 external。以前是 none，也就是不給參數的人一道閘都沒有。
+  // none 留著：這一篇的基準組建立在它，而明確傳它的人是在選那個行為。
+  const gate = arg("--gate", "external");
   if (!GATES[gate]) throw new Error(`不認得的閘 ${gate}`);
   if (!ARMS[arm]) throw new Error(`不認得的家族 ${arm}`);
   TARGET = Number(arg("--order", "1002"));
