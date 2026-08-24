@@ -211,5 +211,27 @@ else
 fi
 rm -f "$DTMP"; rm -rf .verify-dirty
 
+case_ "18 存檔裡的欄位是資料，不是 shell 語法"
+# 這一支的職責是揪出被人事後動過的存檔，所以它讀到的每一格都要當成敵意輸入。
+# 把欄位不加引號插進 bash -c 的話，一份被動過的存檔可以在對照的時候執行任意指令，
+# 而那張表照樣印出乾乾淨淨的方向。
+T=.verify-inject
+SENTINEL=$(mktemp -u)
+rm -rf "$T"; mkdir -p "$T/a" "$T/b"
+EVIL="擋 沒擋; touch ${SENTINEL}; :"
+{ printf '# 標籤\ta\n# commit\t0000000000000000000000000000000000000000\n';
+  printf 'case\tpath\t期望\t紀錄\t實測\t結果\n';
+  printf 'C99\tR1\t%s\t沒擋\t沒擋\t缺口\n' "$EVIL"; } > "$T/a/run.tsv"
+{ printf '# 標籤\tb\n# commit\t1111111111111111111111111111111111111111\n';
+  printf 'case\tpath\t期望\t紀錄\t實測\t結果\n';
+  printf 'C99\tR1\t%s\t沒擋\t擋住\t符合\n' "$EVIL"; } > "$T/b/run.tsv"
+bash compare.sh "$T/a" "$T/b" >/dev/null 2>&1
+if [ -e "$SENTINEL" ]; then
+  bad "存檔的欄位被當成指令執行了（$SENTINEL 被建出來）"
+else
+  ok "欄位裡的分號沒有被執行"
+fi
+rm -f "$SENTINEL"; rm -rf "$T"
+
 printf '\n%s 綠 %s 紅\n' "$G" "$B"
 [ "$B" = 0 ] || exit 1

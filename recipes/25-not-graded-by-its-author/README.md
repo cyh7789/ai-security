@@ -16,8 +16,8 @@ before 存檔，在檔案系統上長得一模一樣。唯一算數的證明是*
 ```bash
 bash snapshot.sh <標籤>              # 把 recipe 24 那份攻擊集完整跑一次，連版本一起存
 bash compare.sh <前> <後>            # 兩份存檔逐條對照，印方向
-bash verify.sh                       # 這份紀錄自己的檢查，17 項
-bash mutations.sh                    # 12 個機制突變加 1 個反向對照，看那 17 項會不會紅
+bash verify.sh                       # 這份紀錄自己的檢查，18 項
+bash mutations.sh                    # 12 個機制突變加 1 個反向對照，看那 18 項會不會紅
 ```
 
 ## 存了哪幾份
