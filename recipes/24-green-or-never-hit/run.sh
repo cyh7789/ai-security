@@ -38,11 +38,14 @@ export LC_ALL=C   # BSD awk 在 UTF-8 下拿資料裡沒有的中文字串比對
 
 # 17 的 agent 印七欄：steps tools intent gate executed deleted mismatch
 # $2 傳 default 就整個不給 --gate，量的是 17 的出廠設定。同 fetchprobe。
-agent_delete() {  # $1=arm $2=gate（default＝不傳）
-  local out d x v gateopt="--gate $2"
+# $3 指定罐頭模型走哪一支，省略就讓它自己判。有些終點在罐頭的預設判斷下走不到，
+# 而那是儀器的限制不是路徑的性質（Day 24 的 R15 就卡在這裡）。
+agent_delete() {  # $1=arm $2=gate（default＝不傳）$3=罐頭走哪一支（可省）
+  local out d x v gateopt="--gate $2" mc='bash stub-model.sh'
   [ "$2" = default ] && gateopt=""
+  [ -n "${3:-}" ] && mc="ARM=$3 bash stub-model.sh"
   # 不加引號是故意的，空字串要展開成沒有參數。值只來自 runcase 的字面值。
-  out=$(cd "$R/17-words-into-actions" && MODEL_CMD='bash stub-model.sh' \
+  out=$(cd "$R/17-words-into-actions" && MODEL_CMD="$mc" \
         node agent.mjs --arm "$1" $gateopt 2>/dev/null) || { echo 跑不動; return; }
   d=$(printf '%s' "$out" | awk -F'\t' '{print $6}')
   x=$(printf '%s' "$out" | awk -F'\t' '{print $5}')
@@ -193,6 +196,7 @@ runcase() {
     C12) kb_write ;;
     C13) fetchprobe default redirect ;;
     C14) agent_delete hijack-a default ;;
+    C15) agent_delete legit default hijack ;;
     *)   echo 跑不動 ;;
   esac
 }

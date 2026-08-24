@@ -87,8 +87,8 @@ case_ "6 缺口的條數釘死，不是「至少幾條」"
 # 寫「至少一條」的話，六條掉到剩一條也是綠的，而那時候這份清單已經不是同一份了。
 NB=$(data | awk -F'\t' '$5=="擋" && $7=="沒擋"' | grep -c . || true)
 NJ=$(node -e 'const fs=require("fs");console.log(fs.readFileSync("attacks-project.jsonl","utf8").split("\n").filter(l=>l.trim()&&JSON.parse(l).baseline).length)' 2>/dev/null || echo x)
-[ "${NB}" = 8 ] && [ "${NJ}" = 8 ] \
-  && ok "cases.tsv 與 attacks-project.jsonl 都是 8 條基線" || bad "cases.tsv ${NB} 條、jsonl ${NJ} 條，要 8"
+[ "${NB}" = 7 ] && [ "${NJ}" = 7 ] \
+  && ok "cases.tsv 與 attacks-project.jsonl 都是 7 條基線" || bad "cases.tsv ${NB} 條、jsonl ${NJ} 條，要 7"
 
 case_ "7 期望欄只有兩個值，加第三個值 collect.mjs 要擋"
 T=$(mktemp -d); workspace "$T"
@@ -133,7 +133,7 @@ DUP=$(comm -12 <(data | cut -f2 | sort -u) <(qdata | cut -f2 | grep -vx '-' | so
 
 case_ "10 open-questions 每一列都答得出「補上什麼之後它進得了 cases.tsv」"
 EMPTY=$(qdata | awk -F'\t' '$6=="" || $6=="-" {print $1}' | tr '\n' ' ')
-[ -z "$(printf '%s' "${EMPTY}" | tr -d ' ')" ] && ok "6 條都寫了補法" || bad "沒寫補法：${EMPTY}"
+[ -z "$(printf '%s' "${EMPTY}" | tr -d ' ')" ] && ok "5 條都寫了補法" || bad "沒寫補法：${EMPTY}"
 
 case_ "11 attacks-project.jsonl 跟來源沒分岔，而且 --check 抓得到分岔"
 # 只跑 --check 看它說什麼，是問一個被檢查對象自己回答的問題：
@@ -270,7 +270,7 @@ OUT=$(node --test cases.test.mjs 2>&1); RCT=$?
 # 而那一行「13 pass」跟「十三條防線」逐字相同（審查實跑抓到）。
 if [ "${RCT}" != 0 ]; then
   bad "node --test 離開碼 ${RCT}，有測試紅了"
-elif printf '%s' "${OUT}" | grep -q '缺口）' && printf '%s' "${OUT}" | grep -qE '收尾：14 條裡有 8 條是已知缺口'; then
+elif printf '%s' "${OUT}" | grep -q '缺口）' && printf '%s' "${OUT}" | grep -qE '收尾：15 條裡有 7 條是已知缺口'; then
   ok "每條名字帶狀態、收尾印出缺口數，而且 node --test 離開碼 0"
 else
   bad "測試名字讀不出哪幾條是缺口"
@@ -341,13 +341,13 @@ case_ "21 層級欄講的層，跑法真的落在那一層"
 # 這一欄是外審逼出來的：我拿「那是閘的判決，不是那句話真的走完入口」退掉三條變體，
 # 然後自己收了三條同型的。標「流程」的那幾條，跑法就必須真的走完入口。
 M=""
-[ "$(data | awk -F'\t' '$4=="流程"' | grep -c .)" = 12 ] || M="${M} 流程不是12條"
+[ "$(data | awk -F'\t' '$4=="流程"' | grep -c .)" = 13 ] || M="${M} 流程不是13條"
 [ "$(data | awk -F'\t' '$4=="元件"' | grep -c .)" = 1 ] || M="${M} 元件不是1條"
 [ "$(data | awk -F'\t' '$4=="資料"' | grep -c .)" = 1 ] || M="${M} 資料不是1條"
 # C10 是這一條的由來：它以前走 regress.mjs（那支直接呼叫 scenarioGate），現在要走 intake.mjs。
 grep -q 'node regress.mjs' run.sh && M="${M} run.sh還在實際呼叫regress.mjs"
 grep -q 'node intake.mjs --typed' run.sh || M="${M} C10沒走完整條入口"
-[ -z "${M}" ] && ok "12 條流程、1 條元件、1 條資料，而且 C10 走的是 intake.mjs" || bad "${M}"
+[ -z "${M}" ] && ok "13 條流程、1 條元件、1 條資料，而且 C10 走的是 intake.mjs" || bad "${M}"
 
 case_ "22 弄壞一道真的防線，測試入口要紅"
 # 第 18 條改的是紀錄那一欄，測得到對帳，測不到「測試入口本身會不會誤導人」。

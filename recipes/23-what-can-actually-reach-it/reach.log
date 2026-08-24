@@ -6,7 +6,7 @@ R4	訂單備註欄	delete_order_意圖核對閘	到達動作
 R5	訂單備註欄	delete_order_外部基準閘	閘:external
 R6	偽裝成協定的欄位	delete_order_意圖核對閘	到達動作
 R14	訂單備註欄	delete_order_白名單閘	到達動作
-R15	使用者自己要求刪除	delete_order_外部基準閘	沒驗過:罐頭模型驅動不到刪除那一步
+R15	使用者自己要求刪除	delete_order_外部基準閘	到達動作
 R7	使用者填的訂單編號	讀到別人的訂單	到達動作
 R8	使用者填的請款單編號	讀到別人的請款單	閘:allowlist
 R9	模型自己填的網址	對外請求_直接打內部服務	閘:allowlist
