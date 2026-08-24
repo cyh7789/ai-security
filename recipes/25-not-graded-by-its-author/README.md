@@ -9,15 +9,15 @@ Day 24 交下來一份固定的攻擊集，上面有七條已知會被打穿的�
 before 存檔，在檔案系統上長得一模一樣。唯一算數的證明是**把那個 commit 的程式
 取出來，再跑一次，看它紅**。`verify.sh` 前四條就是在做這件事。
 
-只有 Node、bash 與 git，沒有相依套件。
+跑起來要 Node、bash、git 與 python3（`mutations.sh` 用它做字串替換），沒有相依套件。
 
 ## 跑
 
 ```bash
 bash snapshot.sh <標籤>              # 把 recipe 24 那份攻擊集完整跑一次，連版本一起存
 bash compare.sh <前> <後>            # 兩份存檔逐條對照，印方向
-bash verify.sh                       # 這份紀錄自己的檢查，19 項
-bash mutations.sh                    # 13 個機制突變加 1 個反向對照，看那 19 項會不會紅
+bash verify.sh                       # 這份紀錄自己的檢查，20 項
+bash mutations.sh                    # 14 個機制突變加 1 個反向對照，看那 20 項會不會紅
 ```
 
 ## 存了哪幾份
@@ -88,18 +88,27 @@ bash mutations.sh                    # 13 個機制突變加 1 個反向對照�
 
 兩條都還在 `final` 那份的缺口欄裡，`verify.sh` 第 12 條盯著這件事。
 
-## 它需要整段歷史
+## 它需要那幾個 commit 還在
 
-前四條要撈舊 commit 的程式，所以這份 recipe 在**淺複製上沒有結論**。
-
-CI 的 `actions/checkout` 預設 `fetch-depth` 是 1，那幾個 commit 根本不在複本裡。
-本機 19 綠而 CI 三條紅，就是這個差別（2026-08-24 實測）。兩邊都要處理：
-
-- workflow 的 checkout 加 `fetch-depth: 0`
-- `verify.sh` 開頭偵測淺複製，直接回離開碼 2
-
-第二件不能省。撈不到歷史的時候那幾條沒有變成假的，是這個複本沒有能力回答它們，
+前四條要撈舊 commit 的程式，所以撈不到的複本上這份 recipe **沒有結論**，不是紅。
+撈不到的時候那幾條沒有變成假的，是這個複本沒有能力回答它們，
 而「沒有結論」跟「紅」混在一起的話，一個抓不到歷史的環境會被讀成防線壞了。
+
+`verify.sh` 開頭逐一問那五個 SHA 在不在，**不問「這是不是淺複製」**。兩者不等價，
+而且兩個方向都會錯（2026-08-24 兩種都實測過）：
+
+| 情況 | is-shallow | SHA 在不在 | 問淺複製會怎樣 |
+|---|---|---|---|
+| CI 預設 `fetch-depth: 1` | true | 不在 | 判對 |
+| `--depth 30` | true | 在 | 誤判成沒結論 |
+| 那條分支被 squash 併掉 | false | 不在 | 漏判成紅 |
+
+第三種特別要注意：**squash 合併會讓分支上的 commit 沒有 ref 指著**，
+而這份紀錄整個押在那些 SHA 上。證據 commit 要留得住的話，合併走 merge commit，
+或給它們一個不會動的 tag。
+
+CI 那邊另外要在 `actions/checkout` 加 `fetch-depth: 0`，
+不然 `f2ae168` 之前的東西一個都撈不到（本機 19 綠而 CI 三條紅，就是這個差別）。
 
 ## 這份會壞在哪
 

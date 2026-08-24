@@ -18,13 +18,28 @@ bad()  { printf '  紅\t%s\n' "$1"; B=$((B+1)); }
 
 ROOT=$(cd "$R/.." && pwd -P)
 git -C "$ROOT" rev-parse HEAD >/dev/null 2>&1 || { echo "不是 git 工作區，沒有結論"; exit 2; }
-# 淺複製撈不到歷史，而前四條整個建立在撈得到。這是「沒有結論」不是「紅」：
-# 那幾條沒有變成假的，是這個複本沒有能力回答它們。
-# CI 的 actions/checkout 預設 fetch-depth 是 1，所以這一條在本機永遠不會觸發，
-# 在 CI 上第一次就觸發（2026-08-24 實測，本機 19 綠而 CI 三條紅）。
-if [ "$(git -C "$ROOT" rev-parse --is-shallow-repository 2>/dev/null)" = true ]; then
-  echo "這是淺複製，撈不到 before 那幾個 commit，前四條沒有結論。" >&2
-  echo "CI 上要在 actions/checkout 加 fetch-depth: 0。" >&2
+# 撈不到那幾個 commit，前四條就沒有結論（不是紅）：那幾條沒有變成假的，
+# 是這個複本沒有能力回答它們。
+#
+# 問的是「這幾個 SHA 在不在」，不是「這是不是淺複製」。兩者不等價，兩個方向都會錯：
+#   深度 30 的複本 is-shallow 回 true，而那幾個 SHA 其實在，問淺複製會誤判成沒結論
+#   那條分支被 squash 併掉之後複本不淺，而 SHA 全變孤兒，問淺複製會漏判成紅
+# 兩種都實測過（2026-08-24）。
+MISSING=""
+for d in before-default after-default before-gate after-gate final; do
+  c=$(sed -n "s/^# commit	//p" "$d/run.tsv")
+  [ -n "$c" ] || { MISSING="${MISSING} ${d}(檔頭沒記 commit)"; continue; }
+  git -C "$ROOT" cat-file -e "${c}^{commit}" 2>/dev/null || MISSING="${MISSING} ${d}(${c})"
+done
+if [ -n "$MISSING" ]; then
+  echo "存檔記的這幾個 commit 在這個複本裡撈不到：${MISSING}" >&2
+  echo "前四條沒有結論。" >&2
+  if [ "$(git -C "$ROOT" rev-parse --is-shallow-repository 2>/dev/null)" = true ]; then
+    echo "這是淺複製。CI 上要在 actions/checkout 加 fetch-depth: 0。" >&2
+  else
+    echo "這個複本不淺，八成是那條分支被 squash 併掉了，原本的 commit 沒有 ref 指著它們。" >&2
+    echo "證據 commit 要留得住的話，合併走 merge commit，或給它們一個不會動的 tag。" >&2
+  fi
   exit 2
 fi
 
@@ -32,7 +47,7 @@ fi
 # 中途被打斷的話那些檔會留著，而 CI 那條「跑完 repo 要乾淨」用的是 git diff，
 # 看得到已追蹤檔的修改，看不到沒追蹤的殘留。
 DIRTY_PROBE="$R/24-green-or-never-hit/.verify-dirty-probe"
-trap 'rm -f "$DIRTY_PROBE"; rm -rf .verify-tmp .verify-dirty .verify-inject .verify-noreach' EXIT
+trap 'rm -f "$DIRTY_PROBE"; rm -rf .verify-tmp .verify-dirty .verify-inject .verify-noreach .verify-depth' EXIT
 
 meta() { sed -n "s/^# $2\t//p" "$1"; }
 cell() { grep -v '^#' "$1" | awk -F'\t' -v k="$2" -v c="$3" '$1==k{print $c}'; }
@@ -95,19 +110,19 @@ DEL=$(printf '%s' "$L" | awk -F'\t' '{print $6}')
 
 # ── 二、順序不是事後補的 ───────────────────────────────
 
-case_ "5 每一份存檔的 commit 都在版控裡，而且 before 排在 after 前面"
+case_ "5 before 排在 after 前面（版本先後）"
+# 「這幾個 SHA 在不在」開頭就問過了，撈不到的話那時候就回 2 了，所以這裡只問拓撲。
+#
+# 這一條證明的是版本先後，不是我當時的操作順序。修補做完之後從舊 commit 重跑、
+# 補造一份 before 再把檔頭填成舊 SHA，這一條照樣過。要證明操作順序得靠
+# 外部見證（CI 那次 job 的紀錄），那份紀錄不在這個 repo 裡。
 M=""
-for d in before-default after-default before-gate after-gate final; do
-  c=$(meta "$d/run.tsv" commit)
-  git -C "$ROOT" cat-file -e "${c}^{commit}" 2>/dev/null || M="${M} ${d}的commit不在版控裡"
-done
-# 祖先關係才是「先紅後修」的證明。只比時間戳的話，改一下系統時鐘就過了。
 for pair in "before-default after-default" "before-gate after-gate" "before-default final"; do
   set -- $pair
   a=$(meta "$1/run.tsv" commit); b=$(meta "$2/run.tsv" commit)
   git -C "$ROOT" merge-base --is-ancestor "$a" "$b" 2>/dev/null || M="${M} $1不是$2的祖先"
 done
-[ -z "${M}" ] && ok "五份的 commit 都在版控裡，兩對 before 都是對應 after 的祖先" || bad "${M}"
+[ -z "${M}" ] && ok "兩對 before 都是對應 after 的祖先（版本先後，不是操作順序）" || bad "${M}"
 
 case_ "6 每一份都是在乾淨的工作區上跑的"
 # 髒的工作區上跑出來的結果沒辦法從那個 commit 重現，而前四條整個建立在重現得了。
@@ -266,6 +281,47 @@ else
   bad "拿到方向「${D}」、離開碼 ${RC}，那一發根本沒走到終點"
 fi
 rm -rf "$T"
+
+case_ "20 深度夠的淺複製上照樣有結論"
+# 開頭那道偵測問的是「這五個 SHA 在不在」，不是「這是不是淺複製」。
+# 退回去問淺複製的話，一個 --depth 30 的複本（SHA 明明都在）會被判成沒有結論。
+# 這一條真的造一個那種複本跑一次，看它跑得完。
+#
+# 子層要設 SKIP_CLONE_CHECK，不然它會再 clone 一次，無限遞迴。
+if [ -n "${SKIP_CLONE_CHECK:-}" ]; then
+  ok "（子層跳過這一條，不然會無限遞迴）"
+else
+  T=.verify-depth
+  rm -rf "$T"
+  if git clone -q --depth 100 "file://$ROOT" "$T" 2>/dev/null; then
+    SUB="$T/recipes/25-not-graded-by-its-author"
+    cp verify.sh "$SUB/verify.sh"
+    HAVE=yes
+    for d in before-default after-default before-gate after-gate final; do
+      c=$(sed -n "s/^# commit\t//p" "$d/run.tsv")
+      git -C "$T" cat-file -e "${c}^{commit}" 2>/dev/null || HAVE=no
+    done
+    if [ "$HAVE" != yes ]; then
+      # 深度 100 還撈不到，代表歷史已經長過那個距離。這一條沒有前提，不是紅。
+      echo "  深度 100 的複本仍缺 SHA，這一條沒有前提"
+    else
+      # 只問開頭那道偵測有沒有誤觸發，不看子層其他條的結果：
+      # 複製過去的只有 verify.sh，README 還是 clone 下來的那一版，
+      # 第 16 條的條數對帳本來就會對不上，那跟這一條要問的事無關。
+      O=$(cd "$SUB" && SKIP_CLONE_CHECK=1 bash verify.sh 2>&1)
+      if printf '%s' "$O" | grep -q '在這個複本裡撈不到'; then
+        bad "深度 100 的複本上偵測誤觸發了，那幾個 SHA 明明都在"
+      elif printf '%s' "$O" | grep -q '^=== 1 '; then
+        ok "is-shallow 是 true 而 SHA 都在的複本，前四條照跑"
+      else
+        bad "子層連第 1 條都沒跑到：$(printf '%s' "$O" | head -2 | tr '\n' ' ')"
+      fi
+    fi
+  else
+    echo "  clone 不起來，這一條沒有結論"
+  fi
+  rm -rf "$T"
+fi
 
 printf '\n%s 綠 %s 紅\n' "$G" "$B"
 [ "$B" = 0 ] || exit 1
