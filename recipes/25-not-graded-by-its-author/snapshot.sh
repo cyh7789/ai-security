@@ -28,7 +28,7 @@ case "$LABEL" in
   ''|-*) echo "要給一個標籤，例如 bash snapshot.sh before" >&2; exit 2 ;;
 esac
 case "$LABEL" in
-  */*) echo "標籤不能有斜線：${LABEL}" >&2; exit 2 ;;
+  */*|*..*) echo "標籤只能是一層目錄名，不能有斜線或上層參照：${LABEL}" >&2; exit 2 ;;
 esac
 
 RUNSH="$R/24-green-or-never-hit/run.sh"

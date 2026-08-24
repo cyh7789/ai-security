@@ -23,7 +23,7 @@ git -C "$ROOT" rev-parse HEAD >/dev/null 2>&1 || { echo "不是 git 工作區，
 # 中途被打斷的話那些檔會留著，而 CI 那條「跑完 repo 要乾淨」用的是 git diff，
 # 看得到已追蹤檔的修改，看不到沒追蹤的殘留。
 DIRTY_PROBE="$R/24-green-or-never-hit/.verify-dirty-probe"
-trap 'rm -f "$DIRTY_PROBE"; rm -rf .verify-tmp .verify-dirty .verify-inject' EXIT
+trap 'rm -f "$DIRTY_PROBE"; rm -rf .verify-tmp .verify-dirty .verify-inject .verify-noreach' EXIT
 
 meta() { sed -n "s/^# $2\t//p" "$1"; }
 cell() { grep -v '^#' "$1" | awk -F'\t' -v k="$2" -v c="$3" '$1==k{print $c}'; }
@@ -237,6 +237,26 @@ else
   ok "欄位裡的分號沒有被執行"
 fi
 rm -f "$SENTINEL"; rm -rf "$T"
+
+case_ "19 前面那份沒走到終點的時候，不給方向"
+# 實測有四個值，direction 只認得其中兩個。「沒打到」餵進去會拿到一個看起來
+# 很正常的方向：那一發根本沒走到終點，表上卻說防線動了。
+T=.verify-noreach
+rm -rf "$T"; mkdir -p "$T/a" "$T/b"
+{ printf '# 標籤\ta\n# commit\t0000000000000000000000000000000000000000\n';
+  printf 'case\tpath\t期望\t紀錄\t實測\t結果\n';
+  printf 'C99\tR1\t擋\t沒擋\t沒打到\t打空氣\n'; } > "$T/a/run.tsv"
+{ printf '# 標籤\tb\n# commit\t1111111111111111111111111111111111111111\n';
+  printf 'case\tpath\t期望\t紀錄\t實測\t結果\n';
+  printf 'C99\tR1\t擋\t沒擋\t擋住\t符合\n'; } > "$T/b/run.tsv"
+OUT=$(bash compare.sh "$T/a" "$T/b" 2>&1); RC=$?
+D=$(printf '%s' "$OUT" | awk -F'\t' '$1=="C99"{print $6}')
+if [ "$D" = 前面那份沒有結論 ] && [ "$RC" != 0 ]; then
+  ok "前面那份是「沒打到」，不給方向，而且離開碼 ${RC}"
+else
+  bad "拿到方向「${D}」、離開碼 ${RC}，那一發根本沒走到終點"
+fi
+rm -rf "$T"
 
 printf '\n%s 綠 %s 紅\n' "$G" "$B"
 [ "$B" = 0 ] || exit 1

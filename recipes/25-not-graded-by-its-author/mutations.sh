@@ -74,6 +74,8 @@ bite "compare 自己算方向，不分期望" 13 compare.sh \
   '    chg=$(direction "$want" "$got")' '    chg=補起來了'
 bite "compare 不再點出同一個 commit" 14 compare.sh \
   'if [ "$CA" = "$CB" ]; then' 'if false; then'
+bite "沒走到終點也照樣給一個方向" 19 compare.sh \
+  '  elif [ "$got" != 擋住 ] && [ "$got" != 沒擋 ]; then' '  elif false; then'
 bite "compare 靜靜收下多出來的案例" 15 compare.sh \
   'if [ -n "$(printf '"'"'%s'"'"' "$EXTRA" | tr -d '"'"' '"'"')" ]; then' 'if false; then'
 bite "snapshot 的髒欄永遠寫 no" 17 snapshot.sh \

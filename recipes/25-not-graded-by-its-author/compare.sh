@@ -52,6 +52,12 @@ while IFS=$'\t' read -r c path want _now got _res; do
   after=$(printf '%s' "$line" | awk -F'\t' '{print $5}')
   if [ "$after" = "$got" ]; then
     chg=不變
+  elif [ "$got" != 擋住 ] && [ "$got" != 沒擋 ]; then
+    # 實測有四個值，而 direction 只認得「擋住」與「沒擋」那兩個（它本來是拿來
+    # 對紀錄欄的，那一欄的值域被 collect.mjs 限死）。「沒打到」跟「跑不動」餵進去
+    # 會拿到一個看起來很正常的方向：那一發根本沒走到終點，表上卻說防線動了。
+    chg=前面那份沒有結論
+    rc=1
   else
     chg=$(direction "$want" "$got")
     # 問不出方向就是這一列的欄位不對（缺欄、值域外）。空白印出去的話，
