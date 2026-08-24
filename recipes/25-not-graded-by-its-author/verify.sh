@@ -18,6 +18,15 @@ bad()  { printf '  紅\t%s\n' "$1"; B=$((B+1)); }
 
 ROOT=$(cd "$R/.." && pwd -P)
 git -C "$ROOT" rev-parse HEAD >/dev/null 2>&1 || { echo "不是 git 工作區，沒有結論"; exit 2; }
+# 淺複製撈不到歷史，而前四條整個建立在撈得到。這是「沒有結論」不是「紅」：
+# 那幾條沒有變成假的，是這個複本沒有能力回答它們。
+# CI 的 actions/checkout 預設 fetch-depth 是 1，所以這一條在本機永遠不會觸發，
+# 在 CI 上第一次就觸發（2026-08-24 實測，本機 19 綠而 CI 三條紅）。
+if [ "$(git -C "$ROOT" rev-parse --is-shallow-repository 2>/dev/null)" = true ]; then
+  echo "這是淺複製，撈不到 before 那幾個 commit，前四條沒有結論。" >&2
+  echo "CI 上要在 actions/checkout 加 fetch-depth: 0。" >&2
+  exit 2
+fi
 
 # 這一支會在別的地方留下暫時的檔（第 17 條要在被量的 recipe 裡造一個髒狀態）。
 # 中途被打斷的話那些檔會留著，而 CI 那條「跑完 repo 要乾淨」用的是 git diff，
