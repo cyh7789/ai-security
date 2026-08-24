@@ -1,4 +1,4 @@
-# 23 支檢查的分級。這是判準的正本。
+# 24 支檢查的分級。這是判準的正本。
 # workflow 不會讀它（沒有那個機制），兩邊都是手寫的，
 # 由 check-convention.sh 比對它們沒有分岔。22 自己漏了一天就是因為以前連那道比對都沒有。
 #
@@ -35,3 +35,4 @@ recipe	級別	秒	為什麼
 22-when-should-it-stop-you	A	2	離線。8/22 補上：這一份定了離開碼公約，自己卻沒進矩陣
 23-what-can-actually-reach-it	A	1	離線，只起 127.0.0.1 上的示範服務。它比對的是攻擊面清單跟實跑，清單造假會紅
 24-green-or-never-hit	A	1	離線。固定攻擊集。run.sh 正常就回 1（七條已知缺口），CI 跑的是 verify.sh 跟 collect.mjs --check
+25-not-graded-by-its-author	A	1	離線。before／after 對照紀錄。verify.sh 會把 before 那個 commit 的程式取出來重跑，需要 git 歷史（checkout 要抓得到那幾個 commit）

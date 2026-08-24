@@ -52,6 +52,7 @@ jobs:
           - 22-when-should-it-stop-you
           - 23-what-can-actually-reach-it
           - 24-green-or-never-hit
+          - 25-not-graded-by-its-author
     steps:
       - uses: actions/checkout@v4
       - name: 跑
@@ -176,7 +177,7 @@ jobs:
       # 這一條會抓到那種汙染。
       - name: 跑完 repo 要是乾淨的
         run: |
-          for r in 14-same-attacks-every-time 18-not-a-free-chatgpt 20-what-did-it-block 21-did-it-come-back 23-what-can-actually-reach-it 24-green-or-never-hit; do
+          for r in 14-same-attacks-every-time 18-not-a-free-chatgpt 20-what-did-it-block 21-did-it-come-back 23-what-can-actually-reach-it 24-green-or-never-hit 25-not-graded-by-its-author; do
             (cd "recipes/${r}" && bash verify.sh > /dev/null 2>&1) || true
           done
           if ! git diff --quiet; then
