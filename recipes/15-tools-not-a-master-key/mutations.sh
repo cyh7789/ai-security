@@ -45,7 +45,7 @@ try "拿掉協定檢查"                    2 "sed -i '' 's/u.protocol !== \"htt
 try "白名單不剝註解"                  3 "sed -i '' 's/.replace(\\/#.\\*\\$\\/, \"\")//' gate.mjs"
 try "工具呼叫只認整行 JSON"           4 "sed -i '' 's|/\\\\{\\[^{}\\]\\*\"tool\"\\[^{}\\]\\*\\\\}/g|/^\\\\{[^{}]*\"tool\"[^{}]*\\\\}\$/g|' agent.mjs"
 try "不檢查工具名"                    4 "sed -i '' 's/o.tool === \"fetch_url\" \&\& //' agent.mjs"
-try "閘永遠不啟用"                    6 "sed -i '' 's|const gate = arg(\"--gate\", \"on\");|const gate = \"off\";|' agent.mjs"
+try "閘永遠不啟用"                    6 "sed -i '' 's|const gate = arg(\"--gate\", \"safe\");|const gate = \"off\";|' agent.mjs"
 try "抓取改成不跟重導向"              7 "sed -i '' 's|await fetch(call.url); //|await fetch(call.url, { redirect: \"manual\" }); //|' agent.mjs"
 try "誘餌頁自己就帶憑證字串"         11 "sed -i '' 's|客服信箱 support@example.com|客服信箱 support@example.com \${CREDENTIAL_MARK}|' servers.mjs"
 try "metadata 服務不回憑證"           5 "sed -i '' 's|\"AccessKeyId\":\"\${CREDENTIAL_MARK}\"|\"AccessKeyId\":\"none\"|' servers.mjs"

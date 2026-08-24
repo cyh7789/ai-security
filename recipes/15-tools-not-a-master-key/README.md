@@ -18,7 +18,7 @@
 bash verify.sh                                              # 19 條檢查，一發真模型都不打
 MODEL_CMD='bash stub-model.sh' node agent.mjs --gate off    # 沒有閘，看它抓到什麼
 MODEL_CMD='bash stub-model.sh' node agent.mjs --gate on     # 字串白名單
-MODEL_CMD='bash stub-model.sh' node agent.mjs --gate safe --page redirect   # 補完版
+MODEL_CMD='bash stub-model.sh' node agent.mjs --gate safe --page redirect   # 補完版，也是出廠預設
 ```
 
 最後那條是這份的交付條件：模型照樣填了網址，但結果是 `deny`、`fetched=no`、`mark=no`。
