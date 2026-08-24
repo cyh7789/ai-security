@@ -57,7 +57,11 @@ async function main() {
     return i >= 0 ? argv[i + 1] : d;
   };
   // off：沒有閘。on：字串白名單（會被 302 繞過）。safe：補完版，每一跳都重過閘。
-  const gate = arg("--gate", "on");
+  //
+  // 出廠預設是 safe。以前是 on，而那讓不給參數的人拿到一個擋得住第一跳、
+  // 擋不住第二跳的閘。on 留著沒有拿掉：Day 15 那一篇的證據就建立在它會被繞過，
+  // 而且明確傳它的人是在選那個行為。改預設救的是沒選的人。
+  const gate = arg("--gate", "safe");
   const variant = arg("--page", "lure");
 
   const { close, ready } = start();

@@ -52,8 +52,14 @@ jobs:
           - 22-when-should-it-stop-you
           - 23-what-can-actually-reach-it
           - 24-green-or-never-hit
+          - 25-not-graded-by-its-author
     steps:
+      # 整段歷史，不是預設的淺複製。recipe 25 的前四條要把舊 commit 的程式
+      # 取出來重跑，而 fetch-depth 預設是 1，那幾個 commit 根本不在這個複本裡。
+      # 本機全綠而 CI 三條紅，就是這個差別。
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: 跑
         run: |
           cd "recipes/${{ matrix.recipe }}"
@@ -167,7 +173,11 @@ jobs:
     name: A 兩道全域的閘
     runs-on: ubuntu-24.04
     steps:
+      # gates 這個 job 也會跑 recipe 25 的 verify.sh（「跑完 repo 要是乾淨的」那一條），
+      # 而它前四條要撈歷史 commit。
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: README 索引對得上 recipes/
         run: bash check-index.sh
       - name: 離開碼公約
@@ -176,7 +186,7 @@ jobs:
       # 這一條會抓到那種汙染。
       - name: 跑完 repo 要是乾淨的
         run: |
-          for r in 14-same-attacks-every-time 18-not-a-free-chatgpt 20-what-did-it-block 21-did-it-come-back 23-what-can-actually-reach-it 24-green-or-never-hit; do
+          for r in 14-same-attacks-every-time 18-not-a-free-chatgpt 20-what-did-it-block 21-did-it-come-back 23-what-can-actually-reach-it 24-green-or-never-hit 25-not-graded-by-its-author; do
             (cd "recipes/${r}" && bash verify.sh > /dev/null 2>&1) || true
           done
           if ! git diff --quiet; then

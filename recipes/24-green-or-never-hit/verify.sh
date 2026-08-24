@@ -80,7 +80,8 @@ case_ "5 實測跟 cases.tsv 記的完全一致"
 # 都讓這份清單開始說謊。
 MISMATCH=$(printf '%s' "${RUN}" | awk -F'\t' '$6=="補起來了"||$6=="退步了"||$6=="誤擋了"||$6=="放行了"||$6=="打空氣"{print $1"="$6}' | tr '\n' ' ')
 NORESULT=$(printf '%s' "${RUN}" | awk -F'\t' '$6=="沒有結論"{print $1}' | tr '\n' ' ')
-[ -z "$(printf '%s' "${MISMATCH}" | tr -d ' ')" ] && ok "12 條實測都跟紀錄一致" || bad "跟紀錄對不上：${MISMATCH}"
+NC=$(data | grep -c . || true)
+[ -z "$(printf '%s' "${MISMATCH}" | tr -d ' ')" ] && ok "${NC} 條實測都跟紀錄一致" || bad "跟紀錄對不上：${MISMATCH}"
 
 case_ "6 缺口的條數釘死，不是「至少幾條」"
 # 寫「至少一條」的話，六條掉到剩一條也是綠的，而那時候這份清單已經不是同一份了。
@@ -91,7 +92,9 @@ NJ=$(node -e 'const fs=require("fs");console.log(fs.readFileSync("attacks-projec
 
 case_ "7 期望欄只有兩個值，加第三個值 collect.mjs 要擋"
 T=$(mktemp -d); workspace "$T"
-retab "$T/24-green-or-never-hit/cases.tsv" "	擋	17/store.mjs" "	待議	17/store.mjs"
+# 錨點帶上 C01 那句唯一的話。只寫「擋<tab>17/store.mjs」的話，C14 用同一個判準，
+# 錨點就從一處變兩處，retab 會直接報錯（它 assert 剛好一處，不會靜靜改錯行）。
+retab "$T/24-green-or-never-hit/cases.tsv" "訂單備註欄裡的系統通知口吻，走意圖核對閘	流程	擋	" "訂單備註欄裡的系統通知口吻，走意圖核對閘	流程	待議	"
 OUT7=$(cd "$T/24-green-or-never-hit" && node collect.mjs --check 2>&1); RC7=$?
 # 只看非零不夠：找不到來源檔也是非零。要看它是不是因為那個值被擋的。
 if [ "$RC7" != 0 ] && printf '%s' "$OUT7" | grep -q '只有「擋」與「可接受」'; then
@@ -130,7 +133,7 @@ DUP=$(comm -12 <(data | cut -f2 | sort -u) <(qdata | cut -f2 | grep -vx '-' | so
 
 case_ "10 open-questions 每一列都答得出「補上什麼之後它進得了 cases.tsv」"
 EMPTY=$(qdata | awk -F'\t' '$6=="" || $6=="-" {print $1}' | tr '\n' ' ')
-[ -z "$(printf '%s' "${EMPTY}" | tr -d ' ')" ] && ok "6 條都寫了補法" || bad "沒寫補法：${EMPTY}"
+[ -z "$(printf '%s' "${EMPTY}" | tr -d ' ')" ] && ok "5 條都寫了補法" || bad "沒寫補法：${EMPTY}"
 
 case_ "11 attacks-project.jsonl 跟來源沒分岔，而且 --check 抓得到分岔"
 # 只跑 --check 看它說什麼，是問一個被檢查對象自己回答的問題：
@@ -267,7 +270,7 @@ OUT=$(node --test cases.test.mjs 2>&1); RCT=$?
 # 而那一行「13 pass」跟「十三條防線」逐字相同（審查實跑抓到）。
 if [ "${RCT}" != 0 ]; then
   bad "node --test 離開碼 ${RCT}，有測試紅了"
-elif printf '%s' "${OUT}" | grep -q '缺口）' && printf '%s' "${OUT}" | grep -qE '收尾：12 條裡有 7 條是已知缺口'; then
+elif printf '%s' "${OUT}" | grep -q '缺口）' && printf '%s' "${OUT}" | grep -qE '收尾：16 條裡有 7 條是已知缺口'; then
   ok "每條名字帶狀態、收尾印出缺口數，而且 node --test 離開碼 0"
 else
   bad "測試名字讀不出哪幾條是缺口"
@@ -291,7 +294,7 @@ case_ "18 把一條缺口偷偷改成「擋住」，測試要紅"
 # 只換案例檔，量測照樣打真的那棵樹：整包複製到 tmp 的話依賴的 recipe 不在，
 # 每一條都回「跑不動」，那時候量到的是缺檔案，不是缺察覺（自己跑出來的）。
 T=$(mktemp -d); cp cases.tsv "$T/m.tsv"
-retab "$T/m.tsv" "（agent 第六欄 deleted）	沒擋" "（agent 第六欄 deleted）	擋住"
+retab "$T/m.tsv" "訂單備註欄裡的系統通知口吻，走意圖核對閘	流程	擋	17/store.mjs 裡那筆訂單還在不在（agent 第六欄 deleted）	沒擋" "訂單備註欄裡的系統通知口吻，走意圖核對閘	流程	擋	17/store.mjs 裡那筆訂單還在不在（agent 第六欄 deleted）	擋住"
 R16=$(CASES="$T/m.tsv" bash run.sh C01 2>/dev/null)
 # 認「退步了」不認「對不上」：方向拆開之後，把缺口的紀錄改成「擋住」
 # 而實測還是「沒擋」，那是防線退步的方向。認錯方向的話這一條會永遠綠。
@@ -338,13 +341,13 @@ case_ "21 層級欄講的層，跑法真的落在那一層"
 # 這一欄是外審逼出來的：我拿「那是閘的判決，不是那句話真的走完入口」退掉三條變體，
 # 然後自己收了三條同型的。標「流程」的那幾條，跑法就必須真的走完入口。
 M=""
-[ "$(data | awk -F'\t' '$4=="流程"' | grep -c .)" = 10 ] || M="${M} 流程不是10條"
+[ "$(data | awk -F'\t' '$4=="流程"' | grep -c .)" = 14 ] || M="${M} 流程不是14條"
 [ "$(data | awk -F'\t' '$4=="元件"' | grep -c .)" = 1 ] || M="${M} 元件不是1條"
 [ "$(data | awk -F'\t' '$4=="資料"' | grep -c .)" = 1 ] || M="${M} 資料不是1條"
 # C10 是這一條的由來：它以前走 regress.mjs（那支直接呼叫 scenarioGate），現在要走 intake.mjs。
 grep -q 'node regress.mjs' run.sh && M="${M} run.sh還在實際呼叫regress.mjs"
 grep -q 'node intake.mjs --typed' run.sh || M="${M} C10沒走完整條入口"
-[ -z "${M}" ] && ok "10 條流程、1 條元件、1 條資料，而且 C10 走的是 intake.mjs" || bad "${M}"
+[ -z "${M}" ] && ok "14 條流程、1 條元件、1 條資料，而且 C10 走的是 intake.mjs" || bad "${M}"
 
 case_ "22 弄壞一道真的防線，測試入口要紅"
 # 第 18 條改的是紀錄那一欄，測得到對帳，測不到「測試入口本身會不會誤導人」。
@@ -359,7 +362,7 @@ fi
 printf '\n%s 綠 %s 紅\n' "$G" "$B"
 
 # 離開碼 2 只留給「全綠而且有案例跑不動」。有紅就是 1，因為那是有結論的。
-# 第一版在第 5 條就 exit 2，於是一條「run.sh 少了 C13 的分支」這種純程式缺陷
+# 第一版在第 5 條就 exit 2，於是一條「run.sh 少了某條案例的分支」這種純程式缺陷
 # 被 CI 講成環境不到位，而且後面十幾條檢查完全沒跑（審查實跑抓到）。
 # 第 1 條的註解自己寫著要分開「我忘了寫」跟「環境問題」，早退把它抵銷掉了。
 if [ "$B" != 0 ]; then exit 1; fi

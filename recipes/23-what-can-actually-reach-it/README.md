@@ -70,7 +70,7 @@ injected.txt	both	allow	allow(SCENARIO_OK)	yes	ok	到達輸出
 
 「收」原本寫成「進清單」，而判斷相反那條也進了清單，定義自相矛盾，是技術審查抓到的，所以分成「收」與「更正後收」。
 
-它抓到我一個真的錯：R10 我原本寫「被擋死」，因為我拿 `safe-fetch.mjs` 量，而這個 agent 預設走的是 `--gate on` 那條分支的裸 fetch（`15/agent.mjs:110`），跟著 302 就到得了。兩個模型都指出來了。
+它抓到我一個真的錯：R10 我原本寫「被擋死」，因為我拿 `safe-fetch.mjs` 量，而這個 agent 當時的出廠預設走的是 `--gate on` 那條分支的裸 fetch，跟著 302 就到得了。兩個模型都指出來了。（Day 25 把出廠預設換成了 `safe`；`--gate on` 那條分支還在，明確傳它照樣被 302 帶走。）
 
 ```
 $ MODEL_CMD='bash stub-model.sh' node agent.mjs --gate on --page redirect --guard none
