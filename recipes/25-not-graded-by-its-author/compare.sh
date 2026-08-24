@@ -19,8 +19,12 @@ for f in "$FA" "$FB"; do [ -r "$f" ] || { echo "讀不到 ${f}" >&2; exit 2; }; 
 
 # 在 recipe 24 那個目錄裡把它 source 起來問一次。run.sh 讀得到 cases.tsv 才肯進 lib 模式，
 # 而那個檔在它自己的目錄裡。24/verify.sh 第 17 條用的也是這個接縫。
+#
+# 兩個值走位置參數進去，不是拼字串。存檔是這一支要查的對象，
+# 它的每一格都要當成敵意輸入：拼進 bash -c 的話，一格寫成
+# 「擋 沒擋; touch /tmp/x; :」就會在對照的時候被執行，而這張表照樣印乾淨的方向。
 direction() {  # $1=期望 $2=前面那一份的實測
-  (cd "$R/24-green-or-never-hit" && RUN_SH_LIB=1 bash -c "source ./run.sh; direction $1 $2")
+  (cd "$R/24-green-or-never-hit" && RUN_SH_LIB=1 bash -c 'source ./run.sh; direction "$1" "$2"' _ "$1" "$2")
 }
 
 meta() { sed -n "s/^# $2\t//p" "$1"; }
@@ -50,6 +54,9 @@ while IFS=$'\t' read -r c path want _now got _res; do
     chg=不變
   else
     chg=$(direction "$want" "$got")
+    # 問不出方向就是這一列的欄位不對（缺欄、值域外）。空白印出去的話，
+    # 一列壞掉的存檔在表上長得像一列沒有變化的正常資料。
+    [ -n "$chg" ] || { chg=方向算不出來; rc=1; }
   fi
   printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$c" "$path" "$want" "$got" "$after" "$chg"
 done < <(rows "$FA")
