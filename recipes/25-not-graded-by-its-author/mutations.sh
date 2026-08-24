@@ -78,6 +78,13 @@ bite "沒走到終點也照樣給一個方向" 19 compare.sh \
   '  elif [ "$got" != 擋住 ] && [ "$got" != 沒擋 ]; then' '  elif false; then'
 bite "compare 靜靜收下多出來的案例" 15 compare.sh \
   'if [ -n "$(printf '"'"'%s'"'"' "$EXTRA" | tr -d '"'"' '"'"')" ]; then' 'if false; then'
+# 把「這幾個 SHA 在不在」換回「是不是淺複製」，也就是這一條修掉的那個 bug。
+# 咬得到的原因：第 20 條會造一個深度 100 的複本，那種複本 is-shallow 是 true
+# 而五個 SHA 都在，舊寫法會在那裡誤判成沒有結論。本機不淺，所以這個突變
+# 只有靠第 20 條那個複本才咬得到。
+bite "偵測退回問淺複製，不問 SHA 在不在" 20 verify.sh \
+  '  git -C "$ROOT" cat-file -e "${c}^{commit}" 2>/dev/null || MISSING="${MISSING} ${d}(${c})"' \
+  '  [ "$(git -C "$ROOT" rev-parse --is-shallow-repository 2>/dev/null)" = true ] && MISSING="${MISSING} ${d}"'
 bite "snapshot 的髒欄永遠寫 no" 17 snapshot.sh \
   'if [ -n "$(git status --porcelain -- "$R" ":(exclude)$R/$SELF" 2>/dev/null)" ]; then DIRTY=yes; else DIRTY=no; fi' \
   'DIRTY=no'
