@@ -19,6 +19,12 @@ bad()  { printf '  紅\t%s\n' "$1"; B=$((B+1)); }
 ROOT=$(cd "$R/.." && pwd -P)
 git -C "$ROOT" rev-parse HEAD >/dev/null 2>&1 || { echo "不是 git 工作區，沒有結論"; exit 2; }
 
+# 這一支會在別的地方留下暫時的檔（第 17 條要在被量的 recipe 裡造一個髒狀態）。
+# 中途被打斷的話那些檔會留著，而 CI 那條「跑完 repo 要乾淨」用的是 git diff，
+# 看得到已追蹤檔的修改，看不到沒追蹤的殘留。
+DIRTY_PROBE="$R/24-green-or-never-hit/.verify-dirty-probe"
+trap 'rm -f "$DIRTY_PROBE"; rm -rf .verify-tmp .verify-dirty .verify-inject' EXIT
+
 meta() { sed -n "s/^# $2\t//p" "$1"; }
 cell() { grep -v '^#' "$1" | awk -F'\t' -v k="$2" -v c="$3" '$1==k{print $c}'; }
 
@@ -199,8 +205,7 @@ grep -q "${NM} 個機制突變" README.md || M="${M} README沒寫${NM}個突變"
 case_ "17 工作區髒的時候，snapshot 標得出來"
 # 第 6 條讀的是既有存檔的那一欄，讀不出「產生那一欄的程式還在不在做事」。
 # 這一條真的造一個髒狀態跑一次，看它標 yes。
-DTMP="$R/24-green-or-never-hit/.verify-dirty-probe"
-: > "$DTMP"
+: > "$DIRTY_PROBE"
 rm -rf .verify-dirty
 if bash snapshot.sh .verify-dirty >/dev/null 2>&1; then
   D=$(meta .verify-dirty/run.tsv "被量的那些 recipe 有未提交的改動")
@@ -209,7 +214,7 @@ if bash snapshot.sh .verify-dirty >/dev/null 2>&1; then
 else
   bad "snapshot 在髒的工作區上跑不起來"
 fi
-rm -f "$DTMP"; rm -rf .verify-dirty
+rm -f "$DIRTY_PROBE"; rm -rf .verify-dirty
 
 case_ "18 存檔裡的欄位是資料，不是 shell 語法"
 # 這一支的職責是揪出被人事後動過的存檔，所以它讀到的每一格都要當成敵意輸入。

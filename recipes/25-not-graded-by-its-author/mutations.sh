@@ -15,20 +15,17 @@ export LC_ALL=C
 R=..
 
 BACKUP=$(mktemp -d)
-FILES="README.md snapshot.sh compare.sh verify.sh mutations.sh"
+FILES="README.md snapshot.sh compare.sh verify.sh"
 cp $FILES "${BACKUP}/"
 mkdir -p "${BACKUP}/snap"
 for d in before-default after-default before-gate after-gate final; do
   mkdir -p "${BACKUP}/snap/$d"; cp "$d/run.tsv" "${BACKUP}/snap/$d/"
 done
-# recipe 15 的 agent.mjs 也備份：有一個突變要把它的出廠預設改回去。
-cp "$R/15-tools-not-a-master-key/agent.mjs" "${BACKUP}/agent15.mjs"
 restore() {
   cp "${BACKUP}"/*.md "${BACKUP}"/*.sh .
   for d in before-default after-default before-gate after-gate final; do
     cp "${BACKUP}/snap/$d/run.tsv" "$d/"
   done
-  cp "${BACKUP}/agent15.mjs" "$R/15-tools-not-a-master-key/agent.mjs"
 }
 trap 'restore; rm -rf "${BACKUP}"' EXIT
 
@@ -82,14 +79,22 @@ bite "compare 靜靜收下多出來的案例" 15 compare.sh \
 bite "snapshot 的髒欄永遠寫 no" 17 snapshot.sh \
   'if [ -n "$(git status --porcelain -- "$R" ":(exclude)$R/$SELF" 2>/dev/null)" ]; then DIRTY=yes; else DIRTY=no; fi' \
   'DIRTY=no'
+# 項數從 verify.sh 自己數，不寫死：加一條檢查就換一個數字，寫死的話錨點會對不上。
 bite "README 的項數沒跟上" 16 README.md \
-  '自己的檢查，17 項' '自己的檢查，16 項'
+  "自己的檢查，$(grep -c '^case_ \"' verify.sh) 項" "自己的檢查，1 項"
 
 echo
 echo "=== 突變：改存檔（事後把紀錄改得好看一點）==="
-bite "把 before 的 commit 換成修補之後的" 5 before-default/run.tsv \
-  '# commit\t9dee71b046e21e134cad9460fe774d737715a5d9' \
-  '# commit\tHEADHEADHEADHEADHEADHEADHEADHEADHEADHEAD'
+# 咬的是祖先關係那一支，不是「這個 SHA 在不在版控裡」：塞一個不成立的字串進去，
+# 紅的會是後者，而 README 把第 5 條列為對抗「順序偷偷倒過來」的防法，
+# 那個防法真正的機制是 merge-base --is-ancestor。
+# 改 final 的而不是 before 的：before-default 與 before-gate 的 commit 還被第 1、3 條
+# 拿去重跑，動它們會同時咬到兩條，而 bite 只認一條。
+# 前一個值從檔案自己讀，不寫死：final 重存過就換一個 SHA，寫死的話錨點會對不上。
+# 後一個是 Day 24 交件那一版（main 上的 4b810fd），它必定早於這條分支的每一個 commit。
+bite "把 final 的 commit 換成 before 之前的" 5 final/run.tsv \
+  "# commit\t$(sed -n 's/^# commit\t//p' final/run.tsv)" \
+  "# commit\t$(git rev-parse 4b810fd)"
 bite "把某一份的髒欄改成 yes" 6 final/run.tsv \
   '# 被量的那些 recipe 有未提交的改動\tno' '# 被量的那些 recipe 有未提交的改動\tyes'
 bite "把主線那一條的 after 改回沒擋" 7 after-default/run.tsv \
