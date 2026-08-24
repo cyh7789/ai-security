@@ -197,6 +197,7 @@ runcase() {
     C13) fetchprobe default redirect ;;
     C14) agent_delete hijack-a default ;;
     C15) agent_delete legit default hijack ;;
+    C16) agent_delete hijack-b default ;;
     *)   echo 跑不動 ;;
   esac
 }

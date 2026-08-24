@@ -270,7 +270,7 @@ OUT=$(node --test cases.test.mjs 2>&1); RCT=$?
 # 而那一行「13 pass」跟「十三條防線」逐字相同（審查實跑抓到）。
 if [ "${RCT}" != 0 ]; then
   bad "node --test 離開碼 ${RCT}，有測試紅了"
-elif printf '%s' "${OUT}" | grep -q '缺口）' && printf '%s' "${OUT}" | grep -qE '收尾：15 條裡有 7 條是已知缺口'; then
+elif printf '%s' "${OUT}" | grep -q '缺口）' && printf '%s' "${OUT}" | grep -qE '收尾：16 條裡有 7 條是已知缺口'; then
   ok "每條名字帶狀態、收尾印出缺口數，而且 node --test 離開碼 0"
 else
   bad "測試名字讀不出哪幾條是缺口"
@@ -341,13 +341,13 @@ case_ "21 層級欄講的層，跑法真的落在那一層"
 # 這一欄是外審逼出來的：我拿「那是閘的判決，不是那句話真的走完入口」退掉三條變體，
 # 然後自己收了三條同型的。標「流程」的那幾條，跑法就必須真的走完入口。
 M=""
-[ "$(data | awk -F'\t' '$4=="流程"' | grep -c .)" = 13 ] || M="${M} 流程不是13條"
+[ "$(data | awk -F'\t' '$4=="流程"' | grep -c .)" = 14 ] || M="${M} 流程不是14條"
 [ "$(data | awk -F'\t' '$4=="元件"' | grep -c .)" = 1 ] || M="${M} 元件不是1條"
 [ "$(data | awk -F'\t' '$4=="資料"' | grep -c .)" = 1 ] || M="${M} 資料不是1條"
 # C10 是這一條的由來：它以前走 regress.mjs（那支直接呼叫 scenarioGate），現在要走 intake.mjs。
 grep -q 'node regress.mjs' run.sh && M="${M} run.sh還在實際呼叫regress.mjs"
 grep -q 'node intake.mjs --typed' run.sh || M="${M} C10沒走完整條入口"
-[ -z "${M}" ] && ok "13 條流程、1 條元件、1 條資料，而且 C10 走的是 intake.mjs" || bad "${M}"
+[ -z "${M}" ] && ok "14 條流程、1 條元件、1 條資料，而且 C10 走的是 intake.mjs" || bad "${M}"
 
 case_ "22 弄壞一道真的防線，測試入口要紅"
 # 第 18 條改的是紀錄那一欄，測得到對帳，測不到「測試入口本身會不會誤導人」。
