@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # 把 recipe 24 那份攻擊集完整跑一次，連同「這一跑是在哪個版本上跑的」一起存檔。
 #
-#   bash snapshot.sh before        # 修補前
-#   bash snapshot.sh after-default # 改完出廠預設
-#   bash snapshot.sh after-gate    # 再改完訂單那條路徑的預設閘
+#   bash snapshot.sh before-default   # 改 15 的出廠預設之前
+#   bash snapshot.sh after-default    # 之後
+#   bash snapshot.sh before-gate      # 改 17 的出廠預設之前
+#   bash snapshot.sh after-gate       # 之後
+#
+# 兩條線各存各的 before。共用一份的話，第二條線的 before 會是第一條線修完的狀態，
+# 而那一份裡沒有第二條線的案例（它是那之後才加的）。
 #
 # 離開碼照 Day 22 那份公約：0 存好了、1 這一跑有案例沒有結論、2 環境不到位。
 #
