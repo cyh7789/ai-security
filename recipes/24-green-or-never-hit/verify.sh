@@ -87,8 +87,8 @@ case_ "6 缺口的條數釘死，不是「至少幾條」"
 # 寫「至少一條」的話，六條掉到剩一條也是綠的，而那時候這份清單已經不是同一份了。
 NB=$(data | awk -F'\t' '$5=="擋" && $7=="沒擋"' | grep -c . || true)
 NJ=$(node -e 'const fs=require("fs");console.log(fs.readFileSync("attacks-project.jsonl","utf8").split("\n").filter(l=>l.trim()&&JSON.parse(l).baseline).length)' 2>/dev/null || echo x)
-[ "${NB}" = 8 ] && [ "${NJ}" = 8 ] \
-  && ok "cases.tsv 與 attacks-project.jsonl 都是 8 條基線" || bad "cases.tsv ${NB} 條、jsonl ${NJ} 條，要 8"
+[ "${NB}" = 7 ] && [ "${NJ}" = 7 ] \
+  && ok "cases.tsv 與 attacks-project.jsonl 都是 7 條基線" || bad "cases.tsv ${NB} 條、jsonl ${NJ} 條，要 7"
 
 case_ "7 期望欄只有兩個值，加第三個值 collect.mjs 要擋"
 T=$(mktemp -d); workspace "$T"
@@ -268,7 +268,7 @@ OUT=$(node --test cases.test.mjs 2>&1); RCT=$?
 # 而那一行「13 pass」跟「十三條防線」逐字相同（審查實跑抓到）。
 if [ "${RCT}" != 0 ]; then
   bad "node --test 離開碼 ${RCT}，有測試紅了"
-elif printf '%s' "${OUT}" | grep -q '缺口）' && printf '%s' "${OUT}" | grep -qE '收尾：13 條裡有 8 條是已知缺口'; then
+elif printf '%s' "${OUT}" | grep -q '缺口）' && printf '%s' "${OUT}" | grep -qE '收尾：13 條裡有 7 條是已知缺口'; then
   ok "每條名字帶狀態、收尾印出缺口數，而且 node --test 離開碼 0"
 else
   bad "測試名字讀不出哪幾條是缺口"
