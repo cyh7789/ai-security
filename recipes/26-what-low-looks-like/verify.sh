@@ -1,26 +1,31 @@
 #!/usr/bin/env bash
 # 這一天的檢查。跑：bash verify.sh
 #
-# 離開碼照 Day 22 那份公約：0 全綠、1 有紅、2 環境不到位沒有結論。
+# 離開碼照 Day 22 那份公約：0 全綠、1 有紅、2 環境不到位或有節被跳過，沒有結論。
+# 順序是先判紅：有紅就是 1，因為那是有結論的（recipes/24 的收尾同一套寫法）。
 #
-# 這一天的產出是一份「它能做到什麼」的聲明，而聲明最容易壞的方式是跟資料分岔：
-# 存檔重跑一輪之後數字變了，聲明還停在上一輪。所以下面沒有一條在讀 POSITIONING.md
-# 的形容詞，全部是拿 first-look/ 那份存檔重新算一次，再問聲明對不對得上。
+# 這一天的產出是一份「它能做到什麼」的聲明，而聲明最容易壞的方式是跟資料分岔。
+# 所以下面沒有一條在讀 POSITIONING.md 的形容詞，全部是拿 first-look/ 那份存檔
+# 重新算一次，再問聲明對不對得上。
 set -u
 cd "$(dirname "$0")"
+# LC_ALL=C 不能省。macOS 內建的 awk（20200816）在 UTF-8 locale 下，任何含非 ASCII
+# 的字串比較都會回真：底下拿 $5=="指到" 數命中數，不設這一行會數到全部九列，
+# 而那個錯誤的方向剛好是「聲明看起來對得上」。2026-08-25 實測。
 export LC_ALL=C
-G=0; B=0
+G=0; B=0; S=0
 case_() { printf '\n=== %s ===\n' "$1"; }
 ok()   { printf '  綠\t%s\n' "$1"; G=$((G+1)); }
 bad()  { printf '  紅\t%s\n' "$1"; B=$((B+1)); }
+skip() { printf '  沒有結論\t%s\n' "$1"; S=$((S+1)); }
 
-MODEL="${ANTARES_MLX:-/Volumes/CyhSSD/Dev/models/antares-1b-mlx}"
+MODEL="${ANTARES_MLX:-./antares-1b-mlx}"
 PG=../../playground
 [ -d "$PG" ] || { echo "找不到 $PG，沒有結論" >&2; exit 2; }
 [ -r first-look/run.json ] || { echo "沒有 first-look/run.json，先跑 first-look.py，沒有結論" >&2; exit 2; }
 
-rows() { grep -v '^#' verdict.tsv | tail -n +2 | grep -c .; }
-col()  { grep -v '^#' verdict.tsv | tail -n +2 | awk -F'\t' -v c="$1" '{print $c}'; }
+rows() { grep -v '^#' verdict.tsv | tail -n +2 | grep .; }
+col()  { rows | awk -F'\t' -v c="$1" '{print $c}'; }
 
 case_ "1 存檔收的檔案，跟 playground 現在有的一樣"
 HAVE=$(cd "$PG" && find . -name '*.js' -not -path './test/*' | sed 's|^\./||' | sort | tr '\n' ' ')
@@ -49,68 +54,98 @@ s = round(sum(r['seconds'] for r in d['results']), 1)
 sys.exit(0 if abs(s - d['total_seconds']) < 0.05 else 1)
 PY
 
-case_ "4 verdict.tsv 每一列的依據，逐字出自存檔"
+case_ "4 verdict.tsv 每一列的依據，逐字出自那個檔的存檔"
 # 這一條是這份核對唯一的支撐。憑印象寫「它好像有講到」在這裡會紅，
 # 而那正是核對最容易出錯的地方：讀過一次輸出，之後就靠記憶回答。
 NB=""
-while IFS=$'\t' read -r _k file _item _cwe _v _mc _ml _al quote; do
+while IFS=$'\t' read -r _k file _item _cwe _v _mc _ml _al quote _rev; do
   [ -n "$file" ] || continue
   raw="first-look/$(printf '%s' "$file" | tr '/' '_').txt"
   [ -r "$raw" ] || { NB="${NB} ${file}(沒有存檔)"; continue; }
   grep -Fq -- "$quote" "$raw" || NB="${NB} ${file}(${quote:0:30}…)"
-done < <(grep -v '^#' verdict.tsv | tail -n +2 | grep .)
-[ -z "$NB" ] && ok "$(rows) 列的依據全部在存檔裡找得到" || bad "這幾列的依據在存檔裡找不到：${NB}"
+done < <(rows)
+[ -z "$NB" ] && ok "$(rows | grep -c .) 列的依據全部在對應的存檔裡找得到" \
+             || bad "這幾列的依據在存檔裡找不到：${NB}"
 
-case_ "5 已知問題六條、乾淨對照兩檔，一條不多一條不少"
-K=$(col 1 | grep -c '^已知$'); C=$(col 1 | grep -c '^乾淨$')
-[ "$K" = 6 ] && [ "$C" = 2 ] && ok "已知 6、乾淨 2" || bad "已知 ${K}、乾淨 ${C}"
+case_ "5 存檔裡每一條合格候選，核對表都記到了"
+# 核對表本來是單向的：拿已知問題去找候選。反方向沒人守的話，模型多吐的候選
+# 會靜靜消失，而誤報數、行號命中率、編號命中率三個聲明會同時被低估。
+INAR=$(cat first-look/*.txt | grep -c '^CWE-[0-9]* | line ')
+INTB=$(rows | awk -F'\t' '$6 != "-"' | grep -c .)
+[ "$INAR" = "$INTB" ] && ok "存檔 ${INAR} 條候選，核對表記了 ${INTB} 條" \
+                      || bad "存檔有 ${INAR} 條合格候選，核對表只記了 ${INTB} 條"
 
-case_ "6 POSITIONING.md 寫的命中數，跟 verdict.tsv 算出來的一樣"
-HIT=$(paste <(col 1) <(col 5) | awk -F'\t' '$1=="已知" && $2=="指到"' | grep -c .)
-CN=$(python3 -c "
-import re;t=open('POSITIONING.md').read()
-m=re.search(r'六個已知問題裡指出(.)個',t);print({'一':1,'二':2,'三':3,'四':4,'五':5,'六':6}.get(m.group(1),-1) if m else -1)")
-[ "$HIT" = "$CN" ] && ok "都是 ${HIT} 個" || bad "存檔算出來 ${HIT} 個，聲明寫 ${CN} 個"
+case_ "6 判定「沒指到」的那幾列，反向驗一次"
+# 拿另一個問題的候選當依據，證不出「它沒講到這件事」。這裡問的是
+# 整份存檔的候選行裡，那個問題的核心字眼有沒有出現過。
+NR_=""
+while IFS=$'\t' read -r _k _f _i _c v _mc _ml _al _q rev; do
+  [ "$v" = 沒指到 ] || continue
+  [ -n "$rev" ] && [ "$rev" != - ] || { NR_="${NR_} (有列沒填反向關鍵字)"; continue; }
+  cat first-look/*.txt | grep '^CWE-[0-9]* | line ' | grep -qF -- "$rev" \
+    && NR_="${NR_} ${rev}"
+done < <(rows)
+[ -z "$NR_" ] && ok "那幾列的關鍵字，候選行裡一次都沒出現" \
+              || bad "這幾個關鍵字其實出現在候選行裡：${NR_}"
 
-case_ "7 聲明說「三條指到的候選，行號一條都沒對」，逐列驗一次"
-# 只算判定是「指到」的那幾列。判成別的東西的那條候選也帶行號，而它剛好落在
-# server/orders.js 第 6 行，也就是真的有問題的那一行——它指對了位置、講錯了機制。
-# 把它算進來，這句聲明會變成假的紅；把它算成命中，那更糟。
-WRONG=0; RIGHT=""
-while IFS=$'\t' read -r _k file _i _c v _mc ml al _q; do
-  [ "$v" = 指到 ] || continue
+case_ "7 POSITIONING.md 的四個數字，跟核對表算出來的一樣"
+HIT=$(rows | awk -F'\t' '$1=="已知" && $5=="指到"' | grep -c .)
+CWEOK=$(rows | awk -F'\t' '$5=="指到" && $4==$6' | grep -c .)
+FP=$(rows | awk -F'\t' '$5=="誤報"' | grep -c .)
+SEC=$(python3 -c "import json;print(json.load(open('first-look/run.json'))['total_seconds'])")
+PEAK=$(python3 -c "
+import json;d=json.load(open('first-look/run.json'))
+print(f\"{max(float(r['peak'].split()[0]) for r in d['results']):.2f}\")")
+N=0
+grep -qF "指出三個" POSITIONING.md && [ "$HIT" = 3 ] || { bad "命中數：核對表 ${HIT}"; N=1; }
+grep -qF "CWE 編號只有一條對" POSITIONING.md && [ "$CWEOK" = 1 ] || { bad "編號命中數：核對表 ${CWEOK}"; N=1; }
+grep -qF "${SEC} 秒" POSITIONING.md || { bad "聲明沒寫 ${SEC} 秒"; N=1; }
+grep -qF "${PEAK} GB" POSITIONING.md || { bad "聲明沒寫峰值 ${PEAK} GB"; N=1; }
+[ "$N" = 0 ] && ok "指到 ${HIT}、編號對 ${CWEOK}、誤報 ${FP}、${SEC} 秒、峰值 ${PEAK} GB"
+
+case_ "8 聲明說「五條指得出行號的候選，只有一條行號對」，逐條驗一次"
+RIGHT=""; TOTAL=0
+while IFS=$'\t' read -r _k file _i _c _v _mc ml al _q _rev; do
   [ -n "$ml" ] && [ "$ml" != - ] && [ "$al" != - ] || continue
-  if printf '%s' ",$al," | grep -q ",$ml,"; then RIGHT="${RIGHT} ${file}:${ml}"; else WRONG=$((WRONG+1)); fi
-done < <(grep -v '^#' verdict.tsv | tail -n +2 | grep .)
-[ -z "$RIGHT" ] && ok "${WRONG} 條有行號的候選，沒有一條指對" || bad "這幾條其實指對了：${RIGHT}，聲明要改"
+  TOTAL=$((TOTAL+1))
+  printf '%s' ",$al," | grep -q ",$ml," && RIGHT="${RIGHT} ${file}:${ml}"
+done < <(rows)
+if [ "$TOTAL" = 5 ] && [ "$RIGHT" = " server/orders.js:6" ]; then
+  ok "五條裡對的只有 server/orders.js:6，而那條把機制講錯了"
+else
+  bad "${TOTAL} 條裡對的是：${RIGHT}，聲明那句要跟著改"
+fi
 
-case_ "8 POSITIONING.md 四個小節都在"
-S=""
+case_ "9 POSITIONING.md 四個小節都在"
+SEC_MISS=""
 for h in "## 一句話" "## 它做得到" "## 它做不到" "## 所以我怎麼用它"; do
-  grep -qF "$h" POSITIONING.md || S="${S} ${h}"
+  grep -qF "$h" POSITIONING.md || SEC_MISS="${SEC_MISS} ${h}"
 done
-[ -z "$S" ] && ok "四節都在" || bad "缺這幾節：${S}"
+[ -z "$SEC_MISS" ] && ok "四節都在" || bad "缺這幾節：${SEC_MISS}"
 
-case_ "9 重跑一輪，跟存檔逐字相同"
+case_ "10 重跑一輪，跟存檔逐字相同"
+# 跳過不是通過。這一條沒跑成，整支的離開碼是 2，不是 0。
 if [ "${SKIP_RERUN:-}" = 1 ]; then
-  # mutations.sh 拿它跳過這一條：那一輪要 33 秒，而前八條的突變一條都碰不到它。
-  printf '  跳過\tSKIP_RERUN=1\n'
-elif [ -r "$MODEL/config.json" ]; then
+  skip "SKIP_RERUN=1（mutations.sh 拿它跳過這一條，前九條的突變一條都碰不到它）"
+elif [ ! -r "$MODEL/config.json" ]; then
+  skip "找不到模型（$MODEL），設 ANTARES_MLX 指過去"
+else
   T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
-  if python3 first-look.py "$MODEL" "$T" >/dev/null 2>&1; then
+  python3 first-look.py "$MODEL" "$T" >/dev/null 2>&1; RC=$?
+  if [ "$RC" = 2 ]; then
+    skip "first-look.py 回 2（環境不到位，多半是 mlx-lm 沒裝）"
+  elif [ "$RC" != 0 ]; then
+    bad "重跑回 ${RC}"
+  else
     D=""
     for f in first-look/*.txt; do
       cmp -s "$f" "$T/$(basename "$f")" || D="${D} $(basename "$f")"
     done
     [ -z "$D" ] && ok "七份逐字相同（--temp 0，同一份權重）" || bad "這幾份重跑出來不一樣：${D}"
-  else
-    bad "重跑跑不動"
   fi
-else
-  printf '  沒有結論\t找不到模型（%s），第 9 條跳過。設 ANTARES_MLX 指過去\n' "$MODEL"
-  printf '\n綠 %s、紅 %s，第 9 條沒有結論\n' "$G" "$B"
-  exit 2
 fi
 
-printf '\n綠 %s、紅 %s\n' "$G" "$B"
+printf '\n綠 %s、紅 %s、沒有結論 %s\n' "$G" "$B" "$S"
 [ "$B" = 0 ] || exit 1
+[ "$S" = 0 ] || exit 2
+exit 0

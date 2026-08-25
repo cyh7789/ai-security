@@ -63,7 +63,14 @@ while IFS="	" read -r name level _rest; do
   case "${name}" in ''|'#'*|recipe) continue ;; esac
   # E 級是宣告過的例外：託管 runner 上沒有那個硬體。要求它進矩陣只會得到一個
   # 永遠回 2 的 job。豁免寫在這裡而不是靠人記得，代價寫在 levels.tsv 那一欄。
-  [ "${level}" = E ] && continue
+  #
+  # 但豁免不是免費的：E 級在 CI 上零覆蓋，唯一還會逼它證明自己的東西是
+  # mutations.sh。沒有那一支就填 E，等於把一支沒人驗過的檢查合法化。
+  if [ "${level}" = E ]; then
+    [ -f "${R}/${name}/mutations.sh" ] \
+      || bad "${name} 填了 E 級（CI 上零覆蓋）卻沒有 mutations.sh"
+    continue
+  fi
   # 兩種寫法都算數：矩陣那一行，或自己一個 job 裡 cd 進去。
   # 不可以只認「名字有出現」，因為 checks.yml 最後那個清潔檢查也會列名字，
   # 認名字的話從矩陣拿掉一支照樣綠（2026-08-22 實測，這條因此重寫過一次）。
