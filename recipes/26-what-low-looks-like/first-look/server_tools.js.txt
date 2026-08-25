@@ -1,0 +1,3 @@
+I'll scan the file for code execution of user-supplied data via system commands, look for potential command injection, and check for other unsafe operations. I'll focus on exec usage and any unescaped user input passed to system tools.
+</think>
+CWE-83 | line 3 | The file uses exec to run system commands, which can lead to command injection if user-controlled input is interpolated into the command string.

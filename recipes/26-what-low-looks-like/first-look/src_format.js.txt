@@ -1,0 +1,3 @@
+I'll scan the file for obvious security issues: unsafe template literals, missing validation of untrusted input, use of eval/Function, DOM/JSX sinks, or improper input handling. The file uses Intl with trusted ISO and currency codes; no obvious unsafe code. I'll look for any direct use of eval or new Function, or direct DOM usage. None found.
+</think>
+CWE-420 | line 3 | Uses Intl NumberFormat to format user input cents; no obvious unsafe code.
