@@ -1,0 +1,4 @@
+I'll scan the repository files for any code that generates web output containing HTML/JavaScript or uses user input in HTML context. I'll look for direct DOM insertion via innerHTML, template literals inserted into HTML, or other web page generation that could enable XSS.
+</think>
+
+src/m7.js

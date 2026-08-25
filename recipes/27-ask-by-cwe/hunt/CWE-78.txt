@@ -1,0 +1,3 @@
+I'll scan the repository files for OS command usage. The relevant file is server/tools.js which uses child_process.exec to run system commands. I'll confirm CWE-78 by checking if externally influenced input (like domains or filenames) is interpolated into the command without sanitization.
+</think>
+server/tools.js

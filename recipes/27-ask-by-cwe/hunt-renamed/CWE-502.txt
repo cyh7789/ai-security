@@ -1,0 +1,4 @@
+I'll scan the repository files for deserialization of untrusted data. I'll look for common patterns: usage of functions like require('deserializ'), JSON.parse on data from external sources, or similar. I'll also check for any deserialization APIs like Java deserializ, PHP unserialize, Python pickle, or Node's JSON.stringify+eval patterns.
+</think>
+
+CWE-502 in src/m5.js

@@ -1,0 +1,12 @@
+The repository contains several files. I'll analyze each one for regular expressions with potential exponential complexity (CWE-1333). Looking at the files:
+1. `server/files.js` - uses `fs.readFile` but no regex
+2. `server/health.js` - no regex
+3. `server/orders.js` - no regex
+4. `server/tools.js` - uses `exec` with a command string that includes `dig +short` - could potentially use regex in `dig` command
+5. `src/format.js` - uses `Intl.NumberFormat` and `Intl.DateTimeFormat` which are safe
+6. `src/api.js` - uses `fetch`
+7. `src/render.js` - no regex
+The file `server/tools.js` uses `exec` with a command string that includes `dig +short`, which could potentially use regex. However, the main concern is the `exec` command itself. The `dig` command is part of the `dig` tool, which is a DNS client. DNS tools often use regular expressions internally. The most likely location of CWE-1333 is `server/tools.js` as it directly executes a command string that could involve regex complexity.
+</think>
+
+server/tools.js

@@ -1,0 +1,4 @@
+I'll scan the repository files for SQL query constructions that use external input. I'll look for database query APIs (e.g., db.query) and any use of untrusted parameters in those queries.
+</think>
+
+src/api.js

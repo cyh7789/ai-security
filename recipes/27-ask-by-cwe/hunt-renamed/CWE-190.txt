@@ -1,0 +1,4 @@
+I'll scan the repository files for arithmetic that could overflow or wrap. I'll look for integer conversions, loops, and calculations involving file sizes, timestamps, or numeric operations. The server/m2.js calculates uptime in seconds from now() differences; if it uses subtraction only, that's not an overflow per se, but could be large. However, the CWE-190 applies to integer calculations that assume a larger result. The code in m2.js computes (now - startedAt) / 1000; if now - startedAt is huge, division could overflow in languages with fixed-size integers, or the intermediate product could overflow. The file is a candidate. I'll also check uploads handling in m1.js for file size calculations. I'll focus on the server code and any place where numeric calculations happen with untrusted inputs.
+</think>
+
+server/m2.js

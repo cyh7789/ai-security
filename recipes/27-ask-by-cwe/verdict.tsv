@@ -1,0 +1,30 @@
+# 我親手核的一輪，對象是 hunt/ 那份存檔。2026-08-26。
+#
+# 規則跟 Day 26 的 verdict.tsv 同一套，verify.sh 第 3、4 條各守一條：
+#   1. 每一列的「依據」要逐字出自那個編號的存檔。憑印象寫「它好像有講到」過不了。
+#   2. cwes.tsv 上的每一個編號都要在這裡有一列，一列都不能少。
+#      少記的方向永遠是「它看起來比較好」，因為記不住的多半是它答壞的那幾條。
+#
+# 判定五個值：
+#   指到      這一類我確實埋在那個檔，它交出的也是那個檔
+#   指錯      它交出了一個檔，但不是那個檔
+#   說沒有    這一類這個專案裡沒有，它說 NONE
+#   亂指      這一類這個專案裡沒有，它照樣交出一個檔
+#   沒交答案  整份輸出裡找不到任何一句在回答「哪個檔」
+#
+# 「這一類在不在」由 cwes.tsv 的答案欄決定，那一欄是我判的。判的理由寫在 README。
+#
+編號	這類存在嗎	答案檔案	它交出的檔案	判定	依據（逐字出自 hunt/<編號>.txt）	備註
+CWE-78	在	server/tools.js	server/tools.js	指到	server/tools.js	乾淨俐落，一行一個檔，就這個檔
+CWE-22	在	server/files.js	server/files.js	指到	Files containing CWE-22: server/files.js	答對了但沒照格式：那句話是散文，不是我要的一行一個路徑
+CWE-79	在	src/render.js	src/render.js	指到	The most likely CWE-79 issue is in src/render.js	Day 26 逐檔問的時候它也抓到這個，是六個問題裡最好認的
+CWE-798	在	src/api.js	src/api.js	指到	src/api.js	Day 26 逐檔問這個檔的時候它一條合格候選都沒吐，換成給編號就指對了
+CWE-639	在	server/orders.js	server/files.js	指錯	I'll mark server/files.js as the likely location of CWE-639.	它把 files.js 的路徑穿越重新解釋成授權繞過。真正沒綁 user_id 的是 orders.js
+CWE-209	在	server/files.js	server/tools.js, src/api.js	指錯	Overall, the files most likely to contain CWE-209 are: server/tools.js, src/api.js.	它一開頭就寫對過（見備註引的那句），逐檔比完之後自己推翻。這是整份存檔裡唯一一次自我推翻
+CWE-89	不在	-	src/api.js	亂指	src/api.js	api.js 是一支 fetch，整個檔沒有資料庫。唯一有 SQL 的 orders.js 用的是參數化查詢
+CWE-502	不在	-	NONE	說沒有	NONE	七個不存在的類別裡，只有這一個它說了沒有
+CWE-611	不在	-	src/render.js	亂指	The key file is src/render.js, which likely renders HTML content that may include XML-like tags	整個專案沒有一行 XML。它的理由是 HTML 標籤看起來像 XML
+CWE-327	不在	-	server/tools.js	亂指	--- server/tools.js ---	它自己先列了一串要找的東西（MD5、SHA-1、DES），一個都沒找到，然後把 tools.js 包在一個沒收尾的程式碼區塊裡交出來
+CWE-190	不在	-	server/health.js	亂指	that subtraction could overflow if done with 32-bit integers	JavaScript 的 number 是雙精度浮點數，那行沒有 32 位元整數。它指的是兩個乾淨檔之一
+CWE-1333	不在	-	server/tools.js	亂指	DNS tools often use regular expressions internally	專案裡一個正規表示式都沒有。它推論的是 dig 這支外部程式的內部實作，不是我給它的程式碼
+CWE-330	不在	-	tools.js	亂指	tools.js	連路徑都沒給全，前面那層 server/ 掉了。專案裡沒有任何亂數

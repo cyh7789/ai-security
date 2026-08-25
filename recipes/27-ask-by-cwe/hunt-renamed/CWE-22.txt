@@ -1,0 +1,4 @@
+I'll scan the repository files for code that constructs file paths from external input and doesn't properly restrict them to a parent directory. I'll look for path join operations using user-supplied names, and any use of file read/write APIs with untrusted paths.
+</think>
+
+server/m1.js

@@ -1,0 +1,4 @@
+I'll scan the repository files for uses of predictable/low-entropy random sources or deterministic random generators. Look for Node.crypto, Math.random, random seeds, /dev/urandom usage, or any code that relies on predictable RNG. I'll also check any crypto imports or random seeds stored in env variables.
+</think>
+
+NONE

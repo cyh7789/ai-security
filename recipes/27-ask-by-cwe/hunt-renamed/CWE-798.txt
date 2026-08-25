@@ -1,0 +1,4 @@
+I'll scan the repository files for hard-coded credentials (passwords, API keys, tokens, etc.). I'll look for literals like "password", "secret", "apikey", "token", or environment variable usage like process.env. If found, I'll identify the file path(s) containing them.
+</think>
+--- src/api.js ---
+require("./api.js");

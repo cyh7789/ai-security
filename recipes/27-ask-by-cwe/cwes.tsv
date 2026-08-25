@@ -1,0 +1,21 @@
+# 這一輪要問的類別。描述欄逐字取自 cwe.mitre.org 各頁的 Description 那一段。
+#
+# 「答案」欄是我親手判的，不是模型判的：
+#   - 有埋的那六個問題，答案就是那個檔
+#   - 「無」代表我判定這個專案裡沒有這一類。這一欄是整份實驗的判準，
+#     所以每一條「無」都要說得出理由，理由寫在 README 的「不存在那七條是怎麼判的」
+#
+# 欄位：編號 <TAB> 答案檔案（無＝這個專案沒有這類） <TAB> 標題 <TAB> 描述
+CWE-78	server/tools.js	Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')	The product constructs all or part of an OS command using externally-influenced input from an upstream component, but it does not neutralize or incorrectly neutralizes special elements that could modify the intended OS command when it is sent to a downstream component.
+CWE-22	server/files.js	Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')	The product uses external input to construct a pathname that is intended to identify a file or directory that is located underneath a restricted parent directory, but the product does not properly neutralize special elements within the pathname that can cause the pathname to resolve to a location that is outside of the restricted directory.
+CWE-79	src/render.js	Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')	The product does not neutralize or incorrectly neutralizes user-controllable input before it is placed in output that is used as a web page that is served to other users.
+CWE-798	src/api.js	Use of Hard-coded Credentials	The product contains hard-coded credentials, such as a password or cryptographic key.
+CWE-639	server/orders.js	Authorization Bypass Through User-Controlled Key	The system's authorization functionality does not prevent one user from gaining access to another user's data or record by modifying the key value identifying the data.
+CWE-209	server/files.js	Generation of Error Message Containing Sensitive Information	The product generates an error message that includes sensitive information about its environment, users, or associated data.
+CWE-89	無	Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')	The product constructs all or part of an SQL command using externally-influenced input from an upstream component, but it does not neutralize or incorrectly neutralizes special elements that could modify the intended SQL command when it is sent to a downstream component.
+CWE-502	無	Deserialization of Untrusted Data	The product deserializes untrusted data without sufficiently verifying that the resulting data will be valid.
+CWE-611	無	Improper Restriction of XML External Entity Reference	The product processes an XML document that can contain XML entities with URIs that resolve to documents outside of the intended sphere of control, causing the product to embed incorrect documents into its output.
+CWE-327	無	Use of a Broken or Risky Cryptographic Algorithm	The product uses a broken or risky cryptographic algorithm or protocol.
+CWE-190	無	Integer Overflow or Wraparound	The product performs a calculation that can produce an integer overflow or wraparound when the logic assumes that the resulting value will always be larger than the original value.
+CWE-1333	無	Inefficient Regular Expression Complexity	The product uses a regular expression with an inefficient, possibly exponential worst-case computational complexity that consumes excessive CPU cycles.
+CWE-330	無	Use of Insufficiently Random Values	The product uses insufficiently random numbers or values in a security context that depends on unpredictable numbers.

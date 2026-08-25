@@ -1,0 +1,4 @@
+I'll scan the repository files for integer-overflow/wraparound issues. I'll look for arithmetic on sizes/counts (e.g., array indexing, length calculations) or numeric multiplication that could overflow. The server files use file reads and compute uptime in server/health.js using (Date.now() - startedAt) / 1000; that subtraction could overflow if done with 32-bit integers, leading to wraparound. The files are Node.js (express), so integer overflow in arithmetic involving timestamps or file paths might occur. I'll focus on the health endpoint as it's the most relevant to integer overflow.
+</think>
+
+server/health.js

@@ -1,0 +1,24 @@
+I'll scan the repository files for XML/DTD/ENTITY declarations and for code that parses or processes XML documents (e.g., xml libraries, EntityResolver, DOCTYPE declarations). I'll look for any files that handle XML input or contain entity expansion code.
+
+--- server/m1.js ---
+Files are read from disk and returned verbatim; no XML processing here.
+
+--- server/m2.js ---
+Health endpoint, no XML.
+
+--- server/m3.js ---
+Database access, no XML.
+
+--- server/m4.js ---
+Contains lookupDomain and makeThumbnail; these may call external DNS/image tools, but no XML processing.
+
+--- src/m5.js ---
+API call, no XML.
+
+--- src/m6.js ---
+Internationalization, no XML.
+
+--- src/m7.js ---
+Event handler, no XML.
+
+None of these files contain CWE-611.

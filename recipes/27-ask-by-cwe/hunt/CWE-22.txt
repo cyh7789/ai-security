@@ -1,0 +1,9 @@
+I'll scan the repository files for code that constructs file paths from external input and doesn't properly restrict them. I'll look for path join operations using user-supplied names, and any use of file read/write APIs with those constructed paths.
+
+--- server/files.js ---
+- Uses path.join(UPLOAD_DIR, req.params.name) to construct target, but no validation that the resolved path remains under UPLOAD_DIR. A crafted name like '../etc/passwd' could cause traversal. This file is likely CWE-22 relevant.
+
+--- server/tools.js ---
+- Uses exec to run system commands with arguments derived from req.params (e.g., `dig +short ${domain}`). If domain is attacker-controlled, it could lead to arbitrary file or system access, including traversal in the underlying implementation. However, the primary issue is path traversal in file access code. The files.js path traversal is the strongest candidate.
+
+Files containing CWE-22: server/files.js
