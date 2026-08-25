@@ -32,18 +32,22 @@ command -v node >/dev/null 2>&1 || {
 TOOLS=../../playground/server/tools.js
 IDX=../../README.md
 BACKUP=$(mktemp -d)
-cp cwes.tsv verdict.tsv FINDINGS.md "${BACKUP}/"
+cp cwes.tsv cwes-firstdraft.tsv verdict.tsv FINDINGS.md "${BACKUP}/"
+cp -R hunt-firstdraft "${BACKUP}/hunt-firstdraft"
+cp -R names-only "${BACKUP}/names-only"
 cp "$TOOLS" "${BACKUP}/tools.js"
 cp "$IDX" "${BACKUP}/README.md"
 cp -R hunt "${BACKUP}/hunt"
 cp -R hunt-renamed "${BACKUP}/hunt-renamed"
 restore() {
-  cp "${BACKUP}/cwes.tsv" "${BACKUP}/verdict.tsv" "${BACKUP}/FINDINGS.md" .
+  cp "${BACKUP}/cwes.tsv" "${BACKUP}/cwes-firstdraft.tsv" "${BACKUP}/verdict.tsv" "${BACKUP}/FINDINGS.md" .
   cp "${BACKUP}/tools.js" "$TOOLS"
   cp "${BACKUP}/README.md" "$IDX"
-  rm -rf hunt hunt-renamed
+  rm -rf hunt hunt-renamed hunt-firstdraft
   cp -R "${BACKUP}/hunt" hunt
   cp -R "${BACKUP}/hunt-renamed" hunt-renamed
+  cp -R "${BACKUP}/hunt-firstdraft" hunt-firstdraft
+  rm -rf names-only; cp -R "${BACKUP}/names-only" names-only
 }
 trap 'restore; rm -rf "$BACKUP"' EXIT
 
@@ -73,14 +77,17 @@ run() {  # $1=編號 $2=說明 $3=期望顏色 $4=期望變紅的條號（逗號
 
 printf '編號\t突變\t期望\t得到\t結果\n'
 
-# 把一個「無」改成一個檔名：六在七不在變成七在六不在。第 5、6、7 條也會跟著炸，
-# 因為那一列的判定「亂指」在「在」的那一組裡不合法。
+# 把一個「無」改成一個檔名：六在七不在變成七在六不在。
+# 第一版寫這一列的時候我預期第 5、6、7 條會跟著紅，結果只有第 1 條紅。
+# （第 7c 條也會紅，因為它同時在比兩份表差幾行，而這一改就多了差異。）
+# 原因是核對表自己也存了一份「在不在」，而那三條讀的是核對表那一份。
+# 判準跟成績分家了也沒人看得出來 —— 第 4 條就是為了補這個缺口才改成三欄一起比。
 python3 -c "
 p='cwes.tsv';s=open(p).read();open(p,'w').write(s.replace('CWE-611\t無\t','CWE-611\tsrc/render.js\t'))"
-run M1 "把一個「不在」的類別改成「在」" 紅 1,5,6,7
+run M1 "把一個「不在」的類別改成「在」" 紅 1,4,7c
 
 : > hunt/CWE-78.txt
-run M2a "把一份原始輸出清空" 紅 2,3
+run M2a "把一份原始輸出清空" 紅 2,3,7d
 
 python3 -c "
 import json;p='hunt/run.json';d=json.load(open(p));d['total_seconds']=99.9;json.dump(d,open(p,'w'))"
@@ -127,6 +134,37 @@ for l in L:
 open(p,'w').write('\n'.join(o)+'\n')"
 run M7 "「指到」那一列改成指了別的檔" 紅 7
 
+# 描述改一個字。這一條驗的是「那段字不是我說了算」，而它剛好是這一輪翻盤的成因。
+python3 -c "
+p='cwes.tsv';s=open(p).read()
+assert 'possibly exponential' in s
+open(p,'w').write(s.replace('possibly exponential','possibly quadratic'))"
+run M7b "把一條描述改一個字，跟官方頁對不上" 紅 7b
+
+# 換描述之前那一輪被動過：多一條輸出跟現在這輪不一樣。
+# 少了第 7c 條，「動它的就是那段描述」只剩我口頭說。
+python3 -c "
+p='hunt-firstdraft/CWE-78.txt';s=open(p).read()
+open(p,'w').write(s.replace('server/tools.js','server/files.js'))"
+run M7d "換描述之前那一輪多出一條不一樣" 紅 7d
+
+# 底稿的描述改回一致、再去動別列的標題欄。行數照樣是 4，舊版的 DD=4 全綠。
+python3 -c "
+import pathlib
+p=pathlib.Path('cwes-firstdraft.tsv');s=p.read_text()
+s=s.replace('possibly exponential worst-case computational complexity that consumes excessive CPU cycles.','worst-case computational complexity that is inefficient and possibly exponential.')
+s=s.replace('CWE-89\t無\tImproper Neutralization','CWE-89\t無\tIMPROPER Neutralization')
+p.write_text(s)"
+run M7c "底稿改在描述以外的欄，diff 行數不變" 紅 7c
+
+# 只給檔名那一輪：讓改名那發也答對。這樣一來「省事的做法不管用」就沒有證據了，
+# 而那句話文章跟 README 都寫著。
+python3 -c "
+p='names-only/renamed.txt';s=open(p).read()
+assert 'server/m1.js' in s
+open(p,'w').write(s.replace('server/m1.js','server/m4.js'))"
+run M8b "只給檔名那一輪，改名那發也答對了" 紅 8b
+
 # 對照組被動過：改名那一輪的答案換成另一個假名。少了第 8 條，
 # 「它讀的是內容不是名字」這句話就沒有東西撐著。
 python3 -c "
@@ -135,21 +173,49 @@ assert 'server/m4.js' in s
 open(p,'w').write(s.replace('server/m4.js','server/m2.js'))"
 run M8 "改名對照組指到另一個檔" 紅 8
 
-# 把 playground 那個檔修好。這一條驗的是第 9 條真的在打現在那份原始碼，
-# 不是在打腳本裡自己寫死的一份複本。
+# 把靶標換成修好的版本。用複本不動 checked-in 的檔：就地改寫在異常路徑
+# （kill -9、verify.sh 中途掛掉）會把教材靶標留成「已修好」，而破壞性動作
+# 要在工作樹層級就安全，不能只靠 trap。
+FIXED=$(mktemp -d)/tools.js
+cat > "$FIXED" <<'JS'
+const { execFile } = require("child_process");
+const util = require("util");
+const execFileAsync = util.promisify(execFile);
+async function lookupDomain(domain) {
+  const { stdout } = await execFileAsync("dig", ["+short", domain]);
+  return stdout.trim();
+}
+async function makeThumbnail(filename) {
+  const { stdout } = await execFileAsync("convert", [
+    `uploads/${filename}`, "-resize", "200x200", `thumbs/${filename}`,
+  ]);
+  return stdout;
+}
+module.exports = { lookupDomain, makeThumbnail };
+JS
+ANTARES_TOOLS_JS="$FIXED" run M9 "靶標換成 execFile 版（洞不見了）" 紅 9
+
+# 修好那一半的正對照。第一版沒有這個：fixed.js 只要沒真的把指令送出去
+# （缺 dig／模組整個 throw），標記檔就不會生出來，於是照樣判綠（外審實測）。
+cat > "$FIXED" <<'JS'
+module.exports = {
+  lookupDomain: async () => { throw new Error("boom"); },
+  makeThumbnail: async () => { throw new Error("boom"); },
+};
+JS
+ANTARES_TOOLS_JS="$FIXED" run M9b "靶標整個 throw，一發都沒送出去" 沒有結論
+
+# 依據欄整格清空。M3 只改一個字，蓋不到這個方向：grep -F "" 恆真，
+# 而 IFS 併欄會讓備註被當成引句拿去比（外審實測，兩個問題疊在一起）。
 python3 -c "
-p='../../playground/server/tools.js';s=open(p).read()
-assert 'const { exec } = require(\"child_process\");' in s
-s=s.replace('const { exec } = require(\"child_process\");','const { execFile } = require(\"child_process\");')
-s=s.replace('const execAsync = util.promisify(exec);','const execAsync = util.promisify(execFile);')
-s=s.replace('await execAsync(\`dig +short \${domain}\`)','await execAsync(\"dig\", [\"+short\", domain])')
-s=s.replace('''await execAsync(
-    \`convert uploads/\${filename} -resize 200x200 thumbs/\${filename}\`
-  )''','''await execAsync(\"convert\", [
-    \`uploads/\${filename}\`, \"-resize\", \"200x200\", \`thumbs/\${filename}\`,
-  ])''')
-open(p,'w').write(s)"
-run M9 "把 playground 那個檔改成 execFile（洞不見了）" 紅 9
+p='verdict.tsv';L=open(p).read().splitlines()
+o=[]
+for l in L:
+    c=l.split('\t')
+    if c[0]=='CWE-639': c[5]=''; c[6]=''; l='\t'.join(c)
+    o.append(l)
+open(p,'w').write('\n'.join(o)+'\n')"
+run M3b "把一列的依據欄整格清空" 紅 3
 
 # 這一條要真的重跑，所以不設 SKIP_RERUN。改的那句不是任何一列的依據，
 # 也不是任何一條算得到的東西，所以只有第 10 條的逐字比對抓得到。

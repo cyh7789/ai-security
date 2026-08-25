@@ -1,0 +1,3 @@
+I'll inspect each file for OS command construction using external input. The server files likely contain system calls or exec/execSync calls. I'll look for patterns like child_process.exec, system(), os().exec, or similar. The src files may contain command construction. I'll focus on server/files.js, server/health.js, server/orders.js, server/tools.js, and src/api.js. These are the most likely places to find OS command injection.
+</think>
+server/tools.js

@@ -1,0 +1,12 @@
+The repository contains several server and source files. I'll analyze each for potential CWE-502 (Deserialization of Untrusted Data) issues. Looking for deserialization APIs or libraries:
+- server/files.js: File reading - no deserialization
+- server/health.js: Health check - no deserialization
+- server/orders.js: Database queries - no deserialization
+- server/tools.js: Uses `exec` to run system commands - not deserialization of user data
+- src/api.js: Calls an external API - not deserialization
+- src/format.js: Format utilities - not deserialization
+- src/render.js: Calls an external API
+
+None of the files appear to be deserializing untrusted data. No CWE-502 issues found.
+</think>
+NONE

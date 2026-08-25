@@ -1,0 +1,706 @@
+
+ CWE -
+ CWE-330: Use of Insufficiently Random Values (4.20)
+ Common Weakness Enumeration 
+ A community-developed list of SW & HW weaknesses that can become vulnerabilities 
+ Home > CWE List > 
+ CWE-330: Use of Insufficiently Random Values (4.20)
+ ID Lookup: 
+ Home 
+ About ▼ 
+ Who We Are 
+ User Stories 
+ History 
+ Documents 
+ Videos 
+ Learn ▼ 
+ Basics 
+ Root Cause Mapping ► 
+ Guidance 
+ Quick Tips 
+ Examples 
+ How to Contribute Weakness Content 
+ FAQs 
+ Glossary 
+ Access Content ▼ 
+ Top-N Lists ► 
+ Top 25 Software 
+ Top Hardware 
+ Top 10 KEV Weaknesses 
+ CWE List ► 
+ Current Version 
+ Reports 
+ Visualizations 
+ Releases Archive 
+ Downloads 
+ REST API 
+ Community ▼ 
+ News ► 
+ Current News 
+ Blog 
+ Podcast 
+ News Archive 
+ CWE Board 
+ Working Groups & Special Interest Groups 
+ Email Lists 
+ Search ▼ 
+ Search CWE List 
+ Search Website 
+ CWE Glossary Definition 
+ CWE-330: Use of Insufficiently Random Values 
+ Weakness ID: 330
+ Vulnerability Mapping: 
+ DISCOURAGED 
+ This CWE ID should not be used to map to real-world vulnerabilities 
+ Abstraction:
+ Class 
+ Class - a weakness that is described in a very abstract fashion, typically independent of any specific language or technology. More specific than a Pillar Weakness, but more general than a Base Weakness. Class level weaknesses typically describe issues in terms of 1 or 2 of the following dimensions: behavior, property, and resource. 
+ View customized information: 
+ Conceptual 
+ For users who are interested in more notional aspects of a weakness. Example: educators, technical writers, and project/program managers. 
+ Operational 
+ For users who are concerned with the practical application and details about the nature of a weakness and how to prevent it from happening. Example: tool developers, security researchers, pen-testers, incident response analysts. 
+ Mapping Friendly 
+ For users who are mapping an issue to CWE/CAPEC IDs, i.e., finding the most appropriate CWE for a specific issue (e.g., a CVE record). Example: tool developers, security researchers. 
+ Complete 
+ For users who wish to see all available information for the CWE/CAPEC entry. 
+ Custom 
+ For users who want to customize what details are displayed. 
+ × 
+ Edit Custom Filter 
+ Conceptual 
+ Operational 
+ Mapping Friendly 
+ Select All 
+ Reset 
+ Clear 
+ Submit 
+ Cancel 
+ Description
+ The product uses insufficiently random numbers or values in a security context that depends on unpredictable numbers. 
+ Common Consequences 
+ This table specifies different individual consequences
+ associated with the weakness. The Scope identifies the application security area that is
+ violated, while the Impact describes the negative technical impact that arises if an
+ adversary succeeds in exploiting this weakness. The Likelihood provides information about
+ how likely the specific consequence is expected to be seen relative to the other
+ consequences in the list. For example, there may be high likelihood that a weakness will be
+ exploited to achieve a certain impact, but a low likelihood that it will be exploited to
+ achieve a different impact. 
+ Impact 
+ Details 
+ Other 
+ Scope: Confidentiality, Other 
+ When a protection mechanism relies on random values to restrict access to a sensitive resource, such as a session ID or a seed for generating a cryptographic key, then the resource being protected could be accessed by guessing the ID or key. 
+ Bypass Protection Mechanism; Other 
+ Scope: Access Control, Other 
+ If product relies on unique, unguessable IDs to identify a resource, an attacker might be able to guess an ID for a resource that is owned by another user. The attacker could then read the resource, or pre-create a resource with the same ID to prevent the legitimate program from properly sending the resource to the intended user. For example, a product might maintain session information in a file whose name is based on a username. An attacker could pre-create this file for a victim user, then set the permissions so that the application cannot generate the session for the victim, preventing the victim from using the application. 
+ Bypass Protection Mechanism; Gain Privileges or Assume Identity 
+ Scope: Access Control 
+ When an authorization or authentication mechanism relies on random values to restrict access to restricted functionality, such as a session ID or a seed for generating a cryptographic key, then an attacker may access the restricted functionality by guessing the ID or key. 
+ Potential Mitigations 
+ Phase(s) 
+ Mitigation 
+ Architecture and Design 
+ Use a well-vetted algorithm that is currently considered to be strong by experts in the field, and select well-tested implementations with adequate length seeds. 
+ In general, if a pseudo-random number generator is not advertised as being cryptographically secure, then it is probably a statistical PRNG and should not be used in security-sensitive contexts. 
+ Pseudo-random number generators can produce predictable numbers if the generator is known and the seed can be guessed. A 256-bit seed is a good starting point for producing a "random enough" number. 
+ Implementation 
+ Consider a PRNG that re-seeds itself as needed from high quality pseudo-random output sources, such as hardware devices. 
+ Architecture and Design; Requirements 
+ Strategy: Libraries or Frameworks 
+ Use products or modules that conform to FIPS 140-2 [ REF-267 ] to avoid obvious entropy problems. Consult FIPS 140-2 Annex C ("Approved Random Number Generators"). 
+ Relationships
+ This table shows the weaknesses and high level categories that are related to this
+ weakness. These relationships are defined as ChildOf, ParentOf, MemberOf and give insight to
+ similar items that may exist at higher and lower levels of abstraction. In addition,
+ relationships such as PeerOf and CanAlsoBe are defined to show similar weaknesses that the user
+ may want to explore. 
+ Relevant to the view "Research Concepts" (View-1000)
+ Nature 
+ Type 
+ ID 
+ Name 
+ ChildOf 
+ Pillar - a weakness that is the most abstract type of weakness and represents a theme for all class/base/variant weaknesses related to it. A Pillar is different from a Category as a Pillar is still technically a type of weakness that describes a mistake, while a Category represents a common characteristic used to group related things. 
+ 693 
+ Protection Mechanism Failure 
+ ParentOf 
+ Base - a weakness that is still mostly independent of a resource or technology, but with sufficient details to provide specific methods for detection and prevention. Base level weaknesses typically describe issues in terms of 2 or 3 of the following dimensions: behavior, property, technology, language, and resource. 
+ 331 
+ Insufficient Entropy 
+ ParentOf 
+ Base - a weakness that is still mostly independent of a resource or technology, but with sufficient details to provide specific methods for detection and prevention. Base level weaknesses typically describe issues in terms of 2 or 3 of the following dimensions: behavior, property, technology, language, and resource. 
+ 334 
+ Small Space of Random Values 
+ ParentOf 
+ Base - a weakness that is still mostly independent of a resource or technology, but with sufficient details to provide specific methods for detection and prevention. Base level weaknesses typically describe issues in terms of 2 or 3 of the following dimensions: behavior, property, technology, language, and resource. 
+ 335 
+ Incorrect Usage of Seeds in Pseudo-Random Number Generator (PRNG) 
+ ParentOf 
+ Base - a weakness that is still mostly independent of a resource or technology, but with sufficient details to provide specific methods for detection and prevention. Base level weaknesses typically describe issues in terms of 2 or 3 of the following dimensions: behavior, property, technology, language, and resource. 
+ 338 
+ Use of Cryptographically Weak Pseudo-Random Number Generator (PRNG) 
+ ParentOf 
+ Class - a weakness that is described in a very abstract fashion, typically independent of any specific language or technology. More specific than a Pillar Weakness, but more general than a Base Weakness. Class level weaknesses typically describe issues in terms of 1 or 2 of the following dimensions: behavior, property, and resource. 
+ 340 
+ Generation of Predictable Numbers or Identifiers 
+ ParentOf 
+ Base - a weakness that is still mostly independent of a resource or technology, but with sufficient details to provide specific methods for detection and prevention. Base level weaknesses typically describe issues in terms of 2 or 3 of the following dimensions: behavior, property, technology, language, and resource. 
+ 344 
+ Use of Invariant Value in Dynamically Changing Context 
+ ParentOf 
+ Base - a weakness that is still mostly independent of a resource or technology, but with sufficient details to provide specific methods for detection and prevention. Base level weaknesses typically describe issues in terms of 2 or 3 of the following dimensions: behavior, property, technology, language, and resource. 
+ 1204 
+ Generation of Weak Initialization Vector (IV) 
+ ParentOf 
+ Base - a weakness that is still mostly independent of a resource or technology, but with sufficient details to provide specific methods for detection and prevention. Base level weaknesses typically describe issues in terms of 2 or 3 of the following dimensions: behavior, property, technology, language, and resource. 
+ 1241 
+ Use of Predictable Algorithm in Random Number Generator 
+ CanPrecede 
+ Base - a weakness that is still mostly independent of a resource or technology, but with sufficient details to provide specific methods for detection and prevention. Base level weaknesses typically describe issues in terms of 2 or 3 of the following dimensions: behavior, property, technology, language, and resource. 
+ 804 
+ Guessable CAPTCHA 
+ Relevant to the view "Weaknesses for Simplified Mapping of Published Vulnerabilities" (View-1003)
+ Nature 
+ Type 
+ ID 
+ Name 
+ MemberOf 
+ View - a subset of CWE entries that provides a way of examining CWE content. The two main view structures are Slices (flat lists) and Graphs (containing relationships between entries). 
+ 1003 
+ Weaknesses for Simplified Mapping of Published Vulnerabilities 
+ ParentOf 
+ Base - a weakness that is still mostly independent of a resource or technology, but with sufficient details to provide specific methods for detection and prevention. Base level weaknesses typically describe issues in terms of 2 or 3 of the following dimensions: behavior, property, technology, language, and resource. 
+ 331 
+ Insufficient Entropy 
+ ParentOf 
+ Base - a weakness that is still mostly independent of a resource or technology, but with sufficient details to provide specific methods for detection and prevention. Base level weaknesses typically describe issues in terms of 2 or 3 of the following dimensions: behavior, property, technology, language, and resource. 
+ 335 
+ Incorrect Usage of Seeds in Pseudo-Random Number Generator (PRNG) 
+ ParentOf 
+ Base - a weakness that is still mostly independent of a resource or technology, but with sufficient details to provide specific methods for detection and prevention. Base level weaknesses typically describe issues in terms of 2 or 3 of the following dimensions: behavior, property, technology, language, and resource. 
+ 338 
+ Use of Cryptographically Weak Pseudo-Random Number Generator (PRNG) 
+ Relevant to the view "Architectural Concepts" (View-1008)
+ Nature 
+ Type 
+ ID 
+ Name 
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 1013 
+ Encrypt Data 
+ Background Details 
+ Computers are deterministic machines, and as such are unable to produce true randomness. Pseudo-Random Number Generators (PRNGs) approximate randomness algorithmically, starting with a seed from which subsequent values are calculated. There are two types of PRNGs: statistical and cryptographic. Statistical PRNGs provide useful statistical properties, but their output is highly predictable and forms an easy to reproduce numeric stream that is unsuitable for use in cases where security depends on generated values being unpredictable. Cryptographic PRNGs address this problem by generating output that is more difficult to predict. For a value to be cryptographically secure, it must be impossible or highly improbable for an attacker to distinguish between it and a truly random value.
+ Modes
+ Of Introduction 
+ The different Modes of Introduction provide information
+ about how and when this
+ weakness may be introduced. The Phase identifies a point in the life cycle at which
+ introduction
+ may occur, while the Note provides a typical scenario related to introduction during the
+ given
+ phase. 
+ Phase 
+ Note 
+ Architecture and Design 
+ Implementation 
+ REALIZATION: This weakness is caused during implementation of an architectural security tactic. 
+ Applicable Platforms 
+ This listing shows possible areas for which the given
+ weakness could appear. These
+ may be for specific named Languages, Operating Systems, Architectures, Paradigms,
+ Technologies,
+ or a class of such platforms. The platform is listed along with how frequently the given
+ weakness appears for that instance. 
+ Languages 
+ Class: Not Language-Specific
+ (Undetermined Prevalence) 
+ Technologies 
+ Class: Not Technology-Specific
+ (Undetermined Prevalence) 
+ Likelihood Of Exploit
+ High 
+ Demonstrative Examples 
+ Example 1 
+ This code attempts to generate a unique random identifier for a user's session. 
+ (bad code) 
+ Example Language: PHP 
+ function generateSessionID($userID){ srand($userID); return rand(); } 
+ Because the seed for the PRNG is always the user's ID, the session ID will always be the same. An attacker could thus predict any user's session ID and potentially hijack the session. 
+ This example also exhibits a Small Seed Space ( CWE-339 ). 
+ Example 2 
+ The following code uses a statistical PRNG to create a URL for a receipt that remains active for some period of time after a purchase. 
+ (bad code) 
+ Example Language: Java 
+ String GenerateReceiptURL(String baseUrl) { Random ranGen = new Random(); ranGen.setSeed((new Date()).getTime()); return(baseUrl + ranGen.nextInt(400000000) + ".html"); } 
+ This code uses the Random.nextInt() function to generate "unique" identifiers for the receipt pages it generates. Because Random.nextInt() is a statistical PRNG, it is easy for an attacker to guess the strings it generates. Although the underlying design of the receipt system is also faulty, it would be more secure if it used a random number generator that did not produce predictable receipt identifiers, such as a cryptographic PRNG. 
+ Selected Observed
+ Examples 
+ Note: this is a curated list of examples for users to understand the variety of ways in which this
+ weakness can be introduced. It is not a complete list of all CVEs that are related to this CWE entry. 
+ Reference 
+ Description 
+ CVE-2021-3692 
+ PHP framework uses mt_rand() function (Marsenne Twister) when generating tokens 
+ CVE-2020-7010 
+ Cloud application on Kubernetes generates passwords using a weak random number generator based on deployment time. 
+ CVE-2009-3278 
+ Crypto product uses rand() library function to generate a recovery key, making it easier to conduct brute force attacks. 
+ CVE-2009-3238 
+ Random number generator can repeatedly generate the same value. 
+ CVE-2009-2367 
+ Web application generates predictable session IDs, allowing session hijacking. 
+ CVE-2009-2158 
+ Password recovery utility generates a relatively small number of random passwords, simplifying brute force attacks. 
+ CVE-2009-0255 
+ Cryptographic key created with a seed based on the system time. 
+ CVE-2008-5162 
+ Kernel function does not have a good entropy source just after boot. 
+ CVE-2008-4905 
+ Blogging software uses a hard-coded salt when calculating a password hash. 
+ CVE-2008-4929 
+ Bulletin board application uses insufficiently random names for uploaded files, allowing other users to access private files. 
+ CVE-2008-3612 
+ Handheld device uses predictable TCP sequence numbers, allowing spoofing or hijacking of TCP connections. 
+ CVE-2008-2433 
+ Web management console generates session IDs based on the login time, making it easier to conduct session hijacking. 
+ CVE-2008-0166 
+ SSL library uses a weak random number generator that only generates 65,536 unique keys. 
+ CVE-2008-2108 
+ Chain: insufficient precision causes extra zero bits to be assigned, reducing entropy for an API function that generates random numbers. 
+ CVE-2008-2108 
+ Chain: insufficient precision ( CWE-1339 ) in
+ random-number generator causes some zero bits to be reliably
+ generated, reducing the amount of entropy ( CWE-331 ) 
+ CVE-2008-2020 
+ CAPTCHA implementation does not produce enough different images, allowing bypass using a database of all possible checksums. 
+ CVE-2008-0087 
+ DNS client uses predictable DNS transaction IDs, allowing DNS spoofing. 
+ CVE-2008-0141 
+ Application generates passwords that are based on the time of day. 
+ Weakness Ordinalities 
+ Ordinality 
+ Description 
+ Primary 
+ (where the weakness exists independent of other weaknesses)
+ Detection
+ Methods 
+ Method 
+ Details 
+ Black Box 
+ Use monitoring tools that examine the software's process as it interacts with the operating system and the network. This technique is useful in cases when source code is unavailable, if the software was not developed by you, or if you want to verify that the build phase did not introduce any new weaknesses. Examples include debuggers that directly attach to the running process; system-call tracing utilities such as truss (Solaris) and strace (Linux); system activity monitors such as FileMon, RegMon, Process Monitor, and other Sysinternals utilities (Windows); and sniffers and protocol analyzers that monitor network traffic. 
+ Attach the monitor to the process and look for library functions that indicate when randomness is being used. Run the process multiple times to see if the seed changes. Look for accesses of devices or equivalent resources that are commonly used for strong (or weak) randomness, such as /dev/urandom on Linux. Look for library or system calls that access predictable information such as process IDs and system time. 
+ Automated Static Analysis - Binary or Bytecode 
+ According to SOAR [ REF-1479 ], the following detection techniques may be useful: 
+ Cost effective for partial coverage: 
+ Bytecode Weakness Analysis - including disassembler + source code weakness analysis 
+ Binary Weakness Analysis - including disassembler + source code weakness analysis 
+ Effectiveness: SOAR Partial 
+ Manual Static Analysis - Binary or Bytecode 
+ According to SOAR [ REF-1479 ], the following detection techniques may be useful: 
+ Cost effective for partial coverage: 
+ Binary / Bytecode disassembler - then use manual analysis for vulnerabilities & anomalies 
+ Effectiveness: SOAR Partial 
+ Dynamic Analysis with Manual Results Interpretation 
+ According to SOAR [ REF-1479 ], the following detection techniques may be useful: 
+ Cost effective for partial coverage: 
+ Man-in-the-middle attack tool 
+ Effectiveness: SOAR Partial 
+ Manual Static Analysis - Source Code 
+ According to SOAR [ REF-1479 ], the following detection techniques may be useful: 
+ Highly cost effective: 
+ Focused Manual Spotcheck - Focused manual analysis of source 
+ Manual Source Code Review (not inspections) 
+ Effectiveness: High 
+ Automated Static Analysis - Source Code 
+ According to SOAR [ REF-1479 ], the following detection techniques may be useful: 
+ Cost effective for partial coverage: 
+ Source code Weakness Analyzer 
+ Context-configured Source Code Weakness Analyzer 
+ Effectiveness: SOAR Partial 
+ Architecture or Design Review 
+ According to SOAR [ REF-1479 ], the following detection techniques may be useful: 
+ Highly cost effective: 
+ Inspection (IEEE 1028 standard) (can apply to requirements, design, source code, etc.) 
+ Effectiveness: High 
+ Functional Areas 
+ Cryptography 
+ Authentication 
+ Session Management 
+ Memberships
+ This MemberOf Relationships table shows additional CWE Categories and Views that
+ reference this weakness as a member. This information is often useful in understanding where a
+ weakness fits within the context of external information sources. 
+ Nature 
+ Type 
+ ID 
+ Name 
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 254 
+ 7PK - Security Features
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 723 
+ OWASP Top Ten 2004 Category A2 - Broken Access Control
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 747 
+ CERT C Secure Coding Standard (2008) Chapter 14 - Miscellaneous (MSC)
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 753 
+ 2009 Top 25 - Porous Defenses
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 808 
+ 2010 Top 25 - Weaknesses On the Cusp
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 861 
+ The CERT Oracle Secure Coding Standard for Java (2011) Chapter 18 - Miscellaneous (MSC)
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 867 
+ 2011 Top 25 - Weaknesses On the Cusp
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 883 
+ CERT C++ Secure Coding Section 49 - Miscellaneous (MSC)
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 905 
+ SFP Primary Cluster: Predictability
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 1152 
+ SEI CERT Oracle Secure Coding Standard for Java - Guidelines 49. Miscellaneous (MSC)
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 1169 
+ SEI CERT C Coding Standard - Guidelines 14. Concurrency (CON)
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 1170 
+ SEI CERT C Coding Standard - Guidelines 48. Miscellaneous (MSC)
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 1346 
+ OWASP Top Ten 2021 Category A02:2021 - Cryptographic Failures
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 1366 
+ ICS Communications: Frail Security in Protocols
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 1414 
+ Comprehensive Categorization: Randomness
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 1439 
+ OWASP Top Ten 2025 Category A04:2025 - Cryptographic Failures
+ Vulnerability Mapping Notes 
+ Usage 
+ DISCOURAGED 
+ (this CWE ID should not be used to map to real-world vulnerabilities)
+ Reason 
+ Abstraction
+ Rationale 
+ This CWE entry is a level-1 Class (i.e., a child of a Pillar). It might have lower-level children that would be more appropriate
+ Comments 
+ Examine children of this entry to see if there is a better fit
+ Notes 
+ Relationship 
+ This can be primary to many other weaknesses such as cryptographic errors, authentication errors, symlink following, information leaks, and others.
+ Maintenance 
+ As of CWE 4.3, CWE-330 and its descendants are being
+ investigated by the CWE crypto team to identify gaps
+ related to randomness and unpredictability, as well as
+ the relationships between randomness and cryptographic
+ primitives. This "subtree analysis" might
+ result in the addition or deprecation of existing
+ entries; the reorganization of relationships in some
+ views, e.g. the research view ( CWE-1000 ); more consistent
+ use of terminology; and/or significant modifications to
+ related entries.
+ Maintenance 
+ As of CWE 4.5, terminology related to randomness, entropy, and
+ predictability can vary widely. Within the developer and other
+ communities, "randomness" is used heavily. However, within
+ cryptography, "entropy" is distinct, typically implied as a
+ measurement. There are no commonly-used definitions, even within
+ standards documents and cryptography papers. Future versions of
+ CWE will attempt to define these terms and, if necessary,
+ distinguish between them in ways that are appropriate for
+ different communities but do not reduce the usability of CWE for
+ mapping, understanding, or other scenarios.
+ Taxonomy
+ Mappings 
+ Mapped Taxonomy Name 
+ Node ID 
+ Fit 
+ Mapped Node Name 
+ PLOVER 
+ Randomness and Predictability 
+ 7 Pernicious Kingdoms 
+ Insecure Randomness 
+ OWASP Top Ten 2004 
+ A2 
+ CWE More Specific 
+ Broken Access Control 
+ CERT C Secure Coding 
+ CON33-C 
+ Imprecise 
+ Avoid race conditions when using library functions 
+ CERT C Secure Coding 
+ MSC30-C 
+ CWE More Abstract 
+ Do not use the rand() function for generating pseudorandom numbers 
+ CERT C Secure Coding 
+ MSC32-C 
+ CWE More Abstract 
+ Properly seed pseudorandom number generators 
+ WASC 
+ 11 
+ Brute Force 
+ WASC 
+ 18 
+ Credential/Session Prediction 
+ The CERT Oracle Secure Coding Standard for Java (2011) 
+ MSC02-J 
+ Generate strong random numbers 
+ Related Attack Patterns 
+ CAPEC-ID 
+ Attack Pattern Name 
+ CAPEC-112 
+ Brute Force 
+ CAPEC-485 
+ Signature Spoofing by Key Recreation 
+ CAPEC-59 
+ Session Credential Falsification through Prediction 
+ References 
+ [REF-267] 
+ Information Technology Laboratory, National Institute of Standards and Technology. "FIPS PUB 140-2: SECURITY REQUIREMENTS FOR CRYPTOGRAPHIC MODULES". 2001-05-25.
+ < https://csrc.nist.gov/files/pubs/fips/140-2/upd2/final/docs/fips1402.pdf >.
+ ( URL validated: 2025-05-21 )
+ [REF-207] 
+ John Viega and Gary McGraw. "Building Secure Software: How to Avoid Security Problems the Right Way". 1st Edition. Addison-Wesley. 2002.
+ [REF-7] 
+ Michael Howard and David LeBlanc. "Writing Secure Code". Chapter 8, "Using Poor Random Numbers" Page 259. 2nd Edition. Microsoft Press. 2002-12-04.
+ < https://www.microsoftpressstore.com/store/writing-secure-code-9780735617223 >.
+ [REF-44] 
+ Michael Howard, David LeBlanc and John Viega. "24 Deadly Sins of Software Security". "Sin 20: Weak Random Numbers." Page 299. McGraw-Hill. 2010.
+ [REF-1479] 
+ Gregory Larsen, E. Kenneth Hong Fong, David A. Wheeler and Rama S. Moorthy. "State-of-the-Art Resources (SOAR) for Software Vulnerability Detection, Test, and Evaluation". 2014-07.
+ < https://www.ida.org/-/media/feature/publications/s/st/stateoftheart-resources-soar-for-software-vulnerability-detection-test-and-evaluation/p-5061.ashx >.
+ ( URL validated: 2025-09-05 )
+ Content
+ History 
+ Submissions 
+ Submission Date 
+ Submitter 
+ Organization 
+ 2006-07-19
+ (CWE Draft 3, 2006-07-19) 
+ PLOVER 
+ Modifications 
+ Modification Date 
+ Modifier 
+ Organization 
+ 2026-04-30
+ (CWE 4.20, 2026-04-30) 
+ CWE Content Team 
+ MITRE 
+ updated Potential_Mitigations 
+ 2025-12-11
+ (CWE 4.19, 2025-12-11) 
+ CWE Content Team 
+ MITRE 
+ updated Relationships 
+ 2025-09-09
+ (CWE 4.18, 2025-09-09) 
+ CWE Content Team 
+ MITRE 
+ updated Description, Detection_Factors, Diagram, References 
+ 2024-02-29
+ (CWE 4.14, 2024-02-29) 
+ CWE Content Team 
+ MITRE 
+ updated Mapping_Notes 
+ 2023-10-26
+ (CWE 4.13, 2023-10-26) 
+ CWE Content Team 
+ MITRE 
+ updated Observed_Examples 
+ 2023-06-29
+ (CWE 4.12, 2023-06-29) 
+ CWE Content Team 
+ MITRE 
+ updated Mapping_Notes, Relationships 
+ 2023-04-27
+ (CWE 4.11, 2023-04-27) 
+ CWE Content Team 
+ MITRE 
+ updated References, Relationships 
+ 2023-01-31
+ (CWE 4.10, 2023-01-31) 
+ CWE Content Team 
+ MITRE 
+ updated Common_Consequences, Description 
+ 2022-10-13
+ (CWE 4.9, 2022-10-13) 
+ CWE Content Team 
+ MITRE 
+ updated Observed_Examples, Relationships 
+ 2021-10-28
+ (CWE 4.6, 2021-10-28) 
+ CWE Content Team 
+ MITRE 
+ updated Relationships 
+ 2021-07-20
+ (CWE 4.5, 2021-07-20) 
+ CWE Content Team 
+ MITRE 
+ updated Demonstrative_Examples, Maintenance_Notes, Observed_Examples 
+ 2021-03-15
+ (CWE 4.4, 2021-03-15) 
+ CWE Content Team 
+ MITRE 
+ updated Maintenance_Notes, Relationships 
+ 2020-02-24
+ (CWE 4.0, 2020-02-24) 
+ CWE Content Team 
+ MITRE 
+ updated Applicable_Platforms, Description, Relationships 
+ 2019-06-20
+ (CWE 3.3, 2019-06-20) 
+ CWE Content Team 
+ MITRE 
+ updated Relationships 
+ 2019-01-03
+ (CWE 3.2, 2019-01-03) 
+ CWE Content Team 
+ MITRE 
+ updated Relationships, Taxonomy_Mappings 
+ 2018-03-27
+ (CWE 3.1, 2018-03-27) 
+ CWE Content Team 
+ MITRE 
+ updated References 
+ 2017-11-08
+ (CWE 3.0, 2017-11-08) 
+ CWE Content Team 
+ MITRE 
+ updated Functional_Areas, Likelihood_of_Exploit, Modes_of_Introduction, References, Relationships, Taxonomy_Mappings 
+ 2015-12-07
+ (CWE 2.9, 2015-12-07) 
+ CWE Content Team 
+ MITRE 
+ updated Relationships 
+ 2014-07-30
+ (CWE 2.8, 2014-07-31) 
+ CWE Content Team 
+ MITRE 
+ updated Detection_Factors 
+ 2014-06-23
+ (CWE 2.7, 2014-06-23) 
+ CWE Content Team 
+ MITRE 
+ updated Related_Attack_Patterns 
+ 2014-02-18
+ (CWE 2.6, 2014-02-19) 
+ CWE Content Team 
+ MITRE 
+ updated Related_Attack_Patterns 
+ 2012-05-11
+ (CWE 2.2, 2012-05-15) 
+ CWE Content Team 
+ MITRE 
+ updated Demonstrative_Examples, Observed_Examples, References, Relationships 
+ 2011-09-13
+ (CWE 2.1, 2011-09-13) 
+ CWE Content Team 
+ MITRE 
+ updated Potential_Mitigations, References, Relationships, Taxonomy_Mappings 
+ 2011-06-27
+ (CWE 2.0, 2011-06-27) 
+ CWE Content Team 
+ MITRE 
+ updated Relationships 
+ 2011-06-01
+ (CWE 1.13, 2011-06-01) 
+ CWE Content Team 
+ MITRE 
+ updated Common_Consequences, Relationships, Taxonomy_Mappings 
+ 2011-03-29
+ (CWE 1.12, 2011-03-30) 
+ CWE Content Team 
+ MITRE 
+ updated Demonstrative_Examples 
+ 2010-06-21
+ (CWE 1.9, 2010-06-21) 
+ CWE Content Team 
+ MITRE 
+ updated Detection_Factors, Potential_Mitigations 
+ 2010-04-05
+ (CWE 1.8.1, 2010-04-05) 
+ CWE Content Team 
+ MITRE 
+ updated Related_Attack_Patterns 
+ 2010-02-16
+ (CWE 1.8, 2010-02-16) 
+ CWE Content Team 
+ MITRE 
+ updated References, Relationships, Taxonomy_Mappings 
+ 2009-12-28
+ (CWE 1.7, 2009-12-28) 
+ CWE Content Team 
+ MITRE 
+ updated Applicable_Platforms, Common_Consequences, Description, Observed_Examples, Potential_Mitigations, Time_of_Introduction 
+ 2009-05-27
+ (CWE 1.4, 2009-05-27) 
+ CWE Content Team 
+ MITRE 
+ updated Demonstrative_Examples, Related_Attack_Patterns 
+ 2009-03-10
+ (CWE 1.3, 2009-03-10) 
+ CWE Content Team 
+ MITRE 
+ updated Potential_Mitigations 
+ 2009-01-12
+ (CWE 1.2, 2009-01-12) 
+ CWE Content Team 
+ MITRE 
+ updated Description, Likelihood_of_Exploit, Other_Notes, Potential_Mitigations, Relationships 
+ 2008-11-24
+ (CWE 1.1, 2008-11-25) 
+ CWE Content Team 
+ MITRE 
+ updated Relationships, Taxonomy_Mappings 
+ 2008-09-08
+ (CWE 1.0, 2008-09-09) 
+ CWE Content Team 
+ MITRE 
+ updated Background_Details, Relationships, Other_Notes, Relationship_Notes, Taxonomy_Mappings, Weakness_Ordinalities 
+ 2008-07-01
+ (CWE 1.0, 2008-09-09) 
+ Eric Dalci 
+ Cigital 
+ updated Time_of_Introduction 
+ Previous Entry Names 
+ Change Date 
+ Previous Entry Name 
+ 2008-04-11
+ Randomness and Predictability 
+ More information is available — Please edit the custom filter or select a different filter. 
+ Page Last Updated: 
+April 30, 2026
+ Site Map | 
+ Terms of Use | 
+ Manage Cookies | 
+ Cookie Notice | 
+ Privacy Policy | 
+ Contact Us | 
+ Use of the Common Weakness Enumeration (CWE™) and the associated references from this website are subject to the Terms of Use. CWE is sponsored by the U.S. Department of Homeland Security (DHS) Cybersecurity and Infrastructure Security Agency (CISA) and managed by the Homeland Security Systems Engineering and Development Institute (HSSEDI) which is operated by The MITRE Corporation (MITRE). Copyright © 2006–2026, The MITRE Corporation. CWE, CWSS, CWRAF, and the CWE logo are trademarks of The MITRE Corporation. 

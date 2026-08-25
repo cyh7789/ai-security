@@ -12,6 +12,7 @@
 「它挑對了」有可能只是它認得 tools.js 這個名字。
 """
 import json
+import os
 import subprocess
 import sys
 import time
@@ -30,6 +31,12 @@ if not args:
 MODEL = Path(args[0])
 OUT = Path(args[1]) if len(args) > 1 else HERE / ("hunt-renamed" if RENAME else "hunt")
 
+# hunt/ 是核對表、FINDINGS 與兩篇文章 verify.sh 的共同底稿，而且沒有備份步驟。
+# 換了表卻少打存檔目錄就會把它蓋掉，所以這種組合直接拒跑。
+if os.environ.get("CWES_TSV") and len(args) < 2:
+    print("CWES_TSV 換了表就一定要指定存檔目錄，不然會蓋掉 hunt/。沒有結論", file=sys.stderr)
+    sys.exit(2)
+
 if not (MODEL / "config.json").is_file():
     print(f"{MODEL} 裡沒有 config.json，這不是一個 MLX 模型目錄，沒有結論", file=sys.stderr)
     sys.exit(2)
@@ -37,8 +44,11 @@ if not PLAYGROUND.is_dir():
     print(f"找不到 {PLAYGROUND}，沒有結論", file=sys.stderr)
     sys.exit(2)
 
+# CWES_TSV 是為了留住「換描述之前那一輪」而開的。描述的措辭會動搖結果，
+# 而那件事本身要有存檔才說得出口，見 hunt-firstdraft/。
+TABLE = HERE / os.environ.get("CWES_TSV", "cwes.tsv")
 rows = []
-for line in (HERE / "cwes.tsv").read_text().splitlines():
+for line in TABLE.read_text().splitlines():
     if line.strip() and not line.startswith("#"):
         rows.append(line.split("\t"))
 if not rows:
@@ -95,8 +105,15 @@ for cid, answer, title, desc in rows:
 
     # mlx_lm 把生成內容夾在兩行 ========== 之間，後面接每一趟都不一樣的速度統計。
     # 存檔只留中間那一段，不然「兩趟輸出一不一樣」永遠會答不一樣。
-    parts = proc.stdout.split("==========")
-    out = (parts[1] if len(parts) > 2 else proc.stdout).strip()
+    #
+    # 切頭尾兩個分隔，不是切全部：模型自己會吐程式碼區塊，裡面出現十個等號的話
+    # split 會多切一刀，parts[1] 只剩前半，真正的答案連同後半一起靜默消失。
+    SEP = "=========="
+    if proc.stdout.count(SEP) >= 2:
+        out = proc.stdout.split(SEP, 1)[1].rsplit(SEP, 1)[0].strip()
+    else:
+        print(f"{cid} 的輸出裡找不到成對的分隔線，整段留著", file=sys.stderr)
+        out = proc.stdout.strip()
 
     # 它會自己寫一段沒人要求的自言自語，然後補一個沒有開頭的 </think> 才進正題。
     # 收得出這個結尾，代表它認為自己講完了；收不出來就是講到 token 用完為止。

@@ -1,0 +1,370 @@
+
+ CWE -
+ CWE-1333: Inefficient Regular Expression Complexity (4.20)
+ Common Weakness Enumeration 
+ A community-developed list of SW & HW weaknesses that can become vulnerabilities 
+ Home > CWE List > 
+ CWE-1333: Inefficient Regular Expression Complexity (4.20)
+ ID Lookup: 
+ Home 
+ About ▼ 
+ Who We Are 
+ User Stories 
+ History 
+ Documents 
+ Videos 
+ Learn ▼ 
+ Basics 
+ Root Cause Mapping ► 
+ Guidance 
+ Quick Tips 
+ Examples 
+ How to Contribute Weakness Content 
+ FAQs 
+ Glossary 
+ Access Content ▼ 
+ Top-N Lists ► 
+ Top 25 Software 
+ Top Hardware 
+ Top 10 KEV Weaknesses 
+ CWE List ► 
+ Current Version 
+ Reports 
+ Visualizations 
+ Releases Archive 
+ Downloads 
+ REST API 
+ Community ▼ 
+ News ► 
+ Current News 
+ Blog 
+ Podcast 
+ News Archive 
+ CWE Board 
+ Working Groups & Special Interest Groups 
+ Email Lists 
+ Search ▼ 
+ Search CWE List 
+ Search Website 
+ CWE Glossary Definition 
+ CWE-1333: Inefficient Regular Expression Complexity 
+ Weakness ID: 1333
+ Vulnerability Mapping: 
+ ALLOWED 
+ This CWE ID may be used to map to real-world vulnerabilities 
+ Abstraction:
+ Base 
+ Base - a weakness that is still mostly independent of a resource or technology, but with sufficient details to provide specific methods for detection and prevention. Base level weaknesses typically describe issues in terms of 2 or 3 of the following dimensions: behavior, property, technology, language, and resource. 
+ View customized information: 
+ Conceptual 
+ For users who are interested in more notional aspects of a weakness. Example: educators, technical writers, and project/program managers. 
+ Operational 
+ For users who are concerned with the practical application and details about the nature of a weakness and how to prevent it from happening. Example: tool developers, security researchers, pen-testers, incident response analysts. 
+ Mapping Friendly 
+ For users who are mapping an issue to CWE/CAPEC IDs, i.e., finding the most appropriate CWE for a specific issue (e.g., a CVE record). Example: tool developers, security researchers. 
+ Complete 
+ For users who wish to see all available information for the CWE/CAPEC entry. 
+ Custom 
+ For users who want to customize what details are displayed. 
+ × 
+ Edit Custom Filter 
+ Conceptual 
+ Operational 
+ Mapping Friendly 
+ Select All 
+ Reset 
+ Clear 
+ Submit 
+ Cancel 
+ Description
+ The product uses a regular expression with a worst-case computational complexity that is inefficient and possibly exponential. 
+ Alternate Terms
+ ReDoS
+ ReDoS is an abbreviation of "Regular expression Denial of Service". 
+ Regular Expression Denial of Service
+ While this term is attack-focused, this is commonly used to describe the weakness. 
+ Catastrophic backtracking
+ This term is used to describe the behavior of the regular expression as a negative technical impact. 
+ Common Consequences 
+ This table specifies different individual consequences
+ associated with the weakness. The Scope identifies the application security area that is
+ violated, while the Impact describes the negative technical impact that arises if an
+ adversary succeeds in exploiting this weakness. The Likelihood provides information about
+ how likely the specific consequence is expected to be seen relative to the other
+ consequences in the list. For example, there may be high likelihood that a weakness will be
+ exploited to achieve a certain impact, but a low likelihood that it will be exploited to
+ achieve a different impact. 
+ Impact 
+ Details 
+ DoS: Resource Consumption (CPU) 
+ Scope: Availability 
+ Likelihood: High 
+ Attackers can create crafted inputs that
+ intentionally cause the regular expression to use
+ excessive backtracking in a way that causes the
+ CPU consumption to spike. 
+ Potential Mitigations 
+ Phase(s) 
+ Mitigation 
+ Architecture and Design 
+ Use regular expressions that do not support backtracking, e.g. by removing nested quantifiers. 
+ Effectiveness: High 
+ Note: 
+ This is one of the few effective solutions when using user-provided regular expressions. 
+ System Configuration 
+ Set backtracking limits in the configuration of the regular expression implementation, such as PHP's pcre.backtrack_limit. Also consider limits on execution time for the process. 
+ Effectiveness: Moderate 
+ Implementation 
+ Do not use regular expressions with untrusted input. If regular expressions must be used, avoid using backtracking in the expression. 
+ Effectiveness: High 
+ Implementation 
+ Limit the length of the input that the regular expression will process. 
+ Effectiveness: Moderate 
+ Relationships
+ This table shows the weaknesses and high level categories that are related to this
+ weakness. These relationships are defined as ChildOf, ParentOf, MemberOf and give insight to
+ similar items that may exist at higher and lower levels of abstraction. In addition,
+ relationships such as PeerOf and CanAlsoBe are defined to show similar weaknesses that the user
+ may want to explore. 
+ Relevant to the view "Research Concepts" (View-1000)
+ Nature 
+ Type 
+ ID 
+ Name 
+ ChildOf 
+ Class - a weakness that is described in a very abstract fashion, typically independent of any specific language or technology. More specific than a Pillar Weakness, but more general than a Base Weakness. Class level weaknesses typically describe issues in terms of 1 or 2 of the following dimensions: behavior, property, and resource. 
+ 407 
+ Inefficient Algorithmic Complexity 
+ Relevant to the view "Software Development" (View-699)
+ Nature 
+ Type 
+ ID 
+ Name 
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 1226 
+ Complexity Issues 
+ Relevant to the view "Weaknesses for Simplified Mapping of Published Vulnerabilities" (View-1003)
+ Nature 
+ Type 
+ ID 
+ Name 
+ ChildOf 
+ Class - a weakness that is described in a very abstract fashion, typically independent of any specific language or technology. More specific than a Pillar Weakness, but more general than a Base Weakness. Class level weaknesses typically describe issues in terms of 1 or 2 of the following dimensions: behavior, property, and resource. 
+ 407 
+ Inefficient Algorithmic Complexity 
+ Background Details 
+ Some regular expression engines have a feature called "backtracking". If the token cannot match, the engine "backtracks" to a position that may result in a different token that can match.
+ Modes
+ Of Introduction 
+ The different Modes of Introduction provide information
+ about how and when this
+ weakness may be introduced. The Phase identifies a point in the life cycle at which
+ introduction
+ may occur, while the Note provides a typical scenario related to introduction during the
+ given
+ phase. 
+ Phase 
+ Note 
+ Implementation 
+ A RegEx can be easy to create and read using unbounded matching characters, but the programmer might not consider the risk of excessive backtracking. 
+ Implementation 
+ Backtracking becomes a weakness if all of these conditions are met: 
+ The number of possible backtracking attempts is exponential relative to the length of the input. 
+ The input can fail to match the regular expression. 
+ The input can be long enough. 
+ Applicable Platforms 
+ This listing shows possible areas for which the given
+ weakness could appear. These
+ may be for specific named Languages, Operating Systems, Architectures, Paradigms,
+ Technologies,
+ or a class of such platforms. The platform is listed along with how frequently the given
+ weakness appears for that instance. 
+ Languages 
+ Class: Not Language-Specific
+ (Undetermined Prevalence) 
+ Likelihood Of Exploit
+ High 
+ Demonstrative Examples 
+ Example 1 
+ This example attempts to check if an input string is a "sentence" [ REF-1164 ]. 
+ (bad code) 
+ Example Language: JavaScript 
+ var test_string = "Bad characters: $@#"; 
+ var bad_pattern = /^(\w+\s?)*$/i; 
+ var result = test_string.search(bad_pattern);
+ The regular expression has a vulnerable backtracking clause inside (\w+\s?)*$ which can be triggered to cause a Denial of Service by processing particular phrases. 
+ To fix the backtracking problem, backtracking is removed with the ?= portion of the expression which changes it to a lookahead and the \2 which prevents the backtracking. The modified example is: 
+ (good code) 
+ Example Language: JavaScript 
+ var test_string = "Bad characters: $@#"; 
+ var good_pattern = /^((?=(\w+))\2\s?)*$/i; 
+ var result = test_string.search(good_pattern);
+ Note that [ REF-1164 ] has a more thorough (and lengthy) explanation of everything going on within the RegEx. 
+ Example 2 
+ This example attempts to check if an input string is a "sentence" and is modified for Perl [ REF-1164 ]. 
+ (bad code) 
+ Example Language: Perl 
+ my $test_string = "Bad characters: \$\@\#"; 
+ my $bdrslt = $test_string; 
+ $bdrslt =~ /^(\w+\s?)*$/i;
+ The regular expression has a vulnerable backtracking clause inside (\w+\s?)*$ which can be triggered to cause a Denial of Service by processing particular phrases. 
+ To fix the backtracking problem, backtracking is removed with the ?= portion of the expression which changes it to a lookahead and the \2 which prevents the backtracking. The modified example is: 
+ (good code) 
+ Example Language: Perl 
+ my $test_string = "Bad characters: \$\@\#"; 
+ my $gdrslt = $test_string; 
+ $gdrslt =~ /^((?=(\w+))\2\s?)*$/i;
+ Note that [ REF-1164 ] has a more thorough (and lengthy) explanation of everything going on within the RegEx. 
+ Selected Observed
+ Examples 
+ Note: this is a curated list of examples for users to understand the variety of ways in which this
+ weakness can be introduced. It is not a complete list of all CVEs that are related to this CWE entry. 
+ Reference 
+ Description 
+ CVE-2020-5243 
+ server allows ReDOS with crafted User-Agent strings, due to overlapping capture groups that cause excessive backtracking. 
+ CVE-2021-21317 
+ npm package for user-agent parser prone to ReDoS due to overlapping capture groups 
+ CVE-2019-16215 
+ Markdown parser uses inefficient regex when processing a message, allowing users to cause CPU consumption and delay preventing processing of other messages. 
+ CVE-2019-6785 
+ Long string in a version control product allows DoS due to an inefficient regex. 
+ CVE-2019-12041 
+ Javascript code allows ReDoS via a long string due to excessive backtracking. 
+ CVE-2015-8315 
+ ReDoS when parsing time. 
+ CVE-2015-8854 
+ ReDoS when parsing documents. 
+ CVE-2017-16021 
+ ReDoS when validating URL. 
+ Weakness Ordinalities 
+ Ordinality 
+ Description 
+ Primary 
+ (where the weakness exists independent of other weaknesses)
+ Detection
+ Methods 
+ Method 
+ Details 
+ Automated Static Analysis 
+ Automated static analysis, commonly referred to as Static Application Security Testing (SAST), can find some instances of this weakness by analyzing source code (or binary/compiled code) without having to execute it. Typically, this is done by building a model of data flow and control flow, then searching for potentially-vulnerable patterns that connect "sources" (origins of input) with "sinks" (destinations where the data interacts with external components, a lower layer such as the OS, etc.)
+ Effectiveness: High 
+ Memberships
+ This MemberOf Relationships table shows additional CWE Categories and Views that
+ reference this weakness as a member. This information is often useful in understanding where a
+ weakness fits within the context of external information sources. 
+ Nature 
+ Type 
+ ID 
+ Name 
+ MemberOf 
+ Category - a CWE entry that contains a set of other entries that share a common characteristic. 
+ 1416 
+ Comprehensive Categorization: Resource Lifecycle Management
+ Vulnerability Mapping Notes 
+ Usage 
+ ALLOWED 
+ (this CWE ID may be used to map to real-world vulnerabilities)
+ Reason 
+ Acceptable-Use
+ Rationale 
+ This CWE entry is at the Base level of abstraction, which is a preferred level of abstraction for mapping to the root causes of vulnerabilities.
+ Comments 
+ Carefully read both the name and description to ensure that this mapping is an appropriate fit. Do not try to 'force' a mapping to a lower-level Base/Variant simply to comply with this preferred level of abstraction.
+ Related Attack Patterns 
+ CAPEC-ID 
+ Attack Pattern Name 
+ CAPEC-492 
+ Regular Expression Exponential Blowup 
+ References 
+ [REF-1180] 
+ Scott A. Crosby. "Regular Expression Denial of Service". 2003-08.
+ < https://web.archive.org/web/20031120114522/http://www.cs.rice.edu/~scrosby/hash/slides/USENIX-RegexpWIP.2.ppt >.
+ [REF-1162] 
+ Jan Goyvaerts. "Runaway Regular Expressions: Catastrophic Backtracking". 2019-12-22.
+ < https://www.regular-expressions.info/catastrophic.html >.
+ [REF-1163] 
+ Adar Weidman. "Regular expression Denial of Service - ReDoS". 
+ < https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS >.
+ [REF-1164] 
+ Ilya Kantor. "Catastrophic backtracking". 2020-12-13.
+ < https://javascript.info/regexp-catastrophic-backtracking >.
+ [REF-1165] 
+ Cristian-Alexandru Staicu and Michael Pradel. "Freezing the Web: A Study of ReDoS Vulnerabilities in JavaScript-based Web Servers". USENIX Security Symposium. 2018-07-11.
+ < https://www.usenix.org/system/files/conference/usenixsecurity18/sec18-staicu.pdf >.
+ [REF-1166] 
+ James C. Davis, Christy A. Coghlan, Francisco Servant and Dongyoon Lee. "The Impact of Regular Expression Denial of Service (ReDoS) in Practice: An Empirical Study at the Ecosystem Scale". 2018-08-01.
+ < https://fservant.github.io/papers/Davis_Coghlan_Servant_Lee_ESECFSE18.pdf >.
+ ( URL validated: 2023-04-07 )
+ [REF-1167] 
+ James Davis. "The Regular Expression Denial of Service (ReDoS) cheat-sheet". 2020-05-23.
+ < https://levelup.gitconnected.com/the-regular-expression-denial-of-service-redos-cheat-sheet-a78d0ed7d865 >.
+ Content
+ History 
+ Submissions 
+ Submission Date 
+ Submitter 
+ Organization 
+ 2021-01-17
+ (CWE 4.4, 2021-03-15) 
+ Anonymous External Contributor 
+ Modifications 
+ Modification Date 
+ Modifier 
+ Organization 
+ 2026-04-30
+ (CWE 4.20, 2026-04-30) 
+ CWE Content Team 
+ MITRE 
+ updated Background_Details, Common_Consequences, Description, Diagram, Modes_of_Introduction 
+ 2025-12-11
+ (CWE 4.19, 2025-12-11) 
+ CWE Content Team 
+ MITRE 
+ updated Detection_Factors, Weakness_Ordinalities 
+ 2023-06-29
+ (CWE 4.12, 2023-06-29) 
+ CWE Content Team 
+ MITRE 
+ updated Mapping_Notes 
+ 2023-04-27
+ (CWE 4.11, 2023-04-27) 
+ CWE Content Team 
+ MITRE 
+ updated References, Relationships 
+ 2023-01-31
+ (CWE 4.10, 2023-01-31) 
+ CWE Content Team 
+ MITRE 
+ updated Demonstrative_Examples, Observed_Examples 
+ 2022-10-13
+ (CWE 4.9, 2022-10-13) 
+ CWE Content Team 
+ MITRE 
+ updated Observed_Examples, Relationships 
+ 2022-04-28
+ (CWE 4.7, 2022-04-28) 
+ CWE Content Team 
+ MITRE 
+ updated Observed_Examples, Potential_Mitigations 
+ 2021-10-28
+ (CWE 4.6, 2021-10-28) 
+ CWE Content Team 
+ MITRE 
+ updated Description 
+ 2021-07-20
+ (CWE 4.5, 2021-07-20) 
+ CWE Content Team 
+ MITRE 
+ updated References 
+ More information is available — Please edit the custom filter or select a different filter. 
+ Page Last Updated: 
+April 30, 2026
+ Site Map | 
+ Terms of Use | 
+ Manage Cookies | 
+ Cookie Notice | 
+ Privacy Policy | 
+ Contact Us | 
+ Use of the Common Weakness Enumeration (CWE™) and the associated references from this website are subject to the Terms of Use. CWE is sponsored by the U.S. Department of Homeland Security (DHS) Cybersecurity and Infrastructure Security Agency (CISA) and managed by the Homeland Security Systems Engineering and Development Institute (HSSEDI) which is operated by The MITRE Corporation (MITRE). Copyright © 2006–2026, The MITRE Corporation. CWE, CWSS, CWRAF, and the CWE logo are trademarks of The MITRE Corporation. 

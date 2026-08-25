@@ -1,0 +1,4 @@
+I'll scan the repository files for hard-coded credentials (passwords, API keys, tokens, etc.). I'll look for literals like hardcoded API keys, database passwords, or secrets in source files.
+</think>
+
+src/api.js
