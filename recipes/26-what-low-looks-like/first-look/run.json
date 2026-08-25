@@ -1,0 +1,49 @@
+{
+  "model": "/Volumes/CyhSSD/Dev/models/antares-1b-mlx",
+  "files": 7,
+  "total_seconds": 33.1,
+  "results": [
+    {
+      "file": "server/files.js",
+      "seconds": 4.6,
+      "peak": "1.429 GB",
+      "raw": "server_files.js.txt"
+    },
+    {
+      "file": "server/health.js",
+      "seconds": 4.6,
+      "peak": "1.375 GB",
+      "raw": "server_health.js.txt"
+    },
+    {
+      "file": "server/orders.js",
+      "seconds": 6.3,
+      "peak": "1.492 GB",
+      "raw": "server_orders.js.txt"
+    },
+    {
+      "file": "server/tools.js",
+      "seconds": 4.4,
+      "peak": "1.491 GB",
+      "raw": "server_tools.js.txt"
+    },
+    {
+      "file": "src/api.js",
+      "seconds": 4.3,
+      "peak": "1.439 GB",
+      "raw": "src_api.js.txt"
+    },
+    {
+      "file": "src/format.js",
+      "seconds": 4.5,
+      "peak": "1.475 GB",
+      "raw": "src_format.js.txt"
+    },
+    {
+      "file": "src/render.js",
+      "seconds": 4.4,
+      "peak": "1.397 GB",
+      "raw": "src_render.js.txt"
+    }
+  ]
+}

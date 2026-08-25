@@ -61,6 +61,23 @@ WF=$(cat "${R}/../.github/workflows/checks.yml" "${R}/../.github/workflows/night
 MISS=""; EXTRA=""
 while IFS="	" read -r name level _rest; do
   case "${name}" in ''|'#'*|recipe) continue ;; esac
+  # E 級是宣告過的例外：託管 runner 上沒有那個硬體。要求它進矩陣只會得到一個
+  # 永遠回 2 的 job。豁免寫在這裡而不是靠人記得，代價寫在 levels.tsv 那一欄。
+  #
+  # 但豁免不是免費的：E 級在 CI 上零覆蓋，唯一還會逼它證明自己的東西是
+  # mutations.sh。沒有那一支就填 E，等於把一支沒人驗過的檢查合法化。
+  if [ "${level}" = E ]; then
+    if [ ! -f "${R}/${name}/mutations.sh" ]; then
+      bad "${name} 填了 E 級（CI 上零覆蓋）卻沒有 mutations.sh"
+    # 有那支還不夠：硬體不到位的時候它要說「沒有結論」，不是把整張表印成通過。
+    # 26 就是這樣壞過一次（沒有模型時十條全是假通過，輸出跟真的跑過逐字相同）。
+    elif ! grep -q 'exit 2' "${R}/${name}/mutations.sh"; then
+      bad "${name} 的 mutations.sh 沒有「硬體不到位就回 2」的出口"
+    else
+      ok "${name}（E 級）有 mutations.sh，而且硬體不到位會回 2"
+    fi
+    continue
+  fi
   # 兩種寫法都算數：矩陣那一行，或自己一個 job 裡 cd 進去。
   # 不可以只認「名字有出現」，因為 checks.yml 最後那個清潔檢查也會列名字，
   # 認名字的話從矩陣拿掉一支照樣綠（2026-08-22 實測，這條因此重寫過一次）。

@@ -1,0 +1,28 @@
+# 我親手核的一輪，對象是 first-look/ 那份存檔。2026-08-25。
+#
+# 兩條規則，verify.sh 第 4、5 條各守一條：
+#   1. 每一列的「依據」要逐字出自那個檔的存檔。憑印象寫「它好像有講到」過不了。
+#   2. 存檔裡每一條合格格式的候選都要在這裡有一列。少記一條，誤報數與行號命中率
+#      就會同時被低估，而低估的方向剛好是這個模型看起來比較好。
+#
+# 判定：
+#   指到        描述對得上那個已知問題（編號與行號對不對是另外兩欄的事）
+#   沒指到      這個已知問題在輸出裡找不到對應的候選
+#   重複        這條候選指的是另一列已經記過的問題
+#   誤報        指的東西不存在
+#   沒吐候選    整份輸出沒有任何一行合格格式，連 NONE 都沒有
+#
+# 「反向關鍵字」只有判定是「沒指到」的列要填：那個問題的核心字眼，
+# verify.sh 會確認整份存檔的候選行裡真的一次都沒出現。
+# 拿別的候選當依據來證明「它沒講到」，證不出東西來。
+#
+類別	檔案	項目	CWE(答案卷)	判定	模型編號	模型行號	實際行號	依據	反向關鍵字
+已知	src/api.js	模型金鑰打包進前端	CWE-798	沒吐候選	-	-	1,8	This suggests a potential exposure if API_KEY is accidentally exposed or if the service is vulnerable to abuse.	-
+已知	src/render.js	模型回傳直接進 innerHTML	CWE-79	指到	CWE-79	4	11	CWE-79 | line 4 | Sets innerHTML to user-supplied content without sanitization.	-
+已知	server/orders.js	查訂單沒綁 user_id	CWE-639	沒指到	CWE-79	6	6	CWE-79 | line 6 | The endpoint executes a SQL query using req.params.id directly in the	user_id
+已知	server/tools.js	exec 串接模型給的參數	CWE-78	指到	CWE-83	3	7,14	CWE-83 | line 3 | The file uses exec to run system commands, which can lead to command injection if user-controlled input is interpolated into the command string.	-
+已知	server/files.js	path.join 接使用者輸入	CWE-22	指到	CWE-1021	6	9	CWE-1021 | line 6 | User-controlled path name used to access a file without proper traversal checks	-
+已知	server/files.js	錯誤訊息回傳 err.message	CWE-209	沒指到	-	-	14	CWE-1021 | line 6 | User-controlled path name used to access a file without proper traversal checks	err.message
+乾淨	src/format.js	這個檔沒有埋東西	-	誤報	CWE-420	3	-	CWE-420 | line 3 | Uses Intl NumberFormat to format user input cents; no obvious unsafe code.	-
+乾淨	server/health.js	這個檔沒有埋東西	-	沒吐候選	-	-	-	The code uses `Date.now()` for timing and only returns runtime info; no obvious unsafe code.	-
+多出來	src/render.js	講的是同一個洞：ask() 的回傳沒消毒	CWE-79	重複	CWE-90	9	11	CWE-90 | line 9 | Calls an external API (ask) without validating or sanitizing its output.	-

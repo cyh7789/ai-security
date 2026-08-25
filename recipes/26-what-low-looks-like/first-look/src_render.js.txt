@@ -1,0 +1,4 @@
+I will scan the file for common security issues: unsafe DOM insertion, direct access to untrusted user input without sanitization, potential for XSS, event handlers, and any use of potentially vulnerable external APIs. Then I'll point to exact lines if issues are found.
+</think>
+CWE-79 | line 4 | Sets innerHTML to user-supplied content without sanitization.
+CWE-90 | line 9 | Calls an external API (ask) without validating or sanitizing its output.
