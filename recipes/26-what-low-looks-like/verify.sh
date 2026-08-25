@@ -25,7 +25,6 @@ PG=../../playground
 [ -r first-look/run.json ] || { echo "沒有 first-look/run.json，先跑 first-look.py，沒有結論" >&2; exit 2; }
 
 rows() { grep -v '^#' verdict.tsv | tail -n +2 | grep .; }
-col()  { rows | awk -F'\t' -v c="$1" '{print $c}'; }
 
 case_ "1 存檔收的檔案，跟 playground 現在有的一樣"
 HAVE=$(cd "$PG" && find . -name '*.js' -not -path './test/*' | sed 's|^\./||' | sort | tr '\n' ' ')
@@ -70,10 +69,13 @@ done < <(rows)
 case_ "5 存檔裡每一條合格候選，核對表都記到了"
 # 核對表本來是單向的：拿已知問題去找候選。反方向沒人守的話，模型多吐的候選
 # 會靜靜消失，而誤報數、行號命中率、編號命中率三個聲明會同時被低估。
-INAR=$(cat first-look/*.txt | grep -c '^CWE-[0-9]* | line ')
-INTB=$(rows | awk -F'\t' '$6 != "-"' | grep -c .)
-[ "$INAR" = "$INTB" ] && ok "存檔 ${INAR} 條候選，核對表記了 ${INTB} 條" \
-                      || bad "存檔有 ${INAR} 條合格候選，核對表只記了 ${INTB} 條"
+#
+# 比的是集合不是計數。只比總數的話，刪掉那條誤報、再補一列重記已經記過的候選，
+# 兩邊照樣一樣多，而誤報數會從 1 變成 0（實測）。
+D5=$(diff <(cat first-look/*.txt | grep '^CWE-[0-9]* | line ' | sort) \
+          <(rows | awk -F'\t' '$6 != "-" {print $9}' | sort) 2>&1)
+[ -z "$D5" ] && ok "存檔的候選跟核對表記的，逐條對得起來（$(cat first-look/*.txt | grep -c '^CWE-[0-9]* | line ') 條）" \
+             || bad "存檔與核對表的候選對不起來：$(printf '%s' "$D5" | tr '\n' ' ')"
 
 case_ "6 判定「沒指到」的那幾列，反向驗一次"
 # 拿另一個問題的候選當依據，證不出「它沒講到這件事」。這裡問的是
@@ -82,6 +84,10 @@ NR_=""
 while IFS=$'\t' read -r _k _f _i _c v _mc _ml _al _q rev; do
   [ "$v" = 沒指到 ] || continue
   [ -n "$rev" ] && [ "$rev" != - ] || { NR_="${NR_} (有列沒填反向關鍵字)"; continue; }
+  # 關鍵字是填表的人自己選的，不加約束的話填一個必不出現的字就永遠綠。
+  # 它至少要真的是那個檔裡的東西：user_id 在 orders.js:18、err.message 在 files.js:14。
+  grep -qF -- "$rev" "$PG/$_f" \
+    || { NR_="${NR_} ${rev}(不在 ${_f} 的原始碼裡)"; continue; }
   cat first-look/*.txt | grep '^CWE-[0-9]* | line ' | grep -qF -- "$rev" \
     && NR_="${NR_} ${rev}"
 done < <(rows)
@@ -101,11 +107,16 @@ grep -qF "指出三個" POSITIONING.md && [ "$HIT" = 3 ] || { bad "命中數：�
 grep -qF "CWE 編號只有一條對" POSITIONING.md && [ "$CWEOK" = 1 ] || { bad "編號命中數：核對表 ${CWEOK}"; N=1; }
 grep -qF "${SEC} 秒" POSITIONING.md || { bad "聲明沒寫 ${SEC} 秒"; N=1; }
 grep -qF "${PEAK} GB" POSITIONING.md || { bad "聲明沒寫峰值 ${PEAK} GB"; N=1; }
+# FP 以前只印在訊息裡沒有被斷言過。「乾淨檔案上會報東西」那一條沒人守，
+# 而它剛好是刪掉一列就會從 1 掉到 0 的那個數。
+grep -qF "乾淨檔案上會報東西" POSITIONING.md && [ "$FP" = 1 ] || { bad "誤報數：核對表 ${FP}"; N=1; }
 [ "$N" = 0 ] && ok "指到 ${HIT}、編號對 ${CWEOK}、誤報 ${FP}、${SEC} 秒、峰值 ${PEAK} GB"
 
-case_ "8 聲明說「五條指得出行號的候選，只有一條行號對」，逐條驗一次"
+case_ "8 聲明說「五條有得對照的候選，只有一條行號對」，逐條驗一次"
 RIGHT=""; TOTAL=0
 while IFS=$'\t' read -r _k file _i _c _v _mc ml al _q _rev; do
+  # 乾淨檔上那條 CWE-420 也有行號，但沒有真洞就沒有位置可對，所以不算分母。
+  # 存檔裡合格候選一共六條，這裡數到的是五條。
   [ -n "$ml" ] && [ "$ml" != - ] && [ "$al" != - ] || continue
   TOTAL=$((TOTAL+1))
   printf '%s' ",$al," | grep -q ",$ml," && RIGHT="${RIGHT} ${file}:${ml}"

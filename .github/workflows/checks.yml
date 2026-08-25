@@ -189,9 +189,10 @@ jobs:
           for r in 14-same-attacks-every-time 18-not-a-free-chatgpt 20-what-did-it-block 21-did-it-come-back 23-what-can-actually-reach-it 24-green-or-never-hit 25-not-graded-by-its-author; do
             (cd "recipes/${r}" && bash verify.sh > /dev/null 2>&1) || true
           done
-          # git diff 看不到未追蹤檔，而突變測試留下的殘留正好都是新檔
-          # （26 的 mutations.sh 會在 playground/src/ 底下造一個探針，
-          # kill -9 打斷的話 EXIT trap 不會跑）。--porcelain 兩種都看得到。
+          # git diff 看不到未追蹤檔，而殘留正好都是新檔（26 的 mutations.sh 會在
+          # playground/src/ 底下造一個探針，kill -9 打斷的話 EXIT trap 不會跑；
+          # 26 是 E 級不在下面這個迴圈裡，但別支照樣可能留下新檔）。
+          # --porcelain 兩種都看得到。
           if [ -n "$(git status --porcelain)" ]; then
             echo "跑完之後工作目錄不乾淨：" >> "${GITHUB_STEP_SUMMARY}"
             git status --porcelain | tee -a "${GITHUB_STEP_SUMMARY}"

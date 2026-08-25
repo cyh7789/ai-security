@@ -67,8 +67,15 @@ while IFS="	" read -r name level _rest; do
   # 但豁免不是免費的：E 級在 CI 上零覆蓋，唯一還會逼它證明自己的東西是
   # mutations.sh。沒有那一支就填 E，等於把一支沒人驗過的檢查合法化。
   if [ "${level}" = E ]; then
-    [ -f "${R}/${name}/mutations.sh" ] \
-      || bad "${name} 填了 E 級（CI 上零覆蓋）卻沒有 mutations.sh"
+    if [ ! -f "${R}/${name}/mutations.sh" ]; then
+      bad "${name} 填了 E 級（CI 上零覆蓋）卻沒有 mutations.sh"
+    # 有那支還不夠：硬體不到位的時候它要說「沒有結論」，不是把整張表印成通過。
+    # 26 就是這樣壞過一次（沒有模型時十條全是假通過，輸出跟真的跑過逐字相同）。
+    elif ! grep -q 'exit 2' "${R}/${name}/mutations.sh"; then
+      bad "${name} 的 mutations.sh 沒有「硬體不到位就回 2」的出口"
+    else
+      ok "${name}（E 級）有 mutations.sh，而且硬體不到位會回 2"
+    fi
     continue
   fi
   # 兩種寫法都算數：矩陣那一行，或自己一個 job 裡 cd 進去。
