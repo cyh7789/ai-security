@@ -43,13 +43,13 @@
 | 17 | [模型講的話變成動作，中間那道閘](recipes/17-words-into-actions/) | [Day 17](https://ithelp.ithome.com.tw/articles/10403142) | **可以跑了** |
 | 18 | [四道閘，跟它們各自防的是什麼](recipes/18-not-a-free-chatgpt/) | [Day 18](https://ithelp.ithome.com.tw/articles/10403409) | **可以跑了** |
 | 19 | [字串直接進了 shell](recipes/19-straight-into-the-shell/) | [Day 19](https://ithelp.ithome.com.tw/articles/10403690) | **可以跑了** |
-| 20 | [判斷點自己寫下它擋了什麼](recipes/20-what-did-it-block/) | Day 20 | **可以跑了** |
-| 21 | [這個洞你修過了，怎麼確定它不會再回來](recipes/21-did-it-come-back/) | Day 21 | **可以跑了** |
-| 22 | [把這些檢查接進 CI，並決定它什麼時候該擋你](recipes/22-when-should-it-stop-you/) | Day 22 | **可以跑了** |
-| 23 | [哪些路徑真的到得了](recipes/23-what-can-actually-reach-it/) | Day 23 | **可以跑了** |
-| 24 | [全綠是防住了還是沒打到](recipes/24-green-or-never-hit/) | Day 24 | **可以跑了** |
-| 25 | [這份成績單不能由生它的人打](recipes/25-not-graded-by-its-author/) | Day 25 | **可以跑了** |
-| 26 | [「低」長什麼樣](recipes/26-what-low-looks-like/) | Day 26 | **可以跑了**（要 Apple Silicon 與 mlx-lm） |
+| 20 | [判斷點自己寫下它擋了什麼](recipes/20-what-did-it-block/) | [Day 20](https://ithelp.ithome.com.tw/articles/10403906) | **可以跑了** |
+| 21 | [這個洞你修過了，怎麼確定它不會再回來](recipes/21-did-it-come-back/) | [Day 21](https://ithelp.ithome.com.tw/articles/10404089) | **可以跑了** |
+| 22 | [把這些檢查接進 CI，並決定它什麼時候該擋你](recipes/22-when-should-it-stop-you/) | [Day 22](https://ithelp.ithome.com.tw/articles/10404353) | **可以跑了** |
+| 23 | [哪些路徑真的到得了](recipes/23-what-can-actually-reach-it/) | [Day 23](https://ithelp.ithome.com.tw/articles/10404440) | **可以跑了** |
+| 24 | [全綠是防住了還是沒打到](recipes/24-green-or-never-hit/) | [Day 24](https://ithelp.ithome.com.tw/articles/10404722) | **可以跑了** |
+| 25 | [這份成績單不能由生它的人打](recipes/25-not-graded-by-its-author/) | [Day 25](https://ithelp.ithome.com.tw/articles/10404931) | **可以跑了** |
+| 26 | [「低」長什麼樣](recipes/26-what-low-looks-like/) | [Day 26](https://ithelp.ithome.com.tw/articles/10405051) | **可以跑了**（要 Apple Silicon 與 mlx-lm） |
 | 27– | 隨連載加入 | Day 27–30 | 未完成 |
 
 每一份都是 `bash recipes/<名字>/verify.sh`。一次跑全部：
