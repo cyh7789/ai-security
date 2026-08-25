@@ -7,6 +7,10 @@
 #   B  只警告。照樣跑、照樣顯示紅，不列進必要檢查。多半是環境的事
 #   C  缺口樁。釘的是現況不是願望，紅了代表缺口狀態變了，要人重新做取捨
 #   D  定時。不綁 PR，外面自己會變的東西
+#   E  本機。託管 runner 上沒有那個硬體，跑幾次都只會回 2。
+#      放進矩陣的話那個 job 永遠是「沒有結論」，而一個永遠不會綠的 job
+#      三週後就沒人點進去看，跟按 skip 的差別只在誰按（Day 22 的原話）。
+#      E 級的代價要說清楚：它在 CI 上沒有任何覆蓋，只有作者本機跑過。
 #
 # 秒數是 2026-08-21 在 macOS 上序列跑一次量的（posts/day22/timing.tsv），
 # runner 上會不一樣，這一欄只用來看數量級。
@@ -36,3 +40,4 @@ recipe	級別	秒	為什麼
 23-what-can-actually-reach-it	A	1	離線，只起 127.0.0.1 上的示範服務。它比對的是攻擊面清單跟實跑，清單造假會紅
 24-green-or-never-hit	A	1	離線。固定攻擊集。run.sh 正常就回 1（七條已知缺口），CI 跑的是 verify.sh 跟 collect.mjs --check
 25-not-graded-by-its-author	A	1	離線。before／after 對照紀錄。verify.sh 會把 before 那個 commit 的程式取出來重跑，需要 git 歷史（checkout 要抓得到那幾個 commit）
+26-what-low-looks-like	E	70	要 Apple Silicon 與 mlx-lm，GitHub 託管 runner 沒有。作者本機 2026-08-25 跑過 verify.sh 九綠、mutations.sh 十個突變全咬到
