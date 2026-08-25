@@ -1,16 +1,17 @@
 # AI Security Cookbook
 
-《你該防的不是駭客，是你自己的 AI：在本機驗證你的防線》的隨文 cookbook。
+《你該防的不是駭客，是你自己的 AI：在本機驗證你的防線》的隨文實作集。
 連載在 iThome 鐵人賽 2026 AI Security 組，每天一篇。
 
-每一份 recipe 是一個獨立的問題與解法，**可以單獨拿走，不用讀前面**。
+每一份 recipe 聚焦一個問題，README 會列出執行方式與判準，也會在需要時說明限制。
+後半段有些 recipe 會直接重用前幾天的檔案；要單獨複製時，先看該份 README 列出的相依項目。
 
-## 跟其他 cookbook 差在哪
+## 這份實作集多了什麼
 
-多數 cookbook 給你解法就結束。這裡每一份多兩樣東西：
+這裡不只放修改後的結果。每一份至少會留下兩樣東西：
 
-- **`before/`**：有洞的版本。你可以先打穿它，確認那個洞是真的
-- **`verify.sh`**：修完之後跑，確認真的修好了。修之前跑是紅的，修之後是綠的
+- **對照組**：可能是有洞與修好的版本、錯誤與正確的檢查方式，或同一支程式在兩種環境下的結果
+- **`verify.sh`**：重跑對照並檢查判準；環境不足或跳過必要步驟時，不會報成通過
 
 因為「改完覺得應該沒事了」跟「驗過確實沒事」是兩件事，
 而這三十天講的就是這個差別。
@@ -50,7 +51,7 @@
 | 24 | [全綠是防住了還是沒打到](recipes/24-green-or-never-hit/) | [Day 24](https://ithelp.ithome.com.tw/articles/10404722) | **可以跑了** |
 | 25 | [這份成績單不能由生它的人打](recipes/25-not-graded-by-its-author/) | [Day 25](https://ithelp.ithome.com.tw/articles/10404931) | **可以跑了** |
 | 26 | [「低」長什麼樣](recipes/26-what-low-looks-like/) | [Day 26](https://ithelp.ithome.com.tw/articles/10405051) | **可以跑了**（要 Apple Silicon 與 mlx-lm） |
-| 27 | [給它一個編號，要它挑檔案](recipes/27-ask-by-cwe/) | Day 27 | **可以跑了**（要 Apple Silicon 與 mlx-lm） |
+| 27 | [給它一個編號，要它挑檔案](recipes/27-ask-by-cwe/) | [Day 27](https://ithelp.ithome.com.tw/articles/10405218) | **可以跑了**（要 Apple Silicon 與 mlx-lm） |
 | 28– | 隨連載加入 | Day 28–30 | 未完成 |
 
 每一份都是 `bash recipes/<名字>/verify.sh`。一次跑全部：
@@ -85,12 +86,12 @@ bash verify.sh         # 跑一次，看有洞與修好的兩版並排
 bash verify.sh 2       # 只看第 2 個情境
 ```
 
-`verify.sh` 檢查的是行為，不是程式碼長相，而且每一份都**並排跑兩邊**：
-有洞的與修好的、naive 的檢查與正確的檢查、本機與容器。
+`verify.sh` 檢查的是行為，不是程式碼長相，而且每一份都會留下對照：
+有洞的與修好的、有缺陷的檢查與正確的檢查、本機與容器。
 只跑會綠的那一邊沒有價值，因為它證明不了洞是真的。
 
 想當練習題的話，改 `before/` 裡的檔案再跑一次，看第一個情境的數字有沒有掉到 0。
 
 ## 授權
 
-MIT。recipe 直接抄進你的專案，不用問。
+MIT。要把 recipe 複製進自己的專案，不必另外取得授權；若該份會重用其他目錄，記得連相依檔案一起帶走。

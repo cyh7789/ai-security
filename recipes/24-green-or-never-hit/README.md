@@ -1,6 +1,6 @@
 # 24：全綠的測試，是防住了還是根本沒打到
 
-對應 Day 24（發表後補連結）。
+對應 [Day 24](https://ithelp.ithome.com.tw/articles/10404722)。
 
 Day 23 交下來一張攻擊面清單（`../23-what-can-actually-reach-it/surface.tsv`），
 上面標了哪幾條路徑到得了。這一份把那些路徑變成一組固定的、每次都再打一遍的案例，

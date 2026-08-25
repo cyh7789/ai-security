@@ -1,6 +1,6 @@
 # 10 指令跟資料，接起來之後還分得開嗎
 
-對應 Day 10（發表後補直接連結，先放[系列頁](https://ithelp.ithome.com.tw/users/20138924/ironman/9086)）。
+對應 [Day 10](https://ithelp.ithome.com.tw/articles/10402365)。
 
 ```bash
 node show-payload.mjs "這個產品有保固嗎"       # 真正送進模型的那一串長什麼樣
