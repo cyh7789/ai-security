@@ -3,7 +3,7 @@
 //   node pair.mjs <舊 results.tsv> <新 results.tsv> <arm> <欄名>
 //
 // 為什麼不看總數：8/17 那兩輪 split 的 outverdict 總數是 10 對 8，只差兩條，
-// 逐條配對卻有 4/12 翻面（兩個方向各兩條）。總數的差距小可以是兩邊各翻一半
+// 逐條配對卻有 4/12 反過來（兩個方向各兩條）。總數的差距小可以是兩邊各翻一半
 // 剛好抵銷，所以「總數穩」證明不了「同一條鏈重跑會得到同一個判決」。
 // 這兩個數字重跑得出來：
 //   node pair.mjs runs/2026-08-17/results.tsv runs/2026-08-17b/results.tsv split outverdict
@@ -47,11 +47,11 @@ console.log(`arm=${arm}  欄=${col}  配得起來 ${runs.length} 條`);
 for (const r of runs) {
   const same = A.get(r) === B.get(r);
   if (!same) flipped++;
-  console.log(`  run ${r.padStart(2)}  ${A.get(r)} → ${B.get(r)}  ${same ? "" : "翻面"}`);
+  console.log(`  run ${r.padStart(2)}  ${A.get(r)} → ${B.get(r)}  ${same ? "" : "反過來"}`);
 }
 
 // 總數那一行只對判決欄有意義（數 flag 幾條）。任意欄名都寫死數 "flag"
-// 會讓非判決欄一律報 0，然後印出「總數完全一樣但逐條翻面」這種跟事實相反的結論，
+// 會讓非判決欄一律報 0，然後印出「總數完全一樣但逐條反過來」這種跟事實相反的結論，
 // 而這支工具存在的理由正是防止總數騙人。所以其他欄改印逐值分佈。
 const dist = (m) => {
   const c = new Map();
@@ -64,4 +64,4 @@ if (col === "outverdict") {
 } else {
   console.log(`\n分佈：舊 ${dist(A)}｜新 ${dist(B)}`);
 }
-console.log(`逐條：${flipped} / ${runs.length} 翻面`);
+console.log(`逐條：${flipped} / ${runs.length} 條反過來`);

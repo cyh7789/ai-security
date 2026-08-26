@@ -5,7 +5,7 @@
 #
 # 做法是暫時去 recipe 18 的黑名單裡加一個詞，重跑一次 demo，然後還原。
 # 這支腳本會動到另一個 recipe 的檔案，所以還原走 trap：中途 Ctrl-C 也會還原。
-# 跑完自己會核對檔案有沒有回到原樣，沒回到就報紅。這種腳本最糟的失敗是
+# 跑完自己會核對檔案有沒有回到原樣，沒回到就判沒過。這種腳本最糟的失敗是
 # 「示範跑完了，然後把別人的判準留在改過的狀態」。
 set -u
 set -o pipefail
@@ -55,8 +55,8 @@ trap restore EXIT INT TERM
 printf "改沒餵進去的\tinput-gate 判準版本\t%s\n" "$outside"
 
 fail=0
-[ "$before" != "$after" ] || { echo "紅：判準改了，版本號沒變。"; fail=1; }
-[ "$before" = "$outside" ] || { echo "紅：改了沒餵進雜湊的地方，版本號竟然變了。"; fail=1; }
-[ "$before" = "$back" ] || { echo "紅：還原之後版本號對不回去，gates.mjs 可能沒還原乾淨。"; fail=1; }
+[ "$before" != "$after" ] || { echo "沒過：判準改了，版本號沒變。"; fail=1; }
+[ "$before" = "$outside" ] || { echo "沒過：改了沒餵進雜湊的地方，版本號竟然變了。"; fail=1; }
+[ "$before" = "$back" ] || { echo "沒過：還原之後版本號對不回去，gates.mjs 可能沒還原乾淨。"; fail=1; }
 [ "$fail" = 0 ] && echo "餵進去的改了號碼就變，沒餵進去的改了號碼不動，還原之後回到原值。"
 exit "$fail"

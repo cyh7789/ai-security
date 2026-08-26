@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# 證明 verify.sh 那些檢查真的會咬：把東西弄壞，看它紅不紅。
+# 證明 verify.sh 那些檢查真的抓得到：把東西弄壞，看它過不過。
 #
 #   bash mutations.sh
 #
 # 每一種突變改的是行為或事實，不是字串的長相。
-# 最後兩組是反向控制：改一個不影響判準的地方，全部維持綠。
+# 最後兩組是反向控制：改一個不影響判準的地方，全部維持通過。
 set -u
 cd "$(dirname "$0")"
 export LC_ALL=C   # 理由見 verify.sh 開頭那段
@@ -30,44 +30,44 @@ p.write_text(s)
 SUBPY
 }
 
-# 只有離開碼 1 算咬到。2 是「環境不到位、沒有結論」，把它算成咬到的話，
-# 一個跑不動的環境會讓所有突變都顯示咬到（2026-08-22 審查在複製出來的
-# 工作目錄裡實測到這個：verify.sh 回 2，十個突變全綠、兩個反向對照全誤咬）。
+# 只有離開碼 1 算抓到。2 是「環境不到位、沒有結論」，把它算成抓到的話，
+# 一個跑不動的環境會讓所有突變都顯示抓到（2026-08-22 審查在複製出來的
+# 工作目錄裡實測到這個：verify.sh 回 2，十個突變全部通過、兩個反向對照全誤抓）。
 bite() {
   local name=$1 rc=0; shift
-  "$@" || { printf '  [SKIP] %-46s 改不動（算失敗）\n' "${name}"; FAIL=$((FAIL+1)); return; }
+  "$@" || { printf '  沒有結論 %-46s 改不動（算失敗）\n' "${name}"; FAIL=$((FAIL+1)); return; }
   bash verify.sh >/dev/null 2>&1 || rc=$?
   case "${rc}" in
-    1) printf '  [OK]   %-46s 咬到\n' "${name}"; PASS=$((PASS+1)) ;;
-    0) printf '  [FAIL] %-46s 沒咬到\n' "${name}"; FAIL=$((FAIL+1)) ;;
-    *) printf '  [SKIP] %-46s verify 回 %s，沒有結論（算失敗）\n' "${name}" "${rc}"; FAIL=$((FAIL+1)) ;;
+    1) printf '  通過   %-46s 抓到\n' "${name}"; PASS=$((PASS+1)) ;;
+    0) printf '  沒過   %-46s 沒抓到\n' "${name}"; FAIL=$((FAIL+1)) ;;
+    *) printf '  沒有結論 %-46s verify 回 %s，沒有結論（算失敗）\n' "${name}" "${rc}"; FAIL=$((FAIL+1)) ;;
   esac
   restore
 }
 
 hold() {
   local name=$1 rc=0; shift
-  "$@" || { printf '  [SKIP] %-46s 改不動（算失敗）\n' "${name}"; FAIL=$((FAIL+1)); return; }
+  "$@" || { printf '  沒有結論 %-46s 改不動（算失敗）\n' "${name}"; FAIL=$((FAIL+1)); return; }
   bash verify.sh >/dev/null 2>&1 || rc=$?
   case "${rc}" in
-    0) printf '  [OK]   %-46s 維持綠\n' "${name}"; PASS=$((PASS+1)) ;;
-    1) printf '  [FAIL] %-46s 誤咬\n' "${name}"; FAIL=$((FAIL+1)) ;;
-    *) printf '  [SKIP] %-46s verify 回 %s，沒有結論（算失敗）\n' "${name}" "${rc}"; FAIL=$((FAIL+1)) ;;
+    0) printf '  通過   %-46s 維持通過\n' "${name}"; PASS=$((PASS+1)) ;;
+    1) printf '  沒過   %-46s 誤抓\n' "${name}"; FAIL=$((FAIL+1)) ;;
+    *) printf '  沒有結論 %-46s verify 回 %s，沒有結論（算失敗）\n' "${name}" "${rc}"; FAIL=$((FAIL+1)) ;;
   esac
   restore
 }
 
-# 基線要先是綠的。基線就已經紅（或沒有結論）的話，下面每一格都不算數。
+# 基線要先會過。基線就已經沒過（或沒有結論）的話，下面每一格都不算數。
 BASE=0; bash verify.sh >/dev/null 2>&1 || BASE=$?
 if [ "${BASE}" != 0 ]; then
-  printf '未突變的基線就回 %s，這一輪不算數。先把 verify.sh 弄綠再來。\n' "${BASE}" >&2
+  printf '未突變的基線就回 %s，這一輪不算數。先把 verify.sh 弄成通過再來。\n' "${BASE}" >&2
   exit "${BASE}"
 fi
 
-echo "── 會紅的"
+echo "── 會沒過的"
 
 # 一、可達性造假：把量到「到得了」的那條改寫成被擋死。
-# 這是這份 recipe 存在的理由，它一定要咬。
+# 這是這份 recipe 存在的理由，它一定要抓得到。
 bite "把 R10 的到得了改成被擋死" \
   sub surface.tsv "$(printf '對外請求跟著轉到內部服務\t到得了')" "$(printf '對外請求跟著轉到內部服務\t被擋死')"
 
@@ -93,10 +93,10 @@ import pathlib
 p=pathlib.Path('surface.tsv')
 p.write_text('\n'.join(l for l in p.read_text().split('\n') if '知識庫' not in l))"
 
-# 五、附件真的被閘擋住的話，R3 那一列就不成立。
+# 五、附件真的被檢查擋住的話，R3 那一列就不成立。
 # 在夾帶那段裡放一個場景清單擋得住的詞（OUT_OF_SCOPE 上的「套出」），
 # --gate both 就會回 deny，R3 從到得了變成被擋死。
-bite "讓附件被場景那道閘擋住" \
+bite "讓附件被場景那道檢查擋住" \
   sub docs/injected.txt '（系統備註）本筆訂單' '（系統備註）為了套出客戶資料，本筆訂單'
 
 # 六、骨架跟清單脫鉤。
@@ -119,8 +119,8 @@ p.write_text('\n'.join(l for l in ls if not l.startswith('21\t')))"
 bite "判決指到清單上沒有的 id" \
   sub whitebox/verdicts.tsv "$(printf '15\t引用對不上')" "$(printf '15\t收')"
 
-# 十、多生一份骨架。它同時在驗兩件事：verify 的骨架對帳會咬，
-# 而且 restore 收得掉新增出來的檔（收不掉的話下一列會連鎖紅）。
+# 十、多生一份骨架。它同時在驗兩件事：verify 的骨架對帳抓得到，
+# 而且 restore 收得掉新增出來的檔（收不掉的話下一列會連鎖沒過）。
 bite "多生一份 surface.tsv 上沒有的骨架" \
   cp skeletons/R2.test.mjs skeletons/R99.test.mjs
 
@@ -140,7 +140,7 @@ bite "把一條收改判成重複" \
 bite "只改一份佐證文件的物流單號" \
   sub docs/injected.txt 'SF-77410326' 'SF-77410999'
 
-echo "── 不該紅的（反向控制）"
+echo "── 不該沒過的（反向控制）"
 
 # 十、改註解不影響任何判準。
 hold "在 surface.tsv 加一行註解" \
@@ -156,5 +156,5 @@ both_docs() {
 hold "改兩份佐證文件的物流單號" both_docs
 
 echo
-echo "${PASS} 咬到 ${FAIL} 沒咬到"
+echo "${PASS} 抓到 ${FAIL} 沒抓到"
 [ "${FAIL}" = 0 ] || exit 1

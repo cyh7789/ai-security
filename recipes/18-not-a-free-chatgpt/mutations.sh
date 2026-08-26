@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# 證明 verify.sh 那些檢查真的會紅：把行為弄壞，看對應那條有沒有咬到。
+# 證明 verify.sh 那些檢查真的會沒過：把行為弄壞，看對應那條有沒有抓到。
 #
 #   bash mutations.sh
 #
-# 每一種突變改的是行為（閘的判斷、判準看哪一欄、公開紀錄與資料的對應），不是字串。
-# 最後一組是反向控制：改一個不影響行為的地方，全部都要維持綠。
+# 每一種突變改的是行為（檢查的判斷、判準看哪一欄、公開紀錄與資料的對應），不是字串。
+# 最後一組是反向控制：改一個不影響行為的地方，全部都要維持通過。
 set -u
 cd "$(dirname "$0")"
 
 PASS=0; FAIL=0
 # 用 tar 不用 cp：突變會碰到 prompts/ 與 runs/ 底下的檔，攤平備份會還原到錯的地方。
-# 備份清單漏一個檔，那個突變跑完不會還原，下一列就假紅（8/15 recipe 17 踩過）。
+# 備份清單漏一個檔，那個突變跑完不會還原，下一列就誤報（8/15 recipe 17 踩過）。
 BACKUP=$(mktemp -d)/snap.tar
 tar cf "${BACKUP}" gates.mjs classify.mjs chain.mjs cost.mjs summarise.mjs \
   stub-model.sh README.md verify.sh control/gate-cases.tsv \
@@ -32,13 +32,13 @@ trap 'restore; rm -rf "$(dirname "${BACKUP}")"' EXIT
 
 bite() {
   local name=$1 want=$2; shift 2
-  # SKIP 要算失敗。錨點被一次無害的 refactor 改掉，就會靜靜少一種而總計照樣是 0 紅
-  # ——跟 check-index.sh 要解決的那件事同型：數字變了沒有人在看。
-  "$@" || { printf '  [SKIP] %-48s 改不動（算失敗）\n' "${name}"; FAIL=$((FAIL+1)); return; }
+  # SKIP 要算失敗。錨點被一次無害的 refactor 改掉，就會靜靜少一種而總計照樣是 0 個沒過
+  #，跟 check-index.sh 要解決的那件事同型：數字變了沒有人在看。
+  "$@" || { printf '  沒有結論 %-48s 改不動（算失敗）\n' "${name}"; FAIL=$((FAIL+1)); return; }
   if bash verify.sh "${want}" >/dev/null 2>&1; then
-    printf '  [FAIL] %-48s 第 %s 條沒咬到\n' "${name}" "${want}"; FAIL=$((FAIL+1))
+    printf '  沒過   %-48s 第 %s 條沒抓到\n' "${name}" "${want}"; FAIL=$((FAIL+1))
   else
-    printf '  [OK]   %-48s 第 %s 條咬到\n' "${name}" "${want}"; PASS=$((PASS+1))
+    printf '  通過   %-48s 第 %s 條抓到\n' "${name}" "${want}"; PASS=$((PASS+1))
   fi
   restore
 }
@@ -54,17 +54,20 @@ p.write_text(s)
 SUBPY
 }
 
-echo "=== 前三道閘的判斷 ==="
-bite "場景檢查改成無條件放行" 5 sub gates.mjs '  return { allow: false, reason: "不在這個客服 bot 的場景清單上" };' '  return { allow: true, reason: "放行" };'
+echo "=== 前三道檢查的判斷 ==="
+bite "場景檢查改成無條件放行" 5 sub gates.mjs '  return { allow: false, code: "SCENARIO_MISS", reason: "不在這個客服 bot 的場景清單上" };' '  return { allow: true, code: "SCENARIO_OK", reason: "放行" };'
 bite "允許清單清空，變成一律拒絕" 4 sub gates.mjs 'export const SCENARIO = {' 'export const SCENARIO = {}; const UNUSED_SCENARIO = {'
-bite "那層黑名單拿掉" 6 sub gates.mjs 'export const OUT_OF_SCOPE = ["騙", "詐", "冒充", "假冒", "偽裝成", "誘導", "套出"];' 'export const OUT_OF_SCOPE = [];'
-bite "黑名單只留「騙」，漏掉「冒充」" 3 sub gates.mjs 'export const OUT_OF_SCOPE = ["騙", "詐", "冒充", "假冒", "偽裝成", "誘導", "套出"];' 'export const OUT_OF_SCOPE = ["騙"];'
+bite "那層黑名單拿掉" 6 sub gates.mjs 'export const OUT_OF_SCOPE = ["詐", "冒充", "假冒", "偽裝成", "誘導", "套出"];' 'export const OUT_OF_SCOPE = [];'
+bite "黑名單只留「詐」，漏掉「冒充」" 3 sub gates.mjs 'export const OUT_OF_SCOPE = ["詐", "冒充", "假冒", "偽裝成", "誘導", "套出"];' 'export const OUT_OF_SCOPE = ["詐"];'
 bite "次數上限拉到無限" 7 sub gates.mjs '  perMinute: 20,' '  perMinute: Number.MAX_SAFE_INTEGER,'
-bite "次數閘改成一律拒絕" 8 sub gates.mjs '  if (win.length >= LIMITS.perMinute) {' '  if (true) {'
+bite "次數檢查改成一律拒絕" 8 sub gates.mjs '  if (win.length >= LIMITS.perMinute) {' '  if (true) {'
 bite "視窗長度改成零，誰都不會累積" 7 sub gates.mjs 'now - t < 60_000' 'now - t < 0'
-bite "長度閘的比較反過來" 9 sub gates.mjs '  return n > LIMITS.maxChars' '  return n < LIMITS.maxChars'
+bite "長度檢查的比較反過來" 9 sub gates.mjs '  return n > LIMITS.maxChars' '  return n < LIMITS.maxChars'
 bite "長度上限拉到無限" 9 sub gates.mjs '  maxChars: 2000,' '  maxChars: Number.MAX_SAFE_INTEGER,'
 bite "長度改數 UTF-16 單元而不是字" 20 sub gates.mjs '  const n = [...String(text)].length;' '  const n = String(text).length;'
+# 上面那條驗的是判斷弄壞會不會被抓到，這條驗的是格子少一個會不會被抓到。
+# 兩件事分開：run-cases.sh 少跑一格照樣是 0 個沒過、離開碼 0。
+bite "gate-cases.tsv 註解掉一列" 20 sub control/gate-cases.tsv "$(printf 'length-over\t')" "$(printf '#length-over\t')"
 
 echo
 echo "=== 第四道 ==="
@@ -75,7 +78,7 @@ bite "分類器改成看指示句就好" 10 sub stub-model.sh '      *"帳號"*|
 echo
 echo "=== 鏈與判準 ==="
 bite "輸入側判決被無視，全部照送" 21 sub chain.mjs '    if (!r.allow) {' '    if (false) {'
-bite "只跑第一道閘就算過" 21 sub chain.mjs 'const ORDER = ["rate", "length", "scenario"];' 'const ORDER = ["rate"];'
+bite "只跑第一道檢查就算過" 21 sub chain.mjs 'const ORDER = ["rate", "length", "scenario"];' 'const ORDER = ["rate"];'
 bite "組合後的全文寫進檔案" 12 sub chain.mjs '  ({ verdict, reason } = await classify(joined, ccmd));' '  (await import("node:fs")).writeFileSync("leak.txt", joined); ({ verdict, reason } = await classify(joined, ccmd));'
 # 8/17 補：GUARD_LOG 是新開的第二條落檔路徑。一段沒有句末標點、只用逗號串起來的回覆
 # 會被當成「一句」整段寫出去，繞過「組合後全文不落檔」。承重的那一層是長度上限
@@ -124,21 +127,21 @@ bite "classify.mjs 的佔位聲明被拿掉" 19 sub classify.mjs '是 Day 26 的
 bite "攻擊集那條的載體改回 input" 18 sub ../14-same-attacks-every-time/attacks.jsonl '"carrier":"requests"' '"carrier":"input"'
 
 echo
-echo "=== 反向控制：不影響行為的改動，全部要維持綠 ==="
+echo "=== 反向控制：不影響行為的改動，全部要維持通過 ==="
 # 錨點打錯會被 || true 吞掉，那一半就沒改到。8/16 的錨點寫「前面三道」，
 # 檔案裡是「前三道」，所以 gates.mjs 一個字都沒動，而第 19 條正是 grep 它的註解。
-for pair in "gates.mjs|// 四道閘。前三道看送進來的|// 四道閘。頭三道看送進來的" \
+for pair in "gates.mjs|// 四道檢查。前三道看送進來的|// 四道檢查。頭三道看送進來的" \
             "chain.mjs|// 一整條鏈跑一次|// 一條鏈跑一次"; do
   IFS='|' read -r f a b <<< "${pair}"
-  sub "${f}" "${a}" "${b}" || { printf '  [FAIL] 反向對照的錨點在 %s 找不到\n' "${f}"; FAIL=$((FAIL+1)); }
+  sub "${f}" "${a}" "${b}" || { printf '  沒過   反向對照的錨點在 %s 找不到\n' "${f}"; FAIL=$((FAIL+1)); }
 done
 if bash verify.sh >/dev/null 2>&1; then
-  printf '  [OK]   %-48s 全部維持綠\n' "只改註解"; PASS=$((PASS+1))
+  printf '  通過   %-48s 全部維持通過\n' "只改註解"; PASS=$((PASS+1))
 else
-  printf '  [FAIL] %-48s 改註解也紅了\n' "只改註解"; FAIL=$((FAIL+1))
+  printf '  沒過   %-48s 改註解也沒過\n' "只改註解"; FAIL=$((FAIL+1))
 fi
 restore
 
-WANT_TOTAL=32   # 突變列數加反向對照那一列。改表就改這個數字。
-printf '\n%s 種咬到 %s 種沒咬到（預期 %s 種）\n' "${PASS}" "${FAIL}" "${WANT_TOTAL}"
+WANT_TOTAL=33   # 突變列數加反向對照那一列。改表就改這個數字。
+printf '\n%s 種抓到 %s 種沒抓到（預期 %s 種）\n' "${PASS}" "${FAIL}" "${WANT_TOTAL}"
 [ "${FAIL}" -eq 0 ] && [ "${PASS}" -eq "${WANT_TOTAL}" ]

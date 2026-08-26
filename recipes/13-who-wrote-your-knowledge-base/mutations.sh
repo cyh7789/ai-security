@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# 把功能一個一個弄壞，看 verify.sh 有沒有轉紅。
+# 把功能一個一個弄壞，看 verify.sh 有沒有沒過。
 #
 #   bash mutations.sh
 #
-# 為什麼要有這支：一份全綠的 verify.sh 證明不了任何事，因為「這條檢查會不會失敗」
+# 為什麼要有這支：一份全部通過的 verify.sh 證明不了任何事，因為「這條檢查會不會失敗」
 # 跟「這條檢查現在通過」是兩個問題。
 #
 # 每一條都在複本上動手，原檔不碰。最後一條是**反向對照**：
-# 改一個不影響行為的地方，這時候 verify.sh 應該還是全綠。
-# 沒有這一條的話，「什麼都會讓它紅」跟「它咬得準」分不開。
+# 改一個不影響行為的地方，這時候 verify.sh 應該還是全部通過。
+# 沒有這一條的話，「什麼都會讓它沒過」跟「它抓得準」分不開。
 
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 BAD=0
 
-# 用 node 改檔，不用 sed：BSD 跟 GNU 的 sed 行為不同，而「替換沒套用卻被當成綠」
+# 用 node 改檔，不用 sed：BSD 跟 GNU 的 sed 行為不同，而「替換沒套用卻被當成通過」
 # 正好是這支要抓的那種假訊號。node 找不到目標字串的時候會直接喊。
 sub() { # sub <檔> <原字串> <新字串>
   node -e '
@@ -33,7 +33,7 @@ workdir() {
   printf '%s' "${w}"
 }
 
-try() { # try <說明> <預期會紅的條號，空白分隔> <改法函式>
+try() { # try <說明> <預期會沒過的條號，空白分隔> <改法函式>
   local what="$1" expect="$2" fn="$3"
   local work; work=$(workdir)
   if ! (cd "${work}" && "${fn}"); then
@@ -41,9 +41,9 @@ try() { # try <說明> <預期會紅的條號，空白分隔> <改法函式>
   fi
   local red=""
   for n in ${expect}; do
-    if (cd "${work}" && bash verify.sh "${n}" >/dev/null 2>&1); then red="${red} 第${n}條沒紅"; fi
+    if (cd "${work}" && bash verify.sh "${n}" >/dev/null 2>&1); then red="${red} 第${n}條沒抓到"; fi
   done
-  if [ -z "${red}" ]; then printf '  [咬到] %s → 第 %s 條轉紅\n' "${what}" "${expect}"
+  if [ -z "${red}" ]; then printf '  [抓到] %s → 第 %s 條沒過\n' "${what}" "${expect}"
   else printf '  [漏了] %s →%s\n' "${what}" "${red}"; BAD=1; fi
   rm -rf "${work}"
 }
@@ -55,14 +55,14 @@ control() {
     printf '  [壞掉] %s：改不下去\n' "${what}"; BAD=1; rm -rf "${work}"; return
   fi
   if (cd "${work}" && bash verify.sh >/dev/null 2>&1); then
-    printf '  [對照] %s → 還是全綠，符合預期\n' "${what}"
+    printf '  [對照] %s → 還是全部通過，符合預期\n' "${what}"
   else
-    printf '  [壞掉] %s → 不該紅卻紅了，代表 verify.sh 在咬不相干的東西\n' "${what}"; BAD=1
+    printf '  [壞掉] %s → 這一條不該被抓，卻被抓到了，代表 verify.sh 在抓不相干的東西\n' "${what}"; BAD=1
   fi
   rm -rf "${work}"
 }
 
-echo "════ 把功能弄壞，看 verify.sh 咬不咬得到 ════"
+echo "════ 把功能弄壞，看 verify.sh 抓不抓得到 ════"
 
 m_nosource_group() {
   sub kb-sources.cjs '    noSource += 1;
@@ -160,5 +160,5 @@ m_cosmetic() {
 control "把一句輸出的說明換個講法" m_cosmetic
 
 echo
-[ "${BAD}" = 0 ] && echo "全部咬到，而且反向對照沒有誤咬。" || echo "有漏的，上面標了。"
+[ "${BAD}" = 0 ] && echo "全部抓到，而且反向對照沒有誤抓。" || echo "有漏的，上面標了。"
 [ "${BAD}" = 0 ]

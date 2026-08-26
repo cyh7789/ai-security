@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# 把 verify.sh 的每一條各弄壞一次，看它會不會紅。
+# 把 verify.sh 的每一條各弄壞一次，看它會不會判沒過。
 #
 #   bash mutations.sh
 #
-# 一條檢查沒有被咬過，它就只是一段跑得動的程式，不是一道閘。
-# 每個突變破壞的是機制本身（判準看錯欄、對帳拿掉、閘門永遠說好），
-# 不是刪掉我自己加的那幾行。刪除式的突變會咬到，但它證明不了那條檢查有在看什麼。
+# 一條檢查沒有真的抓到過東西，它就只是一段跑得動的程式，不是一道檢查。
+# 每個突變破壞的是機制本身（判準看錯欄、對帳拿掉、檢查永遠說好），
+# 不是刪掉我自己加的那幾行。刪除式的突變會抓到，但它證明不了那條檢查有在看什麼。
 set -u
 cd "$(dirname "$0")"
 export LC_ALL=C
@@ -28,32 +28,32 @@ for i in range(2,len(sys.argv),2):
     s=s.replace(a,b)
 io.open(p,"w",encoding="utf8").write(s)' "$@"; }
 
-# 基線：動手之前 verify.sh 要是綠的。不先驗這件事的話，
-# 一個本來就紅的 verify 會讓每一個突變都「咬到」。
+# 基線：動手之前 verify.sh 要會過。不先驗這件事的話，
+# 一個本來就沒過的 verify 會讓每一個突變都「抓到」。
 if bash verify.sh >/dev/null 2>&1; then
-  printf '基線：verify.sh 綠\n\n'
+  printf '基線：verify.sh 通過\n\n'
 else
-  echo "基線就不是綠的，突變的結果沒有意義。先修 verify.sh。" >&2
+  echo "基線就不會過，突變的結果沒有意義。先修 verify.sh。" >&2
   exit 2
 fi
 
-bite() {  # $1=描述 $2=預期咬到的條號 $3.. = sub 的參數
+bite() {  # $1=描述 $2=預期抓到的條號 $3.. = sub 的參數
   local desc=$1 want=$2; shift 2
   sub "$@" || { printf '  跳過\t%-42s 樣式對不上\n' "${desc}"; B=$((B+1)); restore; return; }
   local out rc
   out=$(bash verify.sh 2>&1); rc=$?
   restore
-  # 只認離開碼 1。離開碼 2 是「這一跑沒有結論」，把它算成咬到的話，
+  # 只認離開碼 1。離開碼 2 是「這一跑沒有結論」，把它算成抓到的話，
   # 一個讓 verify.sh 開頭就死掉的突變會被記成成功（Day 23 付過這個學費）。
   if [ "$rc" = 1 ]; then
     local hit
-    hit=$(printf '%s' "${out}" | awk -v w="${want}" '/^=== /{n=$2} /^  紅/{print n}' | sort -u | tr '\n' ' ')
+    hit=$(printf '%s' "${out}" | awk -v w="${want}" '/^=== /{n=$2} /^  沒過/{print n}' | sort -u | tr '\n' ' ')
     case " ${hit} " in
-      *" ${want} "*) printf '  咬到\t%-42s 第 %s 條\n' "${desc}" "${want}"; G=$((G+1)) ;;
-      *) printf '  咬錯\t%-42s 預期第 %s 條，紅的是：%s\n' "${desc}" "${want}" "${hit}"; B=$((B+1)) ;;
+      *" ${want} "*) printf '  抓到\t%-42s 第 %s 條\n' "${desc}" "${want}"; G=$((G+1)) ;;
+      *) printf '  抓錯\t%-42s 預期第 %s 條，沒過的是：%s\n' "${desc}" "${want}" "${hit}"; B=$((B+1)) ;;
     esac
   else
-    printf '  沒咬到\t%-42s 離開碼 %s\n' "${desc}" "${rc}"; B=$((B+1))
+    printf '  沒抓到\t%-42s 離開碼 %s\n' "${desc}" "${rc}"; B=$((B+1))
   fi
 }
 
@@ -65,12 +65,12 @@ bite "判準改成 grep 模型的回覆" 3 run.sh \
   '  d=$(grep -c . <<< "$REPLY_FILE"; printf '"'"'%s'"'"' "$out" | awk -F'"'"'\t'"'"' '"'"'{print $6}'"'"')'
 bite "run.sh 有缺口也回 0" 4 run.sh \
   '    res=缺口; [ "$rc" -lt 1 ] && rc=1' '    res=缺口'
-bite "判「有沒有出事」改成看閘怎麼回報" 12 run.sh \
+bite "判「有沒有出事」改成看檢查怎麼回報" 12 run.sh \
   '  d=$(printf '"'"'%s'"'"' "$out" | awk -F'"'"'\t'"'"' '"'"'{print $6}'"'"')' \
   '  d=$([ "$(printf '"'"'%s'"'"' "$out" | awk -F'"'"'\t'"'"' '"'"'{print $4}'"'"')" = deny ] && echo no || echo yes)'
 bite "一條基線案例被降級成可接受" 6 cases.tsv \
-  '（agent 第六欄 deleted）	沒擋	意圖核對閘' '（agent 第六欄 deleted）	沒擋	X意圖核對閘' \
-  'C01	R4	訂單備註欄裡的系統通知口吻，走意圖核對閘	流程	擋' 'C01	R4	訂單備註欄裡的系統通知口吻，走意圖核對閘	流程	可接受'
+  '（agent 第六欄 deleted）	沒擋	意圖核對檢查' '（agent 第六欄 deleted）	沒擋	X意圖核對檢查' \
+  'C01	R4	訂單備註欄裡的系統通知口吻，走意圖核對檢查	流程	擋' 'C01	R4	訂單備註欄裡的系統通知口吻，走意圖核對檢查	流程	可接受'
 bite "collect.mjs 不再檢查期望欄的值域" 7 collect.mjs \
   'if (!["擋", "可接受"].includes(c.期望)) die' 'if (false) die'
 bite "collect.mjs 不再跟攻擊面清單對帳" 8 collect.mjs \
@@ -87,7 +87,7 @@ bite "C05 不再比對讀到的是誰的單" 13 run.sh \
 bite "核准清單改成從匯出檔自己算" 14 kb-approved.txt \
   'handbook:' '（這一份改成讀 demo/kb.jsonl 自己算）'
 # 這一條要先在本地放一份真的讀得到的副本，再把指向換過去。
-# 直接換成不存在的路徑的話，readFileSync 當場 ENOENT，咬到的是「程式掛了」，
+# 直接換成不存在的路徑的話，readFileSync 當場 ENOENT，抓到的是「程式掛了」，
 # 不是「它讀了別的檔」，而第 15 條問的是後者。
 mkdir -p demo && cp ../13-who-wrote-your-knowledge-base/demo/kb.jsonl demo/kb.jsonl
 bite "檢索改讀本地抄來的知識庫（副本真的讀得到）" 15 retrieve.mjs \
@@ -104,18 +104,18 @@ bite "collect.mjs 不再拿 reach.log 對帳" 11b collect.mjs \
   'if (dodged.length) {' 'if (false) {'
 bite "README 的條數沒跟上" 19 README.md \
   '自己的檢查，23 項' '自己的檢查，22 項'
-bite "C10 改回只問閘怎麼判" 21 run.sh \
+bite "C10 改回只問檢查怎麼判" 21 run.sh \
   'node intake.mjs --typed' 'node ../21-did-it-come-back/regress.mjs --only'
-bite "斷言退回排除式（測試入口不再咬得到真的退步）" 22 cases.test.mjs \
+bite "斷言退回排除式（測試入口不再抓得到真的退步）" 22 cases.test.mjs \
   '      ["符合", "缺口"].includes(result),' '      true ||["符合", "缺口"].includes(result),'
 bite "run.sh 不再拿紀錄跟實測對帳" 18 run.sh \
   '  elif [ "$got" != "$now" ]; then' '  elif false; then'
 
 echo
-echo "=== 反向控制：不影響行為的改動，全部要維持綠 ==="
+echo "=== 反向控制：不影響行為的改動，全部要維持通過 ==="
 sub run.sh '# 跑 cases.tsv 上的每一個案例' '# 跑 cases.tsv 上的每一個案例（註解改過）'
-if bash verify.sh >/dev/null 2>&1; then printf '  沒誤咬\t只改註解\n'; G=$((G+1)); else printf '  誤咬\t只改註解\n'; B=$((B+1)); fi
+if bash verify.sh >/dev/null 2>&1; then printf '  沒有誤抓\t只改註解\n'; G=$((G+1)); else printf '  誤抓\t只改註解\n'; B=$((B+1)); fi
 restore
 
-printf '\n%s 種咬到 %s 種沒咬到\n' "$G" "$B"
+printf '\n%s 種抓到 %s 種沒抓到\n' "$G" "$B"
 [ "$B" = 0 ] || exit 1

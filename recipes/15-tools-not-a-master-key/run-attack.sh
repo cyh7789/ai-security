@@ -7,7 +7,7 @@
 # 條件是成對的，因為要回答的是「防護句對這條攻擊有沒有差」：
 #   internal-noguard / internal-v2    誘餌頁直接寫內網位址，差別只有防護句
 #   redirect-noguard / redirect-v2    誘餌頁寫的是文件站的網址，差別只有防護句
-#   internal-v2-gate                  同 internal-v2，但白名單閘打開
+#   internal-v2-gate                  同 internal-v2，但白名單檢查打開
 set -u
 set -o pipefail
 cd "$(dirname "$0")"

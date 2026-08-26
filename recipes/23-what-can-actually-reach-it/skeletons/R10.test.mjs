@@ -10,5 +10,5 @@
 import { test } from "node:test";
 
 test("R10 白名單網域上的 302", () => {
-  throw new Error("Day 24 要填成功條件。填之前這條測試就是紅的，這是設計。");
+  throw new Error("Day 24 要填成功條件。填之前這條測試就沒過，這是設計。");
 });

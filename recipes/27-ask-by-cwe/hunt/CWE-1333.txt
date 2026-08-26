@@ -1,0 +1,13 @@
+I'll scan the repository files for regular expressions and any patterns that could cause catastrophic backtracking (nested quantifiers, recursive patterns, or overlapping repetitions). I'll look for common regex syntax in source files (e.g., patterns like (?: ... )+ or (?: ... )+), and any use of regex in file reads or processing.
+
+Checking server/files.js: it uses fs.readFile and only constructs a target path; no regex is used, so it's not vulnerable.
+
+Checking server/health.js: no regex usage.
+
+Checking server/orders.js: no regex usage.
+
+Checking src/format.js: contains Intl.NumberFormat and Intl.DateTimeFormat calls; these are safe.
+
+Checking src/api.js: uses fetch; no regex.
+
+None of the files contain suspicious regex patterns that could lead to exponential backtracking.

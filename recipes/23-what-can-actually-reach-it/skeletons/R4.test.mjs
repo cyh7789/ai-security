@@ -1,4 +1,4 @@
-// R4　訂單備註欄 → delete_order 遇上意圖核對閘
+// R4　訂單備註欄 → delete_order 遇上意圖核對檢查
 //
 // 這份是骨架，Day 24 要填的是成功條件，不是這裡的敘述。
 // 今天量到的可達性：到得了
@@ -10,5 +10,5 @@
 import { test } from "node:test";
 
 test("R4 訂單備註欄", () => {
-  throw new Error("Day 24 要填成功條件。填之前這條測試就是紅的，這是設計。");
+  throw new Error("Day 24 要填成功條件。填之前這條測試就沒過，這是設計。");
 });

@@ -4,7 +4,7 @@
 #   bash verify.sh        跑全部三個
 #   bash verify.sh 2      只跑第 2 個
 #
-# 全部在 mktemp -d 裡進行，不碰你的任何檔案，跑完自動清掉。
+# 整支跑在 mktemp -d 開的暫存目錄裡，不碰你的任何檔案，跑完自動刪掉。
 # 情境 1 需要 gitleaks，系統沒裝會自己抓一份到暫存目錄（用完刪掉，不會裝進系統）。
 # 情境 2 要連外網打兩家的公開端點，用的是明顯無效的假金鑰，不會動到任何帳號。
 
@@ -12,9 +12,9 @@ set -u
 ONLY="${1:-}"
 PASS=0; FAIL=0; SKIP=0
 hdr()  { printf '\n\033[1m=== %s ===\033[0m\n' "$1"; }
-ok()   { printf '  \033[32m[OK]\033[0m   %s\n' "$1"; PASS=$((PASS+1)); }
-bad()  { printf '  \033[31m[FAIL]\033[0m %s\n' "$1"; FAIL=$((FAIL+1)); }
-skip() { printf '  \033[33m[SKIP]\033[0m %s\n' "$1"; SKIP=$((SKIP+1)); }
+ok()   { printf '  \033[32m通過\033[0m   %s\n' "$1"; PASS=$((PASS+1)); }
+bad()  { printf '  \033[31m沒過\033[0m %s\n' "$1"; FAIL=$((FAIL+1)); }
+skip() { printf '  \033[33m沒有結論\033[0m %s\n' "$1"; SKIP=$((SKIP+1)); }
 want() { [ -z "$ONLY" ] || [ "$ONLY" = "$1" ]; }
 G()    { git -c user.email=t@t -c user.name=t -c init.defaultBranch=main "$@"; }
 
@@ -189,11 +189,11 @@ printf '%s' "$FIXED_OUT" | grep -qi 'curl:' \
 fi
 
 # ─────────────────────────────────────────────────────────────
-printf '\n════════ %s 綠 / %s 紅 / %s 跳過 ════════\n' "$PASS" "$FAIL" "$SKIP"
+printf '\n════════ 通過 %s／沒過 %s／沒有結論 %s ════════\n' "$PASS" "$FAIL" "$SKIP"
 
 # 離開碼的意思，全 repo 一致（Day 22 定的）：
-#   0 綠，而且真的驗過了
-#   1 紅，這是你要它擋你的那種
+#   0 全部通過，而且真的驗過了
+#   1 有沒過的，這是你要它擋你的那種
 #   2 環境不到位或有節被跳過，沒有結論。跳過不是通過
 [ "${FAIL}" != 0 ] && exit 1
 [ "${SKIP}" != 0 ] && exit 2

@@ -5,7 +5,7 @@
 #   第 1 節  本機。它同時是後面每一條比較的對照組
 #   第 2 節  容器，預設全關。掛載清單、家目錄讀不讀得到、連不連得出去
 #   第 3 節  一發問四件事：/tmp 能寫、其他地方不能寫、capability 清空、不能提權
-#   第 4 節  陷阱：只多加一個 -v 把家目錄掛進去，第 2 節的結論就整條翻掉
+#   第 4 節  陷阱：只多加一個 -v 把家目錄掛進去，第 2 節的結論就整條不成立
 #
 # 這份腳本自己的判準只有一條：**每一條「找不到」都要有一條「找得到」撐著。**
 # 腳本沒跑起來、掛載沒生效、容器裡沒有 curl，症狀跟隔離成功長得一模一樣。
@@ -26,9 +26,9 @@ case "$ONLY" in
      exit 2 ;;
 esac
 PASS=0; FAIL=0; SKIP=0
-ok()   { printf '  [OK]   %s\n' "$1"; PASS=$((PASS+1)); }
-bad()  { printf '  [FAIL] %s\n' "$1"; FAIL=$((FAIL+1)); }
-skip() { printf '  [SKIP] %s\n' "$1"; SKIP=$((SKIP+1)); }
+ok()   { printf '  通過   %s\n' "$1"; PASS=$((PASS+1)); }
+bad()  { printf '  沒過   %s\n' "$1"; FAIL=$((FAIL+1)); }
+skip() { printf '  沒有結論 %s\n' "$1"; SKIP=$((SKIP+1)); }
 want() { [ -z "$ONLY" ] || [ "$ONLY" = "$1" ]; }
 
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -56,12 +56,12 @@ if want 1 || want 4; then
   printf '%s\n' "$HOST_OUT" | sed 's/^/  | /'
 fi
 # 這一條不綁 want 1。綁了的話 `bash verify.sh 2` 會繞過對照組，
-# 五個路徑一個都不存在的機器上照樣拿到「容器裡讀不到」的綠燈
+# 五個路徑一個都不存在的機器上照樣拿到「容器裡讀不到」而算通過
 if [ -n "$HOST_READ" ]; then
   want 1 && ok "本機讀得到 $(printf '%s\n' "$HOST_READ" | grep -c .) 個家目錄裡的檔案，後面的比較有對照組"
 else
   # 這是「沒有結論」不是「抓到問題」：沒有對照組，後面的比較量不出東西。
-  # 8/21 之前這裡只能報紅，因為離開碼只有 0 跟 1，報綠等於假綠。
+  # 8/21 之前這裡只能判沒過，因為離開碼只有 0 跟 1，算通過就是假通過。
   # 有了 2 之後就不必再選那個妥協。CI 的 runner 家目錄是空的，第一次跑就撞到。
   skip "本機這五個路徑一個都讀不到，這台機器上這組比較沒有鑑別力。請改 suspect.sh 的清單成你真的有的檔案"
 fi
@@ -71,16 +71,16 @@ if want 1; then
 fi
 
 finish() {
-  printf '\n════════ %s 綠 / %s 紅 / %s 跳過 ════════\n' "$PASS" "$FAIL" "$SKIP"
+  printf '\n════════ 通過 %s／沒過 %s／沒有結論 %s ════════\n' "$PASS" "$FAIL" "$SKIP"
   if [ "$SKIP" -gt 0 ]; then
-    printf '跳過的那幾節沒有結論，所以離開碼算它不通過。\n'
+    printf '跳過的那幾節沒有結論，所以離開碼算它沒過。\n'
     printf '`bash verify.sh && echo 通過` 不該在一台完全沒有容器隔離的機器上印出那句話。\n'
   fi
   if [ $((PASS + FAIL + SKIP)) -eq 0 ]; then
     printf '一項檢查都沒有執行，這不算通過\n' >&2
     exit 1
   fi
-  # 離開碼：0 綠、1 紅、2 沒有結論（Day 22 的公約）
+  # 離開碼：0 全部通過、1 有沒過的、2 沒有結論（Day 22 的公約）
   [ "$FAIL" != 0 ] && exit 1
   [ "$SKIP" != 0 ] && exit 2
   exit 0
@@ -90,7 +90,7 @@ finish() {
 # ── 沒有可用的容器 CLI 就到此為止 ────────────────────────
 if [ -z "$DOCKER" ]; then
   if [ -n "$ENGINE_DOWN" ]; then
-    # 原本這裡報紅，理由是「這不是這台機器不適用，是你要驗的東西壞了」。
+    # 原本這裡判沒過，理由是「這不是這台機器不適用，是你要驗的東西壞了」。
     # 8/21 改成 2：公約定義的是「這一跑有沒有結論」，不是「該不該有人去修」。
     # 引擎沒回應的時候這支沒有結論，那是事實；「先把它叫起來」訊息裡講就好。
     for n in 2 3 4; do want $n && skip "找到${ENGINE_DOWN} 但引擎沒有回應。先把它叫起來，這一跑沒有結論"; done
@@ -142,7 +142,7 @@ if want 2; then
   # 掛載清單。只問那幾條固定路徑不夠：家目錄多掛一份到 /host2、
   # 或整個根目錄掛到 /hostroot，那種探針完全瞎掉，而 token 拿得到（8/06 實測）
   # 前綴要有邊界。沒有的話 -v "$HOME:/devdata:ro" 或 -v "$HOME:/etc/hostroot:ro"
-  # 會被當成 /dev 與 /etc 濾掉，整個家目錄在容器裡而這條印綠燈（8/06 實測）。
+  # 會被當成 /dev 與 /etc 濾掉，整個家目錄在容器裡而這條照樣算通過（8/06 實測）。
   # /etc 底下 docker 只會塞那三個檔案，其餘一律要現形
   SEEN=$("$DOCKER" run "${BASE[@]}" "$IMAGE" -c \
     'awk "\$2 !~ /^\/(proc|sys|dev)(\/|\$)/ && \$2 !~ /^\/etc\/(resolv\.conf|hosts|hostname)\$/ && \$2 != \"/\" {print \$2}" /proc/self/mounts | sort -u' 2>&1)
@@ -202,7 +202,7 @@ if want 3; then
   printf '\n=== 3. 一發問四件事：/tmp 能寫、其他地方不能寫、capability 清空、不能提權 ===\n'
   # 「/work 寫不進去 + /tmp 寫得進去」只驗得到 :ro 那個 bind。
   # --read-only 與 --tmpfs 一起消失的時候，/tmp 寫得進去是因為整個根檔案系統都能寫，
-  # 而那兩條照樣印同一句綠燈（8/06 實測）。所以對照組要換方向：
+  # 而那兩條照樣印同一句通過（8/06 實測）。所以對照組要換方向：
   # 問的不是「/tmp 寫不寫得進去」，是「/tmp 以外的地方寫不寫得進去」
   R=$("$DOCKER" run "${BASE[@]}" "$IMAGE" -c '
     test -e /work/suspect.sh || { echo NOMOUNT; exit 9; }
@@ -247,7 +247,7 @@ if want 4; then
     # 「掛載有沒有生效」要用掛載本身證明，不要用「讀不讀得到」。
     # 原生 Linux 上 ~/.ssh 是 0700，容器裡的 uid 連 traverse 都不行，
     # [ -e ] 直接是假，於是計進 ABSENT。用讀取當判準的話，
-    # 一個掛載完全正常的 Linux 讀者會拿到「掛了卻找不到」的紅燈，被叫去查一個不存在的問題
+    # 一個掛載完全正常的 Linux 讀者會因為「掛了卻找不到」而沒過，被叫去查一個不存在的問題
     MNT=$("$DOCKER" run "${BASE[@]}" -v "$HOME:/host:ro" "$IMAGE" -c \
       'awk "\$2 == \"/host\" {print \"MOUNTED\"}" /proc/self/mounts' 2>&1)
     R_READ=$(cnt "$TP" READ); R_UNREAD=$(cnt "$TP" UNREADABLE)
@@ -279,7 +279,7 @@ if want 4; then
   elif [ -z "$HOST_READ" ]; then
     skip "本機一個 canary 都沒有，掛不掛家目錄都讀不到，這一條問不出東西"
   else
-    bad "掛了家目錄卻還是讀不到，那第 2 節的綠燈是別的原因造成的，要查清楚"
+    bad "掛了家目錄卻還是讀不到，那第 2 節會過是別的原因造成的，要查清楚"
   fi
 fi
 

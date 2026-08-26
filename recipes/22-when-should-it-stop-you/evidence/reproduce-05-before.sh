@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 把 05 修好之前那一版拉出來跑一次，證明「500 秒、0 綠 26 紅」不是我記錯的。
+# 把 05 修好之前那一版拉出來跑一次，證明「500 秒、0 條通過、26 條沒過」不是我記錯的。
 #
 #   bash reproduce-05-before.sh
 #
@@ -39,7 +39,7 @@ E=$(date +%s)
   printf '...\n'
   tail -2 "${LOG}"
   printf '\n離開碼 %s，跑了 %s 秒，FAIL 有 %s 行\n' \
-    "${RC}" "$((E-S))" "$(grep -c '\[FAIL\]' "${LOG}")"
+    "${RC}" "$((E-S))" "$(grep -c '^  沒過' "${LOG}")"
 } > "${OUT}" 2>&1
 
 echo "存了 ${OUT}："

@@ -9,7 +9,7 @@
 #   bash verify.sh          跑全部
 #   bash verify.sh 3        只跑第 3 個
 #
-# 全部在 mktemp -d 裡進行，不碰你的任何檔案。
+# 整支跑在 mktemp -d 開的暫存目錄裡，不碰你的任何檔案。
 
 set -u
 ONLY=${1:-}
@@ -136,5 +136,5 @@ fixed "跑之前先 rm -f" "$K"
 [ "$M" -gt 0 ] && [ "$K" = 0 ] && ok "curl 連不上時不會覆蓋 -o 的檔案" || no "情境沒造對"
 fi
 
-printf '\n════════ %s 綠 / %s 紅 ════════\n' "$PASS" "$FAIL"
+printf '\n════════ 通過 %s／沒過 %s ════════\n' "$PASS" "$FAIL"
 [ "$FAIL" = 0 ]

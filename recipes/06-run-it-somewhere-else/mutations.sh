@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # 故障注入：把隔離弄壞，看 verify.sh 會不會發現。
 #
-# 一份講「假綠燈」的驗證腳本，自己也可能發假綠燈。分辨的方法只有一個：
-# **故意把要驗的東西弄壞，看它會不會紅。** 不會紅的那一條檢查沒有價值。
+# 一份講「假通過」的驗證腳本，自己也可能給出假通過。分辨的方法只有一個：
+# **故意把要驗的東西弄壞，看它會不會判沒過。** 不會的那一條檢查沒有價值。
 #
 # 這支不會動到你的檔案：每一種突變都複製到 mktemp -d 裡改，跑完刪掉。
 #
@@ -10,13 +10,13 @@
 #   bash mutations.sh          全部
 #   bash mutations.sh 3        只跑第 3 種
 #
-# 下面十三種都是真的發生過的假綠燈。前七種是第一版就有的，
+# 下面十三種都是真的發生過的假通過。前七種是第一版就有的，
 # 後六種是外部審查打回來才補的，其中 10 與 11 只是把 8 換一個掛載點的名字。
 
 set -u
 ONLY="${1:-}"
 HERE=$(cd "$(dirname "$0")" && pwd)
-PASS=0; FAIL=0; N=0
+PASS=0; FAIL=0; UNRESOLVED=0; N=0
 
 # 每一種：<說明> <要改哪個檔> <perl 運算式> <跑哪一節>
 run_case() {
@@ -27,12 +27,19 @@ run_case() {
   cp "$HERE"/*.sh "$HERE"/Dockerfile "$WS"/ 2>/dev/null
   perl -0pi -e "$expr" "$WS/$file" || { printf '  第 %s 種：突變寫不進去\n' "$N"; rm -rf "$WS"; return 1; }
   OUT=$(cd "$WS" && bash verify.sh "$sect" 2>&1)
-  REDS=$(printf '%s' "$OUT" | grep -c '\[FAIL\]')
+  REDS=$(printf '%s' "$OUT" | grep -c '^  沒過')
+  SKIPS=$(printf '%s' "$OUT" | grep -c '^  沒有結論')
   if [ "$REDS" -gt 0 ]; then
-    printf '  [抓到] %-38s 第 %s 節 %s 個紅燈\n' "$desc" "$sect" "$REDS"
+    printf '  [抓到] %-38s 第 %s 節 %s 個沒過\n' "$desc" "$sect" "$REDS"
     PASS=$((PASS+1))
+  elif [ "$SKIPS" -gt 0 ]; then
+    # 那一節整節被跳過（沒有 docker、拉不到映像檔），一條沒過都沒有，
+    # 不代表突變沒被抓到。算成漏掉會冤枉它，算成抓到就是這支自己在造假通過。
+    printf '  [沒有結論] %-34s 第 %s 節整節跳過：%s\n' "$desc" "$sect" \
+      "$(printf '%s' "$OUT" | grep -m1 '^  沒有結論' | sed 's/^ *沒有結論 *//')"
+    UNRESOLVED=$((UNRESOLVED+1))
   else
-    printf '  [漏掉] %-38s 第 %s 節 全綠，這是假綠燈\n' "$desc" "$sect"
+    printf '  [漏掉] %-38s 第 %s 節 全部通過，這是假通過\n' "$desc" "$sect"
     printf '%s\n' "$OUT" | sed 's/^/         /'
     FAIL=$((FAIL+1))
   fi
@@ -55,5 +62,6 @@ run_case '掛到 /etc/hostroot'             verify.sh  's{MOUNTS=\(-v "\$HERE/su
 run_case '第 4 節不掛家目錄'                verify.sh  's{-v "\$HOME:/host:ro" }{}g'                4
 run_case '偽造的 suspect.sh（印字樣就 exit 0）' suspect.sh 's{\A.*\z}{#!/bin/sh\necho "── 它同時做得到的事 ──"\necho "連不出去"\nexit 0\n}s' 2
 
-printf '\n════════ 抓到 %s 種 / 漏掉 %s 種 ════════\n' "$PASS" "$FAIL"
-[ "$FAIL" = 0 ]
+printf '\n════════ 抓到 %s 種 / 漏掉 %s 種 / 沒有結論 %s 種 ════════\n' "$PASS" "$FAIL" "$UNRESOLVED"
+[ "$UNRESOLVED" = 0 ] || printf '沒有結論的那幾種不要當成通過。\n'
+[ "$FAIL" = 0 ] && [ "$UNRESOLVED" = 0 ]

@@ -6,8 +6,8 @@ set -u
 cd "$(dirname "$0")"
 
 PASS=0; FAIL=0
-ok()  { PASS=$((PASS+1)); printf '  \033[32m綠\033[0m %s\n' "$1"; }
-no()  { FAIL=$((FAIL+1)); printf '  \033[31m紅\033[0m %s\n' "$1"; }
+ok()  { PASS=$((PASS+1)); printf '  \033[32m通過\033[0m %s\n' "$1"; }
+no()  { FAIL=$((FAIL+1)); printf '  \033[31m沒過\033[0m %s\n' "$1"; }
 chk() { # chk <說明> <實際> <期望>
   if [ "$2" = "$3" ]; then ok "$1（$2）"; else no "$1：期望 $3，實際 $2"; fi
 }
@@ -50,7 +50,7 @@ start before || exit 1
 BP=$PORT
 
 # 前端那一份。第一版只 grep 檔案裡有沒有那兩串字，然後印「瀏覽器會擋」。
-# 那是假綠燈：把 type 換成 text，min/max 就不生效了，而字串還在，照樣印綠。
+# 那是假通過：把 type 換成 text，min/max 就不生效了，而字串還在，照樣印通過。
 # 現在改成從 server 把表單抓下來，而且連 type 一起檢查。
 # 「瀏覽器真的會擋」還是要你自己打開那一頁看，這條只證明送到瀏覽器的那份宣告了什麼。
 FORM=$(curl -s "http://127.0.0.1:$BP/")
@@ -103,13 +103,13 @@ fi
 
 chk "被擋之後那筆沒有被改動" "$(qty "$AP")" 2
 
-# 正對照：全部擋掉也會讓上面幾條變綠。要證明合法的那些還過得去。
-# 邊界值 1 跟 10 一定要打。只打中間的 3，`<= 1 || >= 10` 這種差一個等號的寫法照樣全綠。
+# 正對照：全部擋掉也會讓上面幾條變成通過。要證明合法的那些還過得去。
+# 邊界值 1 跟 10 一定要打。只打中間的 3，`<= 1 || >= 10` 這種差一個等號的寫法照樣全部通過。
 for v in 3 1 10; do
   code -X PATCH -H 'content-type: application/json' -d "{\"quantity\":$v}" "http://127.0.0.1:$AP/orders/1" > /dev/null
   chk "合法的 quantity=$v 仍然改得動" "$(qty "$AP")" "$v"
 done
-# POST 也要有自己的正對照，不然「POST 一律拒絕」會讓上面那兩條變綠。
+# POST 也要有自己的正對照，不然「POST 一律拒絕」會讓上面那兩條變成通過。
 OK_BODY=$(body -X POST -H 'content-type: application/json' -d '{"itemId":"sku-1","quantity":4}' "http://127.0.0.1:$AP/orders")
 OK_ID=$(newid "$OK_BODY")
 if [ -n "$OK_ID" ]; then
@@ -147,8 +147,8 @@ edge_check "after（表單與端點共用 rules.mjs）" "$AP" PATCH
 
 echo
 echo "── 收尾：這支腳本自己有沒有收乾淨 ──"
-# 第一版沒有這條，於是 `BP=$(start before)` 的子 shell 問題漏了兩支 node，畫面上九條全綠。
-# 第二版有這條但它是假的：那個寫法連 PID 都沒記到，迴圈跑零次也印綠。
+# 第一版沒有這條，於是 `BP=$(start before)` 的子 shell 問題漏了兩支 node，畫面上九條全部通過。
+# 第二版有這條但它是假的：那個寫法連 PID 都沒記到，迴圈跑零次也印通過。
 # 所以這裡先驗「記到了幾支」再驗「還活著幾支」，前者不對的話後者沒有意義。
 STARTED=$(grep -c . "$PIDFILE" 2>/dev/null); STARTED=${STARTED:-0}
 chk "起過的 server 都有被記下來" "$STARTED" 2
@@ -158,5 +158,5 @@ LEFT=0
 while read -r p; do [ -n "$p" ] && kill -0 "$p" 2>/dev/null && LEFT=$((LEFT+1)); done < "$PIDFILE"
 chk "跑完沒有留下背景行程" "$LEFT" 0
 
-printf '════ %s 綠 %s 紅 ════\n' "$PASS" "$FAIL"
+printf '════ 通過 %s、沒過 %s ════\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

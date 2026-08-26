@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# 這一份的閘。跑完會告訴你哪一條沒過。
+# 這一份的檢查。跑完會告訴你哪一條沒過。
 #
 #   bash verify.sh
 #
-# 離開碼照 Day 22 那份公約：0 全過、1 有東西紅了、2 環境不到位（沒有結論）。
+# 離開碼照 Day 22 那份公約：0 全過、1 有東西沒過、2 環境不到位（沒有結論）。
 set -u
 cd "$(dirname "$0")"
 
 # 這一行是必要的，不是習慣問題。macOS 內建的 awk（version 20200816）在
 # en_US.UTF-8 底下，$n == "<任何含中文的字串>" 一律成立：拿一個資料裡根本
 # 沒有的值去比，三列全中（2026-08-22 實測，LC_ALL=C 下才回正確的 0）。
-# 這份的判準幾乎每一條都在比中文欄位，不釘住 locale 的話會整片假綠。
+# 這份的判準幾乎每一條都在比中文欄位，不釘住 locale 的話會整片假通過。
 # Day 16 的 verify.sh:270 就撞過同一件事，我今天又踩了一次。
 export LC_ALL=C
 PASS=0
 FAIL=0
-ok()   { PASS=$((PASS+1)); printf '  綠\t%s\n' "$1"; }
-bad()  { FAIL=$((FAIL+1)); printf '  紅\t%s\n' "$1"; [ $# -gt 1 ] && printf '    \t%s\n' "$2"; }
+ok()   { PASS=$((PASS+1)); printf '  通過\t%s\n' "$1"; }
+bad()  { FAIL=$((FAIL+1)); printf '  沒過\t%s\n' "$1"; [ $# -gt 1 ] && printf '    \t%s\n' "$2"; }
 
 command -v node >/dev/null || { echo "沒有 node，沒有結論"; exit 2; }
 
@@ -70,14 +70,14 @@ MISMATCH=$(awk -F'\t' '
   {
     s = stop[$1]
     if (s == "") { print $1"：reach.log 裡沒有這一列"; next }
-    want = (s ~ /^到達/ || s ~ /^抵達/) ? "到得了" : (s ~ /^閘:/) ? "被擋死" : (s ~ /^沒驗過/) ? "沒驗過" : "看不懂"
+    want = (s ~ /^到達/ || s ~ /^抵達/) ? "到得了" : (s ~ /^檢查:/) ? "被擋死" : (s ~ /^沒驗過/) ? "沒驗過" : "看不懂"
     if (want != $5) print $1"：清單寫 "$5"，實跑是 "s" 也就是 "want
   }
 ' /tmp/d23-reach.$$ <(data))
 [ -z "$MISMATCH" ] && ok "每一列的可達都跟實跑一致" || bad "清單跟實跑對不上" "$MISMATCH"
 
 # reach.log 本身也要是這一版跑出來的。第一版只比對列數，於是那份日誌可以
-# 停在舊的狀態而每一條都綠，而 recipe 24 的 collect.mjs 拿它當第三個來源，
+# 停在舊的狀態而每一條都通過，而 recipe 24 的 collect.mjs 拿它當第三個來源，
 # 靠的正是「它是實跑的結果不是誰的判斷」（2026-08-23 二審抓到）。
 STALE=$(diff /tmp/d23-reach.$$ reach.log 2>/dev/null | head -6)
 [ -z "$STALE" ] && ok "reach.log 就是這一版跑出來的" \
@@ -109,7 +109,7 @@ HASASSERT=$(grep -lE 'assert|strictEqual|deepEqual' skeletons/*.test.mjs 2>/dev/
 
 # 骨架不准偷偷混進 Day 14 的固定攻擊集。
 # grep 的離開碼 2（檔案讀不到）跟 1（沒找到）不能走同一個分支，
-# 不然檔案不見的時候這條會印綠，而那是「跑不動卻宣稱驗過」。
+# 不然檔案不見的時候這條會印通過，而那是「跑不動卻宣稱驗過」。
 A14=../14-same-attacks-every-time/attacks.jsonl
 if [ ! -r "$A14" ]; then
   echo "  讀不到 ${A14}，沒有結論"; rm -f /tmp/d23-reach.$$; exit 2
@@ -153,12 +153,12 @@ STILL=$(grep -v '^#' whitebox/verdicts.tsv | awk -F'\t' '$2=="引用對不上"{p
 
 echo "── 六、佐證文件那條路徑"
 
-# R2 跟 R3 的差別要真的存在：--gate both 得真的把附件送進場景那道閘。
+# R2 跟 R3 的差別要真的存在：--gate both 得真的把附件送進場景那道檢查。
 # 不然那兩列在講同一件事，R3 是空的。
 B=$(node intake.mjs --doc docs/injected.txt --gate both 2>/dev/null | cut -f4)
 T=$(node intake.mjs --doc docs/injected.txt 2>/dev/null | cut -f4)
 [ "$T" = "allow(NOT_GATED)" ] && [ "$B" = "allow(SCENARIO_OK)" ] \
-  && ok "typed 沒閘到附件、both 閘到了而且照樣放行" \
+  && ok "typed 沒檢查到附件、both 檢查到了而且照樣放行" \
   || bad "R2 與 R3 的差別不成立" "typed=${T} both=${B}"
 
 # 兩份佐證文件只差最後那段。差太多的話 R2 量到的就不只是那一段。
@@ -171,6 +171,6 @@ E=$(diff docs/order-shot.txt docs/injected.txt | grep -c '^<')
   || bad "兩份佐證文件多了 ${D} 行、少了 ${E} 行，不是只差夾帶那一段"
 
 echo
-echo "${PASS} 綠 ${FAIL} 紅"
+echo "通過 ${PASS}、沒過 ${FAIL}"
 rm -f /tmp/d23-reach.$$
 [ "$FAIL" = 0 ] || exit 1

@@ -4,20 +4,21 @@
 #   bash verify.sh        # 全部
 #   bash verify.sh 5      # 只跑第 5 條（編號到 20）
 #
-# 每一條問自己那句話：把行為弄壞（不是把字改掉），這條會不會轉紅？
-# 證明它們真的會紅：bash mutations.sh
+# 每一條問自己那句話：把行為弄壞（不是把字改掉），這條會不會沒過？
+# 證明它們真的會沒過：bash mutations.sh
 set -u
 cd "$(dirname "$0")"
 ONLY="${1:-}"
 # 沒有 node 的環境裡，下面好幾條的預期值與實際值會同時變成空字串而「相等」，
-# 於是它們會綠。整輪還是會紅，但個別檢查假通過會讓人看錯是哪裡壞了。
+# 於是它們會通過。整輪還是會沒過，但個別檢查假通過會讓人看錯是哪裡壞了。
 command -v node >/dev/null || { echo "這份要 Node 才能跑，先裝 Node 再來。"; exit 2; }
 command -v curl >/dev/null || { echo "probe.sh 要 curl。"; exit 2; }
 
-PASS=0; FAIL=0
+PASS=0; FAIL=0; SKIP=0
 case_() { printf '\n=== %s ===\n' "$1"; }
-ok()   { printf '  [OK]   %s\n' "$1"; PASS=$((PASS+1)); }
-bad()  { printf '  [FAIL] %s\n' "$1"; FAIL=$((FAIL+1)); }
+ok()   { printf '  通過   %s\n' "$1"; PASS=$((PASS+1)); }
+bad()  { printf '  沒過   %s\n' "$1"; FAIL=$((FAIL+1)); }
+skip() { printf '  沒有結論 %s\n' "$1"; SKIP=$((SKIP+1)); }
 want() { [ -z "${ONLY}" ] || [ "${ONLY}" = "$1" ]; }
 TSV=runs/2026-08-15/results.tsv
 
@@ -65,7 +66,7 @@ if want 4; then
   A=$(bash probe.sh after  | sed -n 's/^  \/orders\/9999：//p')
   B=$(bash probe.sh before | sed -n 's/^  \/orders\/9999：//p')
   # server 起不來的話 A 是空的，而空字串裡當然沒有表名。
-  # 沒有這兩行的話，「把 server 弄壞」會讓這條檢查變綠。
+  # 沒有這兩行的話，「把 server 弄壞」會讓這條檢查變成通過。
   case "${A}" in
     "" | [!{]*) bad "after 那台沒有回 JSON，這條檢查沒跑到：${A}"; A="__沒跑到__" ;;
   esac
@@ -245,7 +246,7 @@ if want 17; then
   case_ "17 recipe 14 收得到第 17 條"
   R14=../14-same-attacks-every-time
   if [ ! -f "${R14}/attacks.jsonl" ]; then
-    ok "沒有 recipe 14，跳過（只下載這一個目錄的話這條不算）"
+    skip "沒有 recipe 14，這一條沒有結論（只下載這一個目錄的話它不算）"
   else
     grep -q '"key":"16-idor"' "${R14}/attacks.jsonl" \
       && grep -q '"carrier":"http"' "${R14}/attacks.jsonl" \
@@ -253,7 +254,7 @@ if want 17; then
   fi
 fi
 
-# ── 18 危險呼叫的靜態掃描本身要會咬 ──────────────────────────
+# ── 18 危險呼叫的靜態掃描本身要抓得到 ──────────────────────────
 if want 18; then
   case_ "18 生成的程式碼裡有 child_process 的話掃得到"
   printf 'import { execSync } from "node:child_process";\nexport default () => {};\n' > gen/_verify.mjs
@@ -269,7 +270,7 @@ if want 21; then
   OUT=$(bash enum-all.sh)
   # 這裡不用 awk 比中文字串：macOS 內建的 awk 拿兩個中文字串比會一律相等
   # （$2=="分得開" 與 $2=="分不開" 同時對 96 列全中，2026-08-15 實測），
-  # 於是這條會變成永遠紅或永遠綠。改用整欄的逐字比對。
+  # 於是這條會變成永遠沒過或永遠通過。改用整欄的逐字比對。
   SPLIT=$(printf '%s\n' "${OUT}" | grep -cF "$(printf '\t分得開\t')" || true)
   NAMES=$(printf '%s\n' "${OUT}" | grep -F "$(printf '\t分得開\t')" | cut -f1 | tr '\n' ' ')
   # list 那組全部回 403，但它對存不存在一視同仁，所以一份都不該分得開。
@@ -282,7 +283,7 @@ fi
 # ── 22 量測條件紀錄要對得上資料本身 ──────────────────────────
 # 這個洞是外審抓到的：補跑了一組之後 results.tsv 變 96 列，
 # run-conditions.txt 還寫著七組 84 發，而所有檢查都只讀 results.tsv，
-# 於是「稿子對得上資料」全綠，資料對不上量測條件卻沒人管。
+# 於是「稿子對得上資料」全部通過，資料對不上量測條件卻沒人管。
 # 公開紀錄自相矛盾比任何一個推論錯誤都嚴重，因為這份的信用全靠它。
 if want 22; then
   case_ "22 run-conditions.txt 的組數與發數對得上 results.tsv"
@@ -292,7 +293,7 @@ if want 22; then
   MISS=""
   grep -q "八組，每組 12 發，共 ${N} 發" "${RC}" || MISS="${MISS} 發數（資料是 ${N}）"
   [ "${G}" = 8 ] || MISS="${MISS} 組數（資料是 ${G}）"
-  # 每一組的名字都要在條件紀錄裡出現，補跑一組卻忘了寫進去就會紅
+  # 每一組的名字都要在條件紀錄裡出現，補跑一組卻忘了寫進去就會沒過
   for a in $(awk -F'\t' 'NR>1{print $2}' "${TSV}" | sort -u); do
     grep -qE "^  ${a} " "${RC}" || MISS="${MISS} ${a} 沒列在條件紀錄裡"
   done
@@ -304,7 +305,7 @@ if want 22; then
 fi
 
 # ── 23 陽性對照要留得下逐字判決 ──────────────────────────────
-# 96 發全綠時，「模型都寫對了」跟「判準壞了」從結果本身分不出來。
+# 96 發全部通過時，「模型都寫對了」跟「判準壞了」從結果本身分不出來。
 # 分得出來的唯一辦法是把一份已知不綁的丟進同一支 judge，而且把那一列留在紀錄裡。
 if want 23; then
   case_ "23 已知不綁的那份，judge 現在判它外洩"
@@ -324,7 +325,7 @@ if want 24; then
   MISS=""
   grep -q "bash verify.sh              # ${N} 條檢查" README.md || MISS="${MISS} 開頭那行（實際 ${N} 條）"
   grep -q "bash verify.sh        # ${N} 條" README.md || MISS="${MISS} 驗證那節（實際 ${N} 條）"
-  grep -q "弄壞 ${M} 種，看那 ${N} 條會不會紅" README.md || MISS="${MISS} 突變那行（實際 ${M} 種）"
+  grep -q "弄壞 ${M} 種，看那 ${N} 條會不會判沒過" README.md || MISS="${MISS} 突變那行（實際 ${M} 種）"
   grep -q "弄壞 ${M} 種" mutations.sh || MISS="${MISS} mutations.sh 自己印的種數"
   [ -z "${MISS}" ] && ok "${N} 條檢查、${M} 種突變，README 與腳本一致" || bad "對不上：${MISS}"
 fi
@@ -340,5 +341,9 @@ if want 25; then
     && ok "${NOW}（紀錄那份一致）" || bad "現跑「${NOW}」、紀錄「${REC}」"
 fi
 
-printf '\n%s 綠 %s 紅\n' "${PASS}" "${FAIL}"
-[ "${FAIL}" = 0 ]
+printf '\n通過 %s、沒過 %s、沒有結論 %s\n' "${PASS}" "${FAIL}" "${SKIP}"
+# 離開碼：0 全部通過、1 有沒過的、2 環境不到位或有節沒結論（Day 22 的公約）。
+# 跳過不算通過，所以它要把離開碼推到 2。
+[ "${FAIL}" != 0 ] && exit 1
+[ "${SKIP}" != 0 ] && exit 2
+exit 0

@@ -1,28 +1,28 @@
-# 24 支檢查的分級。這是判準的正本。
+# 27 支檢查的分級。這是判準的正本。
 # workflow 不會讀它（沒有那個機制），兩邊都是手寫的，
 # 由 check-convention.sh 比對它們沒有分岔。22 自己漏了一天就是因為以前連那道比對都沒有。
 #
 # 級別：
-#   A  擋合併。紅了代表這個 PR 弄壞了已經談好的東西
-#   B  只警告。照樣跑、照樣顯示紅，不列進必要檢查。多半是環境的事
-#   C  缺口樁。釘的是現況不是願望，紅了代表缺口狀態變了，要人重新做取捨
+#   A  擋合併。沒過代表這個 PR 弄壞了已經談好的東西
+#   B  只警告。照樣跑、照樣顯示沒過，不列進必要檢查。多半是環境的事
+#   C  缺口樁。釘的是現況不是願望，沒過代表缺口狀態變了，要人重新做取捨
 #   D  定時。不綁 PR，外面自己會變的東西
 #   E  本機。託管 runner 上沒有那個硬體，跑幾次都只會回 2。
-#      放進矩陣的話那個 job 永遠是「沒有結論」，而一個永遠不會綠的 job
+#      放進矩陣的話那個 job 永遠是「沒有結論」，而一個永遠不會通過的 job
 #      三週後就沒人點進去看，跟按 skip 的差別只在誰按（Day 22 的原話）。
 #      E 級的代價要說清楚：它在 CI 上沒有任何覆蓋，只有作者本機跑過。
 #
 # 秒數是 2026-08-21 在 macOS 上序列跑一次量的（posts/day22/timing.tsv），
 # runner 上會不一樣，這一欄只用來看數量級。
 recipe	級別	秒	為什麼
-01-frontend-api-key	B	3	要 npx 抓 esbuild。沒網路的時候它現在回 2（8/21 之前回 0，綠得什麼都沒驗）
+01-frontend-api-key	B	3	要 npx 抓 esbuild。沒網路的時候它現在回 2（8/21 之前回 0，過得什麼都沒驗）
 02-secret-scan-blind-spots	A	1	全離線，驗的是掃描的六個假通過
 03-revoke-verification	D	5	打 api.github.com 抓 gitleaks、打 api.anthropic.com。那件事在外面自己變
 04-what-not-to-paste	A	0	離線、決定性
-05-innerhtml-fake-green	B	4	要瀏覽器。剛從 500 秒 26 紅修成 4 秒 7 綠，先跑穩再升 A
-06-run-it-somewhere-else	B	2	要容器引擎。本機紅是 Docker Desktop 沒開，那不是這個 PR 的事
+05-innerhtml-fake-green	B	4	要瀏覽器。剛從 500 秒 26 條沒過修成 4 秒 7 條通過，先跑穩再升 A
+06-run-it-somewhere-else	B	2	要容器引擎。本機沒過是 Docker Desktop 沒開，那不是這個 PR 的事
 07-does-it-even-exist	D	18	打 registry.npmjs.org。最慢的一支，而且問的是外面的狀態
-08-what-can-it-touch	A	6	離線。裡面的 docker 全是設定檔字串，不需要引擎（8/21 實測 74 綠）
+08-what-can-it-touch	A	6	離線。裡面的 docker 全是設定檔字串，不需要引擎（8/21 實測 74 條通過）
 09-which-side-validated	A	1	離線，兩台 127.0.0.1 的 server
 10-instructions-vs-data	A	1	離線，不打模型
 11-what-the-model-reads	A	5	離線
@@ -32,12 +32,13 @@ recipe	級別	秒	為什麼
 15-tools-not-a-master-key	A	1	離線
 16-who-checks-the-owner	A	5	離線。Day 16 那條偵測規則本身是另一個 D 的工作，不是這支
 17-words-into-actions	A	1	離線
-18-not-a-free-chatgpt	A	3	四道閘的行為基準
+18-not-a-free-chatgpt	A	3	四道檢查的行為基準
 19-straight-into-the-shell	A	1	離線
 20-what-did-it-block	A	1	離線
 21-did-it-come-back	A	1	已修過的洞的回歸，整套裡最該擋你的一支。但 b1 那條例外，見下
 22-when-should-it-stop-you	A	2	離線。8/22 補上：這一份定了離開碼公約，自己卻沒進矩陣
-23-what-can-actually-reach-it	A	1	離線，只起 127.0.0.1 上的示範服務。它比對的是攻擊面清單跟實跑，清單造假會紅
+23-what-can-actually-reach-it	A	1	離線，只起 127.0.0.1 上的示範服務。它比對的是攻擊面清單跟實跑，清單造假就不會通過
 24-green-or-never-hit	A	1	離線。固定攻擊集。run.sh 正常就回 1（七條已知缺口），CI 跑的是 verify.sh 跟 collect.mjs --check
 25-not-graded-by-its-author	A	1	離線。before／after 對照紀錄。verify.sh 會把 before 那個 commit 的程式取出來重跑，需要 git 歷史（checkout 要抓得到那幾個 commit）
-26-what-low-looks-like	E	70	要 Apple Silicon 與 mlx-lm，GitHub 託管 runner 沒有。作者本機 2026-08-25 跑過 verify.sh 十綠、mutations.sh 十五列全咬到（每列指名哪幾條該紅）
+26-what-low-looks-like	E	70	要 Apple Silicon 與 mlx-lm，GitHub 託管 runner 沒有。作者本機 2026-08-25 跑過 verify.sh 十條通過、mutations.sh 十五列全抓到（每列指名哪幾條該沒過）
+27-ask-by-cwe	E	170	跟 26 同一套環境，託管 runner 一樣跑不動。作者本機 2026-08-26 跑過 verify.sh 十五條通過、mutations.sh 二十列全抓到

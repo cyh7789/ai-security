@@ -2,7 +2,7 @@
 # 故障注入：把腳本弄壞，看 verify.sh 會不會發現。
 #
 # 一支自己說「我分得出沒有跟沒問到」的腳本，最需要證明的就是這句話。
-# 證明的方法只有一個：故意讓它分不出來，看驗證會不會紅。不會紅的那條檢查沒有價值。
+# 證明的方法只有一個：故意讓它分不出來，看驗證會不會判沒過。不會的那條檢查沒有價值。
 #
 # 這支不會動到你的檔案：每一種突變都複製到 mktemp -d 裡改，跑完刪掉。
 #
@@ -15,7 +15,7 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 PASS=0; FAIL=0; UNTESTED=0; N=0; RAN=0
 
 # 編號打錯的話，每一種突變都被 run_case 跳過，收尾算出「抓到 0 種 / 漏掉 0 種」
-# 然後離開碼 0。一份專門用來證明「這裡沒有假綠燈」的工具，自己就不能有這種形狀。
+# 然後離開碼 0。一份專門用來證明「這裡沒有假通過」的工具，自己就不能有這種形狀。
 # 不在這裡對照可用的種類數，因為那個數字會隨著突變增加而過期；改成收尾的時候
 # 檢查到底跑了幾種（見檔尾）。這裡只擋非數字。
 case "${ONLY}" in
@@ -36,23 +36,23 @@ run_case() {
       printf '  第 %s 種：突變寫不進去\n' "${N}"; rm -rf "${WS}"; FAIL=$((FAIL+1)); return; }
   done
   if cmp -s "${HERE}/${file}" "${WS}/${file}"; then
-    printf '  [無效] %-40s 突變沒改到任何一個字，這一條沒測到東西\n' "${desc}"
+    printf '  [無效] %-40s 突變沒改到任何一個字，這一條什麼都沒驗到\n' "${desc}"
     rm -rf "${WS}"; FAIL=$((FAIL+1)); return
   fi
   OUT=$(cd "${WS}" && bash verify.sh "${sect}" 2>&1)
-  REDS=$(printf '%s' "${OUT}" | grep -c '\[FAIL\]')
-  SKIPS=$(printf '%s' "${OUT}" | grep -c '\[SKIP\]')
+  REDS=$(printf '%s' "${OUT}" | grep -c '^  沒過')
+  SKIPS=$(printf '%s' "${OUT}" | grep -c '^  沒有結論')
   if [ "${REDS}" -gt 0 ]; then
-    printf '  [抓到] %-40s 第 %s 節 %s 個紅燈\n' "${desc}" "${sect}" "${REDS}"
+    printf '  [抓到] %-40s 第 %s 節 %s 個沒過\n' "${desc}" "${sect}" "${REDS}"
     PASS=$((PASS+1))
   elif [ "${SKIPS}" -gt 0 ]; then
-    # 那一節整節被跳過（沒網路、api.npmjs.org 回 429），沒有紅燈不代表突變沒被抓到。
-    # 算成漏掉會冤枉它，算成抓到就是這支自己在造假綠燈。兩個都不對，所以單獨報。
-    printf '  [沒測到] %-38s 第 %s 節整節跳過：%s\n' "${desc}" "${sect}" \
-      "$(printf '%s' "${OUT}" | grep -m1 '\[SKIP\]' | sed 's/^ *\[SKIP\] //')"
+    # 那一節整節被跳過（沒網路、api.npmjs.org 回 429），沒有一條沒過，不代表突變沒被抓到。
+    # 算成漏掉會冤枉它，算成抓到就是這支自己在造假通過。兩個都不對，所以單獨報。
+    printf '  [沒有結論] %-36s 第 %s 節整節跳過：%s\n' "${desc}" "${sect}" \
+      "$(printf '%s' "${OUT}" | grep -m1 '^  沒有結論' | sed 's/^ *沒有結論 *//')"
     UNTESTED=$((UNTESTED+1))
   else
-    printf '  [漏掉] %-40s 第 %s 節 全綠，這是假綠燈\n' "${desc}" "${sect}"
+    printf '  [漏掉] %-40s 第 %s 節 全部通過，這是假通過\n' "${desc}" "${sect}"
     printf '%s\n' "${OUT}" | sed 's/^/         /'
     FAIL=$((FAIL+1))
   fi
@@ -129,6 +129,6 @@ if [ "${RAN}" -eq 0 ]; then
   exit 2
 fi
 
-printf '\n════════ 抓到 %s 種 / 漏掉 %s 種 / 沒測到 %s 種 ════════\n' "${PASS}" "${FAIL}" "${UNTESTED}"
-[ "${UNTESTED}" = 0 ] || printf '沒測到的那幾種這一輪沒有結論，不要當成通過。\n'
+printf '\n════════ 抓到 %s 種 / 漏掉 %s 種 / 沒有結論 %s 種 ════════\n' "${PASS}" "${FAIL}" "${UNTESTED}"
+[ "${UNTESTED}" = 0 ] || printf '沒有結論的那幾種不要當成通過。\n'
 [ "${FAIL}" = 0 ] && [ "${UNTESTED}" = 0 ]

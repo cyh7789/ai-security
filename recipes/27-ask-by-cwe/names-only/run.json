@@ -1,0 +1,35 @@
+{
+  "model": "antares-1b-mlx",
+  "cwe": "CWE-78",
+  "answer": "server/tools.js",
+  "results": [
+    {
+      "round": "real",
+      "renamed": false,
+      "alias": {
+        "server/files.js": "server/files.js",
+        "server/health.js": "server/health.js",
+        "server/orders.js": "server/orders.js",
+        "server/tools.js": "server/tools.js",
+        "src/api.js": "src/api.js",
+        "src/format.js": "src/format.js",
+        "src/render.js": "src/render.js"
+      },
+      "seconds": 4.3
+    },
+    {
+      "round": "renamed",
+      "renamed": true,
+      "alias": {
+        "server/m1.js": "server/files.js",
+        "server/m2.js": "server/health.js",
+        "server/m3.js": "server/orders.js",
+        "server/m4.js": "server/tools.js",
+        "src/m5.js": "src/api.js",
+        "src/m6.js": "src/format.js",
+        "src/m7.js": "src/render.js"
+      },
+      "seconds": 4.2
+    }
+  ]
+}

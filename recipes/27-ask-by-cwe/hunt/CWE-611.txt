@@ -1,0 +1,1 @@
+The repository contains several files that process XML documents. The key file is src/render.js, which likely renders HTML content that may include XML-like tags. This is the most likely location for CWE-611, as improper restriction of XML external entity (XXE) attacks would occur if the rendering code unmarshals or parses XML content without proper validation.

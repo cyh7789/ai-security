@@ -119,7 +119,7 @@ node detect.mjs logs/after-scan.tsv --window 60 --owners 3
 
 ```bash
 bash verify.sh        # 25 條，一發真模型都不打
-bash mutations.sh     # 弄壞 29 種，看那 25 條會不會紅
+bash mutations.sh     # 弄壞 29 種，看那 25 條會不會判沒過
 ```
 
 ## 已知的邊界

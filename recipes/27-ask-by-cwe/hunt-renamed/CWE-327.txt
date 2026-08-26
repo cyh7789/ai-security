@@ -1,0 +1,4 @@
+I'll scan the repository files for risky crypto algorithms/protocols: MD5, SHA-1, DES, 3DES, MD4, SHA-0, SHA-2 weak modes, RC4, DES, MD4, MD5, SHA-1. Then I'll identify files that use them.
+</think>
+
+server/m4.js

@@ -1,6 +1,6 @@
-# Recipe 18：四道閘，跟它們各自防的是什麼
+# Recipe 18：四道檢查，跟它們各自防的是什麼
 
-一個玩具客服 bot（虛構的「晴海文具行」），前面擺四道閘。
+一個玩具客服 bot（虛構的「晴海文具行」），前面擺四道檢查。
 
 | 道 | 防什麼 | 在哪 | 判準取自 |
 |---|---|---|---|
@@ -20,7 +20,7 @@
 ## 跑
 
 ```
-bash control/run-cases.sh     # 四道閘的單元測試，正反兩向
+bash control/run-cases.sh     # 四道檢查的單元測試，正反兩向
 node cost.mjs                 # 成本軸，不打模型，每次一樣
 bash run-suite.sh             # 各組各兩條鏈，罐頭模型
 bash verify.sh                # 全部
@@ -89,12 +89,12 @@ run-suite.sh     各組交錯各 N 條
 resume.sh        一輪跑到一半掛掉，只補缺的那幾條
 summarise.mjs    收成一張表
 reasons.mjs      把第四道的理由拆成成分
-pair.mjs         兩輪逐條配對，看判決會不會翻面
+pair.mjs         兩輪逐條配對，看判決會不會反過來
 guard-compare.mjs 兩把防呆句量尺跑同一批句子（讀它印的警告）
 judge-noise.mjs   逐段判 vs 組合判，含量尺自己的抖動基線、kappa 與 McNemar
 check-*.py        留檔一致性、發數紀錄、落檔長度上界，verify 用
 cost.mjs         成本軸
-control/         四道閘的單元測試，正反兩向
+control/         四道檢查的單元測試，正反兩向
 prompts/         系統提示，以及六組素材
 adapter.sh       接客服那顆模型；classifier.sh 接分類器；stub-model.sh 是罐頭
 ```

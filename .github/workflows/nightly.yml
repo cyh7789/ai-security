@@ -7,7 +7,7 @@ name: 定時
 # 「D 級在 nightly.yml」，而那個檔不存在，所以那兩支從來沒有被排定跑過。
 # 發現它的是 check-convention.sh 新加的那道比對（分級表對 workflow）。
 #
-# 離開碼公約跟 checks.yml 同一套：0 綠、1 紅、2 環境不到位沒有結論。
+# 離開碼公約跟 checks.yml 同一套：0 全部通過、1 有沒過的、2 環境不到位沒有結論。
 
 on:
   schedule:
@@ -35,8 +35,8 @@ jobs:
           rc=0
           bash verify.sh || rc=$?
           case "${rc}" in
-            0) echo "${{ matrix.recipe }} 綠" >> "${GITHUB_STEP_SUMMARY}" ;;
+            0) echo "${{ matrix.recipe }} 通過" >> "${GITHUB_STEP_SUMMARY}" ;;
             2) echo "${{ matrix.recipe }} 沒有結論（外部服務不到位）。跳過不是通過。" >> "${GITHUB_STEP_SUMMARY}" ;;
-            *) echo "**${{ matrix.recipe }} 紅**：外面的狀態變了，回去看那一支在問什麼。" >> "${GITHUB_STEP_SUMMARY}" ;;
+            *) echo "**${{ matrix.recipe }} 沒過**：外面的狀態變了，回去看那一支在問什麼。" >> "${GITHUB_STEP_SUMMARY}" ;;
           esac
           exit "${rc}"

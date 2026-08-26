@@ -1,5 +1,5 @@
 {
-  "model": "/Volumes/CyhSSD/Dev/models/antares-1b-mlx",
+  "model": "antares-1b-mlx",
   "files": 7,
   "total_seconds": 33.1,
   "results": [

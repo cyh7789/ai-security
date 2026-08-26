@@ -14,4 +14,4 @@
 02  <script>alert(1)</script>        錯誤判準的對照輸入
     修之前：alert 不跳，但 script 是 DOM 元素
     textContent 修之後：script 不是 DOM 元素，整串以文字顯示
-    用途：證明「只看 alert」在有洞的時候也會給你綠燈
+    用途：證明「只看 alert」在有漏洞的時候也會讓你過

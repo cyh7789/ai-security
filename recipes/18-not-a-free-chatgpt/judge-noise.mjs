@@ -46,7 +46,7 @@ for (const [arm, g] of single) {
   const d = g.filter((r) => per(r) !== r[iV]).length;
   dn += d;
   dd += g.length;
-  console.log(`  ${arm.padEnd(10)} ${d}/${g.length} 翻面`);
+  console.log(`  ${arm.padEnd(10)} ${d}/${g.length} 條反過來`);
 }
 console.log(`  合計       ${dn}/${dd}`);
 

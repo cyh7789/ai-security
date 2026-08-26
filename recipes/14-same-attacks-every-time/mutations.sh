@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# 把功能一個一個弄壞，看 verify.sh 有沒有轉紅。
+# 把功能一個一個弄壞，看 verify.sh 有沒有沒過。
 #
 #   bash mutations.sh
 #
-# 為什麼要有這支：一份全綠的 verify.sh 證明不了任何事，因為「這條檢查會不會失敗」
+# 為什麼要有這支：一份全部通過的 verify.sh 證明不了任何事，因為「這條檢查會不會失敗」
 # 跟「這條檢查現在通過」是兩個問題。
 #
 # 每一條都在複本上動手，原檔不碰。最後一條是**反向對照**：
-# 改一個不影響行為的地方，這時候 verify.sh 應該還是全綠。
-# 沒有這一條的話，「什麼都會讓它紅」跟「它咬得準」分不開。
+# 改一個不影響行為的地方，這時候 verify.sh 應該還是全部通過。
+# 沒有這一條的話，「什麼都會讓它沒過」跟「它抓得準」分不開。
 
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -16,7 +16,7 @@ ROOT=$(cd "${HERE}/.." && pwd)
 SELF=$(basename "${HERE}")
 BAD=0
 
-# 用 node 改檔，不用 sed：BSD 跟 GNU 的 sed 行為不同，而「替換沒套用卻被當成綠」
+# 用 node 改檔，不用 sed：BSD 跟 GNU 的 sed 行為不同，而「替換沒套用卻被當成通過」
 # 正好是這支要抓的那種假訊號。node 找不到目標字串的時候會直接喊。
 sub() { # sub <檔> <原字串> <新字串>
   node -e '
@@ -30,14 +30,14 @@ sub() { # sub <檔> <原字串> <新字串>
 
 # 這一份的檢查有三條會去讀隔壁的 recipe，所以複本要整棵 recipes 一起搬。
 # 只搬自己那一夾的話，第 1、2、3 條會因為找不到來源而壞掉，
-# 那是「壞掉」不是「咬到」，兩者混在一起就看不出突變有沒有真的被抓到。
+# 那是「壞掉」不是「抓到」，兩者混在一起就看不出突變有沒有真的被抓到。
 workdir() {
   local w; w=$(mktemp -d)
   cp -R "${ROOT}/." "${w}/" 2>/dev/null
   printf '%s' "${w}/${SELF}"
 }
 
-try() { # try <說明> <預期會紅的條號，空白分隔> <改法函式>
+try() { # try <說明> <預期會沒過的條號，空白分隔> <改法函式>
   local what="$1" expect="$2" fn="$3"
   local work; work=$(workdir)
   if ! (cd "${work}" && "${fn}"); then
@@ -45,14 +45,14 @@ try() { # try <說明> <預期會紅的條號，空白分隔> <改法函式>
   fi
   local red=""
   for n in ${expect}; do
-    if (cd "${work}" && bash verify.sh "${n}" >/dev/null 2>&1); then red="${red} 第${n}條沒紅"; fi
+    if (cd "${work}" && bash verify.sh "${n}" >/dev/null 2>&1); then red="${red} 第${n}條沒抓到"; fi
   done
-  if [ -z "${red}" ]; then printf '  [咬到] %s → 第 %s 條轉紅\n' "${what}" "${expect}"
+  if [ -z "${red}" ]; then printf '  [抓到] %s → 第 %s 條沒過\n' "${what}" "${expect}"
   else printf '  [漏了] %s →%s\n' "${what}" "${red}"; BAD=1; fi
   rm -rf "$(dirname "${work}")"
 }
 
-echo "把功能弄壞，看檢查會不會紅"
+echo "把功能弄壞，看檢查會不會判沒過"
 
 m01() { sub ../10-instructions-vs-data/attacks.txt 'RS-8417	忽略以上規則' 'RS-8417	忽略全部規則'; }
 try "來源那邊的攻擊改了字，清單沒重收" "1" m01
@@ -61,7 +61,7 @@ m02() { printf 'RS-0001\t新加的一條\n' >> ../10-instructions-vs-data/attack
 try "來源那邊多一條，清單沒跟上" "1 2" m02
 
 # 這一條要同時繞過兩層：CLI 的擋門與 build() 自己那句 throw。只拆其中一層的話，
-# 另一層照樣會非零退出，第 3 條不紅是對的，不是漏。
+# 另一層照樣會非零退出，第 3 條不會沒過是對的，不是漏。
 m03() { sub build-prompt.mjs 'if (!HEAD[item.carrier]) {' 'if (false) {'; \
         sub build-prompt.mjs 'const head = HEAD[item.carrier];' 'const head = HEAD[item.carrier] ?? HEAD.input;'; \
         sub build-prompt.mjs 'input: () => `' 'dom: () => `\n\n[使用者] ${item.payload}`, http: () => `\n\n[使用者] ${item.payload}`, input: () => `'; }
@@ -91,7 +91,7 @@ m09() { sub run-suite.sh 'probe "${G} 開跑"' ':'; }
 try "拿掉開跑的存活對照" "9" m09
 
 # 兩道防線擋的是同一件事（那一頭沒在回話），所以要一起拿掉才驗得到第 10 條。
-# 只拿掉其中一道的時候第 10 條不紅是對的，另一道接住了。
+# 只拿掉其中一道的時候第 10 條不會沒過是對的，另一道接住了。
 m10() { sub run-suite.sh 'probe "${G} 收尾"' ':'; \
         sub run-suite.sh 'echo "${G}/${id} 第 ${n} 發退出碼非零，這一輪不算數。" >&2; exit 3;' ':;'; \
         sub run-suite.sh '      [ -n "$reply" ] || { echo "${G}/${id} 第 ${n} 發回了空字串，這一輪不算數。" >&2; exit 3; }' '      :'; }
@@ -131,20 +131,20 @@ m15b() { sub collect.mjs '  let id = existing.get(o.key);' '  let id = null;'; \
 try "id 改回流水號，來源插一條就整組位移" "1 11" m15b
 
 m15() { sub fake-model.sh 'p>=0xE0000&&p<=0xE007F?String.fromCharCode(p-0xE0000):c' 'c'; }
-try "罐頭模型讀不到隱形碼點，那條恆綠" "6 8" m15
+try "罐頭模型讀不到隱形碼點，那條永遠通過" "6 8" m15
 
-# ── 反向對照：改一個不影響行為的地方，應該全綠 ──────────────
+# ── 反向對照：改一個不影響行為的地方，應該全部通過 ──────────────
 m16() { sub compare.mjs '兩欄一起看。' '這兩欄要一起看。'; }
 work=$(workdir)
 (cd "${work}" && m16) && {
   if (cd "${work}" && bash verify.sh >/dev/null 2>&1); then
-    printf '  [對照] 只改一句說明文字 → 還是全綠\n'
+    printf '  [對照] 只改一句說明文字 → 還是全部通過\n'
   else
-    printf '  [對照壞了] 改一句說明文字就紅了，這份檢查在看字面不是看行為\n'; BAD=1
+    printf '  [對照壞了] 改一句說明文字就沒過，這份檢查在看字面不是看行為\n'; BAD=1
   fi
 }
 rm -rf "$(dirname "${work}")"
 
 echo
-[ "${BAD}" = 0 ] && echo "全部咬到，反向對照乾淨" || echo "有漏的，上面標了"
+[ "${BAD}" = 0 ] && echo "全部抓到，反向對照乾淨" || echo "有漏的，上面標了"
 [ "${BAD}" = 0 ]

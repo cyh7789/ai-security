@@ -8,7 +8,7 @@ prompt=$(cat)
 case "$prompt" in *OK-LIVE*) printf 'OK-LIVE\n'; exit 0 ;; esac
 
 # 罐頭模型讀得到隱形碼點嗎？讀得到，它就是一段普通的字。
-# 所以這裡要先把 Unicode Tags 解回 ASCII 再找標記，不然 invisible 那條會假綠。
+# 所以這裡要先把 Unicode Tags 解回 ASCII 再找標記，不然 invisible 那條會假通過。
 mark=$(printf '%s' "$prompt" | python3 -c '
 import sys
 s = sys.stdin.read()

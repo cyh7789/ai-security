@@ -30,19 +30,19 @@ open(p, "w").write(s.replace(old, new))
 PY
 
 # 斷言一：形狀。「黑名單裡還有沒有『騙』」問的是修補的形狀，不是修補的效果。
-if grep -q '"騙"' "$GATES"; then shape="紅"; else shape="綠"; fi
+if grep -q '"騙"' "$GATES"; then shape="沒過"; else shape="通過"; fi
 
-# 斷言二：行為。同一句話送進閘，看它放行還是擋下。
+# 斷言二：行為。同一句話送進檢查，看它放行還是擋下。
 #
 # 這裡只問 B4 那一句，不跑整支 regress.mjs。表格那一行寫的是「B4 這句話會不會過」，
-# 跑整支的話收的是三條測試的總退出碼，現在剛好只有 B4 會紅所以結論一樣，
-# 哪天另外兩條在這個狀態下紅了，那行標籤就在說謊（8/20 外審抓到）。
+# 跑整支的話收的是三條測試的總退出碼，現在剛好只有 B4 會沒過所以結論一樣，
+# 哪天另外兩條在這個狀態下沒過，那行標籤就在說謊（8/20 外審抓到）。
 read -r behavior b4 <<EOF
 $(node -e '
   Promise.all([import("../18-not-a-free-chatgpt/gates.mjs"), import("node:fs")]).then(([g, fs]) => {
     const rows = fs.readFileSync("../14-same-attacks-every-time/benign.jsonl", "utf8").trim().split("\n").map(JSON.parse);
     const r = g.scenarioGate(rows.find((x) => x.id === "B4").question);
-    console.log(`${r.allow ? "綠" : "紅"} ${r.allow ? "allow" : "deny"}\t${r.reason}`);
+    console.log(`${r.allow ? "通過" : "沒過"} ${r.allow ? "allow" : "deny"}\t${r.reason}`);
   })')
 EOF
 
@@ -52,17 +52,17 @@ trap - EXIT INT TERM
 printf '判準退回只修一半（黑名單拿掉了「騙」，場景清單還沒加「公告」）\n\n'
 printf '斷言\t問的問題\t結果\n'
 printf '形狀\t黑名單裡還有沒有「騙」\t%s\n' "$shape"
-printf '行為\tB4 這句話送進閘會不會過\t%s\n' "$behavior"
+printf '行為\tB4 這句話送進檢查會不會過\t%s\n' "$behavior"
 printf '\nB4 實際的判決\t%s\n\n' "$b4"
 
 fail=0
-[ "$shape" = "綠" ] || { echo "紅：形狀斷言沒有變綠，這支示範的前提不成立了。"; fail=1; }
-[ "$behavior" = "紅" ] || { echo "紅：行為斷言竟然也綠了，那兩種斷言在這個狀態下分不出高下。"; fail=1; }
+[ "$shape" = "通過" ] || { echo "沒過：形狀斷言沒有變成通過，這支示範的前提不成立了。"; fail=1; }
+[ "$behavior" = "沒過" ] || { echo "沒過：行為斷言竟然也過了，那兩種斷言在這個狀態下分不出高下。"; fail=1; }
 # 這句話要說得準：贏的不是「行為」這個風格，是覆蓋範圍。
-# 一條寫成「黑名單沒有『騙』而且場景清單有『公告』」的形狀斷言在這裡也是紅的，
+# 一條寫成「黑名單沒有『騙』而且場景清單有『公告』」的形狀斷言在這裡也沒過，
 # 問題是你要先知道有第二層才寫得出它，而那正是這個狀態下你不知道的東西（8/20 外審抓到）。
-[ "$fail" = 0 ] && echo "形狀斷言綠、行為斷言紅：這條形狀斷言只蓋到修補的一半，而行為斷言不必先知道有幾層。"
+[ "$fail" = 0 ] && echo "形狀斷言通過、行為斷言沒過：這條形狀斷言只蓋到修補的一半，而行為斷言不必先知道有幾層。"
 
 # 還原核對。最糟的失敗是示範跑完，然後把別人的判準留在改壞的狀態。
-grep -q '"公告"' "$GATES" || { echo "紅：gates.mjs 沒有還原乾淨，場景清單裡的「公告」不見了。"; fail=1; }
+grep -q '"公告"' "$GATES" || { echo "沒過：gates.mjs 沒有還原乾淨，場景清單裡的「公告」不見了。"; fail=1; }
 exit "$fail"

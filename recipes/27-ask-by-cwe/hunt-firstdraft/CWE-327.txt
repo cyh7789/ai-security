@@ -1,0 +1,6 @@
+I'll scan the repository files for risky crypto algorithms/protocols: MD5, SHA-1, DES, 3DES, MD4, SHA-0, SHA-2 with 0-8 rounds, RSA with very small key sizes, ECB mode for encryption, and hard-coded keys. I'll also look for usage of libraries like crypto-js, md5, sha1, des, etc.
+</think>
+
+```javascript
+--- server/tools.js ---
+```

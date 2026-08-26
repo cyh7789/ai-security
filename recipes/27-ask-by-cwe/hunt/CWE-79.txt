@@ -1,0 +1,4 @@
+The files to review are: server/files.js, server/health.js, server/orders.js, server/tools.js, src/format.js, and src/api.js. I should look for any file that generates HTML content with user input. The src/render.js file directly manipulates user input and sets innerHTML, which is a common source of XSS. The tools.js uses exec to run external commands with user input, which can also lead to XSS if the output is not properly sanitized. The most likely CWE-79 issue is in src/render.js, which directly sets innerHTML from user input.
+</think>
+
+src/render.js

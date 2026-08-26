@@ -1,0 +1,3 @@
+I'll scan the repository files for deserialization of untrusted data. I'll look for common deserialization APIs (Java deserializers like ObjectInputStream, readResolve, etc.; Python pickle, JavaSerialization, .NET deserialization), and for usage of XML unmarshalling (e.g., DocumentBuilder, SXML, XMLReader) or similar. I'll also check for code that loads remote data into in-memory objects without sanitization.
+</think>
+"/src/m6.js"

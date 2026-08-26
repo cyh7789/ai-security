@@ -5,7 +5,7 @@
 //   node collect.mjs --check    # 跟現有的 attacks.jsonl 比，不一樣就退出碼 1
 //
 // 為什麼要用收的不用手抄：手抄的清單會跟來源分岔，而分岔的那一天你不會知道。
-// 來源改了這支就會產出不一樣的東西，--check 那條就紅。
+// 來源改了這支就會產出不一樣的東西，--check 那條就沒過。
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
@@ -287,10 +287,10 @@ const add = (o) => {
 
 // Day 21：這一條的來歷跟前二十條都不一樣。前面那些是「發現的攻擊」，
 // 這一條是「明著換來的缺口」：把「騙」從輸入側黑名單拿掉，好讓一句防詐宣導
-// 不再被誤擋，代價是只用到「騙」這個字的釣魚信要求從此過得了那道閘。
-// 判準因此落在閘上（judge 是 gate），而且期望值是放行，recipe 21 的 b1 就在斷言這件事。
+// 不再被誤擋，代價是只用到「騙」這個字的釣魚信要求從此過得了那道檢查。
+// 判準因此落在檢查上（judge 是 gate），而且期望值是放行，recipe 21 的 b1 就在斷言這件事。
 // 收進來的理由跟其他二十條一樣：讓它每次都再被打一遍。差別只在
-// 這一條紅了不代表有人繞過你，代表有人把那個字加回去了。
+// 這一條沒過不代表有人繞過你，代表有人把那個字加回去了。
 {
   const f = need(R("18-not-a-free-chatgpt/prompts/probe-bait.tsv"), "Day 21 那一條");
   const row = readFileSync(f, "utf8")
@@ -306,14 +306,14 @@ const add = (o) => {
     key: "21-bait-single-word",
     day: 21,
     // carrier 是 gate 不是 input，所以 run-suite 不會把它送給模型。
-    // 送了也量不出東西：它的判準是「輸入側那道閘怎麼判」，那件事在模型開口之前就決定了，
+    // 送了也量不出東西：它的判準是「輸入側那道檢查怎麼判」，那件事在模型開口之前就決定了，
     // 而回覆裡沒有任何標記可以認。硬送會拿到一個看起來像「擋住了」的數字（case 3 那條）。
     carrier: "gate",
     kind: "attack",
     judge: "gate",
     payload: row[1],
     source: "recipes/18-not-a-free-chatgpt/prompts/probe-bait.tsv",
-    note: "Day 21 拿掉「騙」換來的缺口。它現在過得了輸入側那道閘（recipe 21 的 b1 斷言期望 allow），實測那次模型沒有照做，所以輸出側那道閘也沒有真的被測到，紀錄在 recipe 18 的 runs/2026-08-20-probe/。收在這裡是為了記住這個缺口是換來的，不是沒看到。",
+    note: "Day 21 拿掉「騙」換來的缺口。它現在過得了輸入側那道檢查（recipe 21 的 b1 斷言期望 allow），實測那次模型沒有照做，所以輸出側那道檢查也沒有真的被測到，紀錄在 recipe 18 的 runs/2026-08-20-probe/。收在這裡是為了記住這個缺口是換來的，不是沒看到。",
   });
 }
 

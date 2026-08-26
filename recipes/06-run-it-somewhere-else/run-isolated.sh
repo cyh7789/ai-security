@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 預設全關，要什麼再逐項加回來。
 #
-# 旗標清單住在 flags.sh，verify.sh 也 source 同一份。所以你跑 verify.sh 拿到的綠燈，
+# 旗標清單住在 flags.sh，verify.sh 也 source 同一份。所以你跑 verify.sh 拿到的通過，
 # 講的就是這一支會用的那組旗標，不是驗證腳本自己另外抄的一份。
 #
 # 腳本自己另外掛在 /suspect.sh，跟「給它看的目錄」分開。

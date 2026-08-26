@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# 05 innerHTML 的假綠燈
+# 05 innerHTML 的假通過
 #
 # 兩組實驗：
 #   1 到 5 格  兩個版本（before / after）× 兩條攻擊輸入（script / img onerror）。
-#              要看的不是「after 全綠」，是 script 那一欄在兩個版本上長得一模一樣。
+#              要看的不是「after 全部通過」，是 script 那一欄在兩個版本上長得一模一樣。
 #              一條在有洞與修好上表現相同的檢查，不是驗證。
 #   第 6 節    同一份 before/render.js，換五種模型回法（原樣、markdown 圍籬、
 #              行內反引號、HTML escape、拒答）。圍籬擋不住，只有 escape 擋得住。
@@ -16,21 +16,21 @@
 #   bash verify.sh 6        只跑五臂那節
 #
 # 需要：bash、python3（起一個本機靜態伺服器）、一個 Chrome 或 Chromium。
-# 全部在 mktemp -d 裡進行：頁面、伺服器根目錄、Chrome 的設定檔都在裡面，跑完刪掉。
+# 整支跑在 mktemp -d 開的暫存目錄裡：頁面、伺服器根目錄、Chrome 的設定檔都在裡面，跑完刪掉。
 
 set -u
 ONLY="${1:-}"
-# 沒有這一段的話，`bash verify.sh 8` 一節都不會跑，然後印 0 綠 0 紅、結束碼 0。
-# 一份講假綠燈的腳本自己發假綠燈。不認得的節號是錯誤，不是「沒事」。
+# 沒有這一段的話，`bash verify.sh 8` 一節都不會跑，然後印通過 0、沒過 0，結束碼 0。
+# 一份講假通過的腳本自己給了一個假通過。不認得的節號是錯誤，不是「沒事」。
 case "$ONLY" in
   ''|[1-7]) ;;
   *) printf '不認得的節號：%s\n用法：bash verify.sh [1-7]，不給參數就全部跑\n' "$ONLY" >&2
      exit 2 ;;
 esac
 PASS=0; FAIL=0; SKIP=0
-ok()   { printf '  [OK]   %s\n' "$1"; PASS=$((PASS+1)); }
-bad()  { printf '  [FAIL] %s\n' "$1"; FAIL=$((FAIL+1)); }
-skip() { printf '  [SKIP] %s\n' "$1"; SKIP=$((SKIP+1)); }
+ok()   { printf '  通過   %s\n' "$1"; PASS=$((PASS+1)); }
+bad()  { printf '  沒過   %s\n' "$1"; FAIL=$((FAIL+1)); }
+skip() { printf '  沒有結論 %s\n' "$1"; SKIP=$((SKIP+1)); }
 
 HERE=$(cd "$(dirname "$0")" && pwd)
 WS=$(mktemp -d)
@@ -60,7 +60,7 @@ done
 # puppeteer 的版本號寫死（mac_arm-151.0.7922.47），它自己升到 152 之後那個路徑
 # 就不存在，一路掉到這裡，而完整版 Chrome 在這台機器上起不來也不會結束
 # （Trying to load the allocator multiple times），26 個檢查全部拿不到結果，
-# 跑滿 500 秒才紅，訊息完全不指向真正的原因。
+# 跑滿 500 秒才判沒過，訊息完全不指向真正的原因。
 case "$CH" in
   *chrome-headless-shell) : ;;
   *) printf '  [i] 用的是完整版瀏覽器 %s，不是 chrome-headless-shell。\n' "$CH"
@@ -114,8 +114,8 @@ printf '瀏覽器：%s\n' "$("$CH" --version 2>/dev/null)"
 # 8/21 在 GitHub 的 ubuntu-24.04 runner 上撞到：
 #   FATAL ... No usable sandbox! ... unprivileged user namespaces with AppArmor
 # Ubuntu 23.10 之後預設擋掉非特權的 user namespace，而這支拒絕用 --no-sandbox：
-# 關掉沙箱是把瀏覽器最外層那道隔離拿掉，不該為了讓一份資安 recipe 變綠而做。
-# 所以這裡回 2（沒有結論），不回 1（紅）。要在 CI 上真的跑，開 userns：
+# 關掉沙箱是把瀏覽器最外層那道隔離拿掉，不該為了讓一份資安 recipe 過關而做。
+# 所以這裡回 2（沒有結論），不回 1（沒過）。要在 CI 上真的跑，開 userns：
 #   sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 SMOKE=$(mktemp -d)
 if ! "$CH" --headless --disable-gpu --user-data-dir="$SMOKE/p" \
@@ -124,7 +124,7 @@ if ! "$CH" --headless --disable-gpu --user-data-dir="$SMOKE/p" \
   sed 's/^/  /' "$SMOKE/err" | head -4 >&2
   if grep -q 'No usable sandbox' "$SMOKE/err"; then
     printf '\n這台機器擋掉了非特權的 user namespace（Ubuntu 23.10 以後的預設）。\n' >&2
-    printf '這支不會加 --no-sandbox 換綠燈。要在這裡跑就把 userns 開回來：\n' >&2
+    printf '這支不會加 --no-sandbox 換一個通過。要在這裡跑就把 userns 開回來：\n' >&2
     printf '  sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0\n' >&2
   fi
   rm -rf "$SMOKE"
@@ -265,7 +265,7 @@ run() {  # run <目錄> <hash>；印出 RESULT 那一行，失敗時把 Chrome �
   local r
   r=$(grep -o 'RESULT fired=[^<]*' "$out" | head -1)
   if [ -z "$r" ]; then
-    # 這支 recipe 講的就是假綠燈，它自己的失敗路徑不能是靜默。
+    # 這支 recipe 講的就是假通過，它自己的失敗路徑不能是靜默。
     # 吞掉 stderr 的話，使用者看到的是「卡住」而不是「Chrome 起不來，原因是這個」
     printf '  [!] 這一趟沒有拿到結果。Chrome 的 stderr：\n' >&2
     sed 's/^/      /' "$err" | head -8 >&2
@@ -277,7 +277,7 @@ run() {  # run <目錄> <hash>；印出 RESULT 那一行，失敗時把 Chrome �
 
 want() {  # want <格號> <版本> <payload> <期待的 fired> <說明> [額外要出現的字串]
   # 第 5 節比的是前四格的結果，所以單跑 5 的時候前四格也要跑，
-  # 否則它拿空字串去比，會紅得像有洞，其實是依賴沒備齊
+  # 否則它拿空字串去比，看起來像有漏洞，其實是依賴沒備齊
   [ -n "$ONLY" ] && [ "$ONLY" != "$1" ] && [ "$ONLY" != 5 ] && return 0
   printf '\n=== %s. %s 版 × %s ===\n' "$1" "$2" "$3"
   R=$(run "$2" "$3") || R=""
@@ -293,7 +293,7 @@ want() {  # want <格號> <版本> <payload> <期待的 fired> <說明> [額外�
   eval "R$1=\$R"
 }
 
-want 1 before script false "有洞卻沒有任何反應，這格就是假綠燈" "scriptTagInDOM=true"
+want 1 before script false "有漏洞卻沒有任何反應，這格就是假通過" "scriptTagInDOM=true"
 want 2 before img    true  "同一份有洞的程式碼，換一條輸入就打穿了" "imgInDOM=true"
 want 3 after  script false "修好之後也不跳。跟第 1 格一模一樣"
 want 4 after  img    false "修好之後擋住了，字串原樣留在畫面上" "imgInDOM=false"
@@ -373,17 +373,17 @@ if [ -z "$ONLY" ] || [ "$ONLY" = 7 ]; then
     || bad "CSP 那節的結果跟 README 寫的對不上"
 fi
 
-printf '\n════════ %s 綠 / %s 紅 / %s 跳過 ════════\n' "$PASS" "$FAIL" "$SKIP"
+printf '\n════════ 通過 %s／沒過 %s／沒有結論 %s ════════\n' "$PASS" "$FAIL" "$SKIP"
 # 跑了零項不算通過。上面那道節號檢查擋掉已知的入口，這條擋掉還沒想到的：
-# 只要有一條路徑讓所有檢查都沒執行，沒有這一行就會拿到綠燈。
+# 只要有一條路徑讓所有檢查都沒執行，沒有這一行就會拿到通過。
 if [ $((PASS + FAIL + SKIP)) -eq 0 ]; then
   printf '一項檢查都沒有執行，這不算通過\n' >&2
   exit 1
 fi
 
 # 離開碼的意思，全 repo 一致（Day 22 定的）：
-#   0 綠，而且真的驗過了
-#   1 紅，這是你要它擋你的那種
+#   0 全部通過，而且真的驗過了
+#   1 有沒過的，這是你要它擋你的那種
 #   2 環境不到位或有節被跳過，沒有結論。跳過不是通過
 [ "${FAIL}" != 0 ] && exit 1
 [ "${SKIP}" != 0 ] && exit 2

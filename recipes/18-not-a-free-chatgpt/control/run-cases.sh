@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# 跑四道閘的單元測試。手寫輸入，一行一格，對不上就紅。
+# 跑四道檢查的單元測試。手寫輸入，一行一格，對不上就沒過。
 #
 #   bash control/run-cases.sh
 #
-# 這一支驗的是閘，不是模型。它全綠不代表任何一句關於模型的話成立。
+# 這一支驗的是那幾道檢查，不是模型。它全部通過不代表任何一句關於模型的話成立。
 set -u
 cd "$(dirname "$0")/.."
 
@@ -14,9 +14,9 @@ fail=0
 
 check() { # name want got
   if [ "$2" = "$3" ]; then
-    pass=$((pass + 1)); printf '  ok    %-28s %s\n' "$1" "$3"
+    pass=$((pass + 1)); printf '  通過  %-28s %s\n' "$1" "$3"
   else
-    fail=$((fail + 1)); printf '  FAIL  %-28s 想要 %s 拿到 %s\n' "$1" "$2" "$3"
+    fail=$((fail + 1)); printf '  沒過  %-28s 想要 %s 拿到 %s\n' "$1" "$2" "$3"
   fi
 }
 
@@ -43,5 +43,5 @@ got=$(node -e '
 ')
 check "rate-over-limit" "deny" "${got}"
 
-printf '%s 綠 %s 紅\n' "${pass}" "${fail}"
+printf '通過 %s、沒過 %s\n' "${pass}" "${fail}"
 [ "${fail}" -eq 0 ]

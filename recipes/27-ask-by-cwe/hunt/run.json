@@ -1,0 +1,108 @@
+{
+  "model": "antares-1b-mlx",
+  "renamed": false,
+  "alias": {
+    "server/files.js": "server/files.js",
+    "server/health.js": "server/health.js",
+    "server/orders.js": "server/orders.js",
+    "server/tools.js": "server/tools.js",
+    "src/api.js": "src/api.js",
+    "src/format.js": "src/format.js",
+    "src/render.js": "src/render.js"
+  },
+  "classes": 13,
+  "total_seconds": 83.4,
+  "results": [
+    {
+      "cwe": "CWE-78",
+      "answer": "server/tools.js",
+      "seconds": 5.0,
+      "chars": 314,
+      "closed": true
+    },
+    {
+      "cwe": "CWE-22",
+      "answer": "server/files.js",
+      "seconds": 6.0,
+      "chars": 938,
+      "closed": false
+    },
+    {
+      "cwe": "CWE-79",
+      "answer": "src/render.js",
+      "seconds": 5.5,
+      "chars": 559,
+      "closed": true
+    },
+    {
+      "cwe": "CWE-798",
+      "answer": "src/api.js",
+      "seconds": 5.0,
+      "chars": 211,
+      "closed": true
+    },
+    {
+      "cwe": "CWE-639",
+      "answer": "server/orders.js",
+      "seconds": 8.6,
+      "chars": 1452,
+      "closed": false
+    },
+    {
+      "cwe": "CWE-209",
+      "answer": "server/files.js",
+      "seconds": 7.6,
+      "chars": 1706,
+      "closed": false
+    },
+    {
+      "cwe": "CWE-89",
+      "answer": "無",
+      "seconds": 5.3,
+      "chars": 209,
+      "closed": true
+    },
+    {
+      "cwe": "CWE-502",
+      "answer": "無",
+      "seconds": 7.1,
+      "chars": 887,
+      "closed": false
+    },
+    {
+      "cwe": "CWE-611",
+      "answer": "無",
+      "seconds": 6.2,
+      "chars": 363,
+      "closed": false
+    },
+    {
+      "cwe": "CWE-327",
+      "answer": "無",
+      "seconds": 6.6,
+      "chars": 331,
+      "closed": true
+    },
+    {
+      "cwe": "CWE-190",
+      "answer": "無",
+      "seconds": 6.8,
+      "chars": 620,
+      "closed": true
+    },
+    {
+      "cwe": "CWE-1333",
+      "answer": "無",
+      "seconds": 7.2,
+      "chars": 785,
+      "closed": false
+    },
+    {
+      "cwe": "CWE-330",
+      "answer": "無",
+      "seconds": 6.5,
+      "chars": 256,
+      "closed": true
+    }
+  ]
+}

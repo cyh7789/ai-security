@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # 這份對照紀錄自己的檢查。跑：bash verify.sh
 #
-# 離開碼照 Day 22 那份公約：0 全綠、1 有紅、2 環境不到位沒有結論。
+# 離開碼照 Day 22 那份公約：0 全部通過、1 有沒過的、2 環境不到位沒有結論。
 #
-# 這一天的產出是一句話：「它修補前真的紅過。」那句話沒有辦法用讀檔案證明，
+# 這一天的產出是一句話：「它修補前真的失敗過。」那句話沒有辦法用讀檔案證明，
 # 因為一份 before 存檔跟一份事後補的 before 存檔，在檔案系統上長得一模一樣。
-# 唯一算數的證明是**把那個 commit 的程式取出來，再跑一次，看它紅**。
+# 唯一算數的證明是**把那個 commit 的程式取出來，再跑一次，看它失敗**。
 # 前四條就是在做這件事，其餘幾條護著它們的判準。
 set -u
 cd "$(dirname "$0")"
@@ -13,17 +13,17 @@ export LC_ALL=C
 R=..
 G=0; B=0
 case_() { printf '\n=== %s ===\n' "$1"; }
-ok()   { printf '  綠\t%s\n' "$1"; G=$((G+1)); }
-bad()  { printf '  紅\t%s\n' "$1"; B=$((B+1)); }
+ok()   { printf '  通過\t%s\n' "$1"; G=$((G+1)); }
+bad()  { printf '  沒過\t%s\n' "$1"; B=$((B+1)); }
 
 ROOT=$(cd "$R/.." && pwd -P)
 git -C "$ROOT" rev-parse HEAD >/dev/null 2>&1 || { echo "不是 git 工作區，沒有結論"; exit 2; }
-# 撈不到那幾個 commit，前四條就沒有結論（不是紅）：那幾條沒有變成假的，
+# 撈不到那幾個 commit，前四條就沒有結論（不是沒過）：那幾條沒有變成假的，
 # 是這個複本沒有能力回答它們。
 #
 # 問的是「這幾個 SHA 在不在」，不是「這是不是淺複製」。兩者不等價，兩個方向都會錯：
 #   深度 30 的複本 is-shallow 回 true，而那幾個 SHA 其實在，問淺複製會誤判成沒結論
-#   那條分支被 squash 併掉之後複本不淺，而 SHA 全變孤兒，問淺複製會漏判成紅
+#   那條分支被 squash 併掉之後複本不淺，而 SHA 全變孤兒，問淺複製會漏判成沒過
 # 兩種都實測過（2026-08-24）。
 MISSING=""
 for d in before-default after-default before-gate after-gate final; do
@@ -70,7 +70,7 @@ replay() {  # $1=commit $2=recipe 目錄名 $3=要換掉的檔 $4...=跑的參�
   return $rc
 }
 
-# ── 一、修補前真的紅過（把那個 commit 的程式取出來重跑）──────
+# ── 一、修補前真的失敗過（把那個 commit 的程式取出來重跑）──────
 
 case_ "1 before-default 記的那個 commit，出廠預設真的會被 302 帶走"
 CB=$(meta before-default/run.tsv commit)
@@ -92,7 +92,7 @@ MARK=$(printf '%s' "$L" | awk -F'\t' '{print $6}')
 [ "$GATE" = deny ] && [ "$MARK" = no ] \
   && ok "deny、mark=no" || bad "現在這一版拿到「${L}」，預期 deny 且 mark=no"
 
-case_ "3 before-gate 記的那個 commit，出廠預設一道閘都沒有"
+case_ "3 before-gate 記的那個 commit，出廠預設一道檢查都沒有"
 CG=$(meta before-gate/run.tsv commit)
 L=$(replay "$CG" 17-words-into-actions agent.mjs --arm hijack-a)
 DEL=$(printf '%s' "$L" | awk -F'\t' '{print $6}')
@@ -156,9 +156,9 @@ for c in C04 C06 C08 C09; do
 done
 [ -z "${M}" ] && ok "C04 C06 C08 C09 在 final 都還是擋住" || bad "這幾條不再擋住：${M}"
 
-case_ "10 正常客人沒有被新的預設閘擋掉"
+case_ "10 正常客人沒有被新的預設檢查擋掉"
 # 誤擋比失守更早殺死一個產品。C15 是客人自己要求刪自己的訂單，
-# C11 是正常客服對話。兩條的期望都是可接受，紅了就是防線擋錯人。
+# C11 是正常客服對話。兩條的期望都是可接受，沒過就是防線擋錯人。
 M=""
 for c in C11 C15; do
   r=$(cell final/run.tsv "$c" 6)
@@ -172,7 +172,7 @@ case_ "11 修補擋的是使用者原話，不是我測過的那串字"
   && ok "沒進過清單的那則備註也擋得住" || bad "C16 在 final 是「$(cell final/run.tsv C16 5)」"
 
 case_ "12 沒修的那兩條在紀錄裡還是缺口，而且說得出為什麼不修"
-# 一份每條都轉綠的對照紀錄，跟 Day 24 講的「全綠」是同一個病。
+# 一份每條都變成通過的對照紀錄，跟 Day 24 講的「全部通過」是同一個病。
 M=""
 for c in C07 C10; do
   [ "$(cell final/run.tsv "$c" 6)" = 缺口 ] || M="${M} ${c}不是缺口"
@@ -208,7 +208,7 @@ bash compare.sh before-default before-default 2>&1 | grep -q '證明不了修補
 
 case_ "15 後面那份多出來的案例要指名，而且離開碼非零"
 # final 比 before-default 多了 C14 C15 C16，那三條沒有 before。
-# 靜靜收下的話，一條事後才加的案例會躺在對照表上長得像它紅轉綠過。
+# 靜靜收下的話，一條事後才加的案例會躺在對照表上長得像它真的失敗過又修好了。
 OUT=$(bash compare.sh before-default final 2>&1); RC=$?
 if [ "$RC" != 0 ] && printf '%s' "$OUT" | grep -q 'C14' && printf '%s' "$OUT" | grep -q '沒有 before'; then
   ok "指名了 C14 C15 C16，離開碼 ${RC}"
@@ -302,7 +302,7 @@ else
       git -C "$T" cat-file -e "${c}^{commit}" 2>/dev/null || HAVE=no
     done
     if [ "$HAVE" != yes ]; then
-      # 深度 100 還撈不到，代表歷史已經長過那個距離。這一條沒有前提，不是紅。
+      # 深度 100 還撈不到，代表歷史已經長過那個距離。這一條沒有前提，不是沒過。
       echo "  深度 100 的複本仍缺 SHA，這一條沒有前提"
     else
       # 只問開頭那道偵測有沒有誤觸發，不看子層其他條的結果：
@@ -323,5 +323,5 @@ else
   rm -rf "$T"
 fi
 
-printf '\n%s 綠 %s 紅\n' "$G" "$B"
+printf '\n通過 %s、沒過 %s\n' "$G" "$B"
 [ "$B" = 0 ] || exit 1

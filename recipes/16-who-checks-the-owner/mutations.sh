@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# 把功能弄壞，看 verify.sh 會不會抓到。抓不到的那一條就是假綠燈。
+# 把功能弄壞，看 verify.sh 會不會抓到。抓不到的那一條就是假通過。
 #
 #   bash mutations.sh
 #
-# 最後一條是反向對照：改一句不影響行為的說明文字，這時候 verify 應該還是綠。
-# 沒有那一條的話，「什麼都會讓它紅」跟「它咬得準」分不開。
+# 最後一條是反向對照：改一句不影響行為的說明文字，這時候 verify 應該還是通過。
+# 沒有那一條的話，「什麼都會讓它沒過」跟「它抓得準」分不開。
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 cd "${HERE}"
@@ -17,16 +17,16 @@ restore() { for f in ${FILES}; do cp "${BAK}/$(echo "$f" | tr / _)" "$f" 2>/dev/
 save
 
 BIT=0; MISS=0
-try() {  # try <說明> <該轉紅的 case> <弄壞的指令>
+try() {  # try <說明> <該沒過的 case> <弄壞的指令>
   local name=$1 case=$2; shift 2
   local before after
   before=$(cat ${FILES} runs/2026-08-15/results.tsv 2>/dev/null | shasum | cut -d" " -f1)
   eval "$*"
   after=$(cat ${FILES} runs/2026-08-15/results.tsv 2>/dev/null | shasum | cut -d" " -f1)
-  # sed 沒對上的話什麼都沒壞，verify 當然綠，那會被記成「沒抓到」，
+  # sed 沒對上的話什麼都沒壞，verify 當然通過，那會被記成「沒抓到」，
   # 而真正的問題是這條突變過期了。兩者要先分開。
   if [ "${before}" = "${after}" ]; then
-    printf '  [沒改到] case %-2s %s（這條突變過期了，不是閘門的問題）\n' "${case}" "${name}"
+    printf '  [沒改到] case %-2s %s（這條突變過期了，不是檢查的問題）\n' "${case}" "${name}"
     MISS=$((MISS+1)); restore; return
   fi
   if bash verify.sh "${case}" >/dev/null 2>&1; then
@@ -64,7 +64,7 @@ try "列舉判準只比內容不比狀態碼" 21 "sed -i '' 's#return .*res.code
 try "條件紀錄的發數沒跟著資料改"   22 "sed -i '' 's/共 96 發/共 84 發/' runs/2026-08-15/run-conditions.txt"
 try "條件紀錄漏掉補跑的那一組"     22 "sed -i '' '/^  vague /d' runs/2026-08-15/run-conditions.txt"
 try "陽性對照被偷偷修好了"         23 "sed -i '' 's/if (!order) return res.status(404).json({ error: \"not found\" });/if (!order || order.ownerId !== req.user.id) return res.status(404).json({ error: \"not found\" });/' control/known-bad.mjs"
-try "README 的條數沒跟著腳本改"    24 "sed -i '' 's/# 24 條檢查/# 21 條檢查/' README.md"
+try "README 的條數沒跟著腳本改"    24 "sed -i '' 's/# 25 條檢查/# 21 條檢查/' README.md"
 try "靜態掃鎖死變數名，漏掉一份"   25 "sed -i '' 's/if \"user.id\" not in line:/if \"order.ownerId\" not in line:/' owner-check.sh"
 try "客服那筆自己的訂單被拿掉"     12 "sed -i '' '/id: 1009/d' store.mjs"
 
@@ -72,9 +72,9 @@ echo
 echo "=== 反向對照：改一句不影響行為的說明文字 ==="
 sed -i '' 's|^# 玩具資料層.*|# 玩具資料層（這一行是反向對照改的）。|' store.mjs
 if bash verify.sh >/dev/null 2>&1; then
-  echo "  [對照通過] 只改說明文字，verify 還是全綠"
+  echo "  [對照通過] 只改說明文字，verify 還是全部通過"
 else
-  echo "  [對照失敗] 改一句說明文字就紅了，代表有檢查在看字面不是看行為"
+  echo "  [對照失敗] 改一句說明文字就沒過，代表有檢查在看字面不是看行為"
   MISS=$((MISS+1))
 fi
 restore

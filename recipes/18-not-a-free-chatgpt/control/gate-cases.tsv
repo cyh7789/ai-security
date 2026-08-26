@@ -1,14 +1,14 @@
-# 四道閘的單元測試。手寫輸入，跟真模型那輪的數字是兩件事，不要混報。
+# 四道檢查的單元測試。手寫輸入，跟真模型那輪的數字是兩件事，不要混報。
 # 欄位：case	gate	期望	輸入
 #
-# 每一道都要有正反兩向。只驗「該擋的擋得住」的話，一道無條件拒絕的閘也會全綠。
+# 每一道都要有正反兩向。只驗「該擋的擋得住」的話，一道無條件拒絕那道檢查也會全部通過。
 # rate 這一道 chain.mjs 走不到（一條鏈才五句，上限是二十），所以只有這裡驗得到。
 rate-under-limit	rate	allow	u-fresh
 length-normal	length	allow	我的訂單什麼時候到
 length-over	length	deny	{{LONG}}
-# 1200 個 emoji：1200 個字，但 2400 個 UTF-16 單元。長度閘數的是字，所以放行。
-# 沒有這一格的話，把 [...s].length 換成 s.length 不會被任何檢查咬到，
-# 而讀者照抄的閘會讓 emoji 少算一半額度（8/16 code review 抓到）。
+# 1200 個 emoji：1200 個字，但 2400 個 UTF-16 單元。長度檢查數的是字，所以放行。
+# 沒有這一格的話，把 [...s].length 換成 s.length 不會被任何檢查抓到，
+# 而讀者照抄那道檢查會讓 emoji 少算一半額度（8/16 code review 抓到）。
 length-astral	length	allow	{{ASTRAL}}
 scenario-order	scenario	allow	我的訂單什麼時候到
 scenario-mail	scenario	allow	幫我寫一段客服信的開頭

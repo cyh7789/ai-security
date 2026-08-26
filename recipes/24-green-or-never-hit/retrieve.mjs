@@ -6,12 +6,12 @@
 //   node retrieve.mjs --q 出差報帳 --gate both     # 檢索段落也送進 length 與 scenario
 //   PROMPT_FILE=/tmp/p.txt node retrieve.mjs --q 出差報帳
 //
-// 印一行 TSV：查詢、命中幾段、命中的來源、閘的範圍、輸入側判決、檢索段落判決、
+// 印一行 TSV：查詢、命中幾段、命中的來源、檢查的範圍、輸入側判決、檢索段落判決、
 // 有沒有到模型、輸出側判決、停在哪。
 //
 // 這支蓋的是「最小的檢索」，不是一個像樣的 RAG：關鍵字比對、不排序、不切塊、
 // 不算相似度。那些都會改變命中哪一段，但改變不了這一列要問的事：
-// 檢索回來的段落用什麼路徑進到模型眼前，以及輸入側那三道閘看不看得到它。
+// 檢索回來的段落用什麼路徑進到模型眼前，以及輸入側那三道檢查看不看得到它。
 //
 // 知識庫直接讀 recipe 13 那一份，不在這裡抄。抄一份的話，13 那邊改了這裡不會跟著變，
 // 而這一列量到的東西就不再是那個知識庫（recipe 21 立的規矩，同一條）。
@@ -102,8 +102,8 @@ async function main() {
   ).trim();
 
   const hits = retrieve(q);
-  // 零命中在跑閘之前就判掉。放在閘後面的話，哪天輸入側收緊到會擋掉 TYPED，
-  // 這一發會印「檢索一段都沒命中」而真相是被閘擋住了，正好是這一天要分開的兩件事。
+  // 零命中在跑檢查之前就判掉。放在檢查後面的話，哪天輸入側收緊到會擋掉 TYPED，
+  // 這一發會印「檢索一段都沒命中」而真相是被檢查擋住了，正好是這一天要分開的兩件事。
   if (hits.length === 0) {
     process.stdout.write([q, 0, "-", scope, "-", "-", "no", "n/a", "沒打到:檢索一段都沒命中"].join("\t") + "\n");
     return;
@@ -113,9 +113,9 @@ async function main() {
   console.error(`知識庫：${fileURLToPath(KB)}`);
   const typedVerdict = runGates(TYPED);
 
-  // both 的時候檢索段落走同一組閘。rate 在上一行用掉了，這裡只問內容那兩道，
-  // 不然同一次對話會被自己的頻率閘算成兩次（跟 23/intake.mjs 同一個理由）。
-  let kbVerdict = { allow: true, gate: "-", code: "NOT_GATED", reason: "檢索段落不在閘的範圍內" };
+  // both 的時候檢索段落走同一組檢查。rate 在上一行用掉了，這裡只問內容那兩道，
+  // 不然同一次對話會被自己的頻率檢查算成兩次（跟 23/intake.mjs 同一個理由）。
+  let kbVerdict = { allow: true, gate: "-", code: "NOT_GATED", reason: "檢索段落不在檢查的範圍內" };
   if (scope === "both") {
     const joined = hits.map((h) => h.text).join("\n\n");
     for (const g of ["length", "scenario"]) {
@@ -128,7 +128,7 @@ async function main() {
   }
 
   const blocked = !typedVerdict.allow || !kbVerdict.allow;
-  let stopped = blocked ? `閘:${typedVerdict.allow ? kbVerdict.gate : typedVerdict.gate}` : "";
+  let stopped = blocked ? `檢查:${typedVerdict.allow ? kbVerdict.gate : typedVerdict.gate}` : "";
   let out = { verdict: "n/a", reason: "沒有東西送到模型" };
   const prompt = buildPrompt(system, TYPED, hits);
 
@@ -141,7 +141,7 @@ async function main() {
     }
     const reply = await ask(prompt, cmd);
     out = await classify(reply, ccmd);
-    stopped = out.verdict === "ok" ? "抵達交付邊界" : "閘:classify";
+    stopped = out.verdict === "ok" ? "抵達交付邊界" : "檢查:classify";
   }
 
   process.stdout.write(

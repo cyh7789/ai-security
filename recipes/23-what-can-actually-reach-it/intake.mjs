@@ -2,16 +2,16 @@
 //
 //   node intake.mjs --doc docs/order-shot.txt            # 正常的訂單截圖文字
 //   node intake.mjs --doc docs/injected.txt              # 同一份，末尾多一段講給助理聽的話
-//   node intake.mjs --doc docs/injected.txt --gate both  # 把附件也送進同一組閘
+//   node intake.mjs --doc docs/injected.txt --gate both  # 把附件也送進同一組檢查
 //
-// 印一行 TSV：載體、閘的範圍、輸入側判決、附件判決、有沒有到模型、輸出側判決、停在哪。
+// 印一行 TSV：載體、檢查的範圍、輸入側判決、附件判決、有沒有到模型、輸出側判決、停在哪。
 //
-// 為什麼要有這一支：Day 18 那條鏈的三道閘簽章都是 gate(text)，吃一個字串
+// 為什麼要有這一支：Day 18 那條鏈的三道檢查簽章都是 gate(text)，吃一個字串
 // （`../18-not-a-free-chatgpt/gates.mjs`）。客服流程裡使用者本來就會附東西
 // （訂單截圖、對話紀錄、發票、退貨照片），那份東西進得了模型的上下文，
 // 卻不在那個字串裡。這一支就是把那條載體補起來，好讓可達性量得出來。
 //
-// 量到的是「這段內容停在哪一道閘」，不是「模型會不會照做」。
+// 量到的是「這段內容停在哪一道檢查」，不是「模型會不會照做」。
 // 罐頭模型不會被說服，模型照不照做是 Day 24 的攻擊變體要問的事。
 import { readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
@@ -31,8 +31,8 @@ const arg = (k, d) => {
   return i >= 0 ? argv[i + 1] : d;
 };
 
-// typed：只閘使用者打的那句（現行 Day 18 那條鏈的範圍）
-// both ：附件也送進同一組閘
+// typed：只檢查使用者打的那句（現行 Day 18 那條鏈的範圍）
+// both ：附件也送進同一組檢查
 const scope = arg("--gate", "typed");
 if (!["typed", "both"].includes(scope)) {
   console.error("--gate 只有 typed 與 both");
@@ -40,7 +40,7 @@ if (!["typed", "both"].includes(scope)) {
 }
 const docPath = arg("--doc", "docs/order-shot.txt");
 // 使用者打的那句話也可以換掉。Day 24 要讓 recipe 21 那條誘餌句真的走完這條入口，
-// 而不是只問輸入側那道閘怎麼判：閘的判決不等於那句話走到哪裡。
+// 而不是只問輸入側那道檢查怎麼判：檢查的判決不等於那句話走到哪裡。
 // 換進來的那句話要從它原本住的檔案撈，不要在呼叫端抄一份。
 const typed = arg("--typed", TYPED);
 const cmd = process.env.MODEL_CMD ?? "bash ../18-not-a-free-chatgpt/stub-model.sh";
@@ -75,9 +75,9 @@ async function main() {
   ).trim();
 
   const typedVerdict = runGates(typed);
-  // both 的時候附件走同一組閘。rate 已經在上一行用掉一次，這裡只問內容那兩道，
-  // 不然同一次對話會被自己的頻率閘算成兩次。
-  let docVerdict = { allow: true, gate: "-", code: "NOT_GATED", reason: "附件不在閘的範圍內" };
+  // both 的時候附件走同一組檢查。rate 已經在上一行用掉一次，這裡只問內容那兩道，
+  // 不然同一次對話會被自己的頻率檢查算成兩次。
+  let docVerdict = { allow: true, gate: "-", code: "NOT_GATED", reason: "附件不在檢查的範圍內" };
   if (scope === "both") {
     for (const g of ["length", "scenario"]) {
       const r = GATES[g](doc);
@@ -89,7 +89,7 @@ async function main() {
   }
 
   const blocked = !typedVerdict.allow || !docVerdict.allow;
-  let stopped = blocked ? `閘:${typedVerdict.allow ? docVerdict.gate : typedVerdict.gate}` : "";
+  let stopped = blocked ? `檢查:${typedVerdict.allow ? docVerdict.gate : typedVerdict.gate}` : "";
   let out = { verdict: "n/a", reason: "沒有東西送到模型" };
 
   if (!blocked) {
@@ -99,7 +99,7 @@ async function main() {
     // 「抵達交付邊界」不是「送出去了」。這一支沒有寄信、沒有 HTTP、
     // 也不印信件正文，它只證明內容過了現有的四道檢查，
     // 後面真的接上寄送呼叫的話就不會再被攔。（2026-08-22 外審指出原本寫「到達輸出」講得比實作滿）
-    stopped = out.verdict === "ok" ? "抵達交付邊界" : "閘:classify";
+    stopped = out.verdict === "ok" ? "抵達交付邊界" : "檢查:classify";
   }
 
   process.stdout.write(

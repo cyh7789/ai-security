@@ -1,4 +1,4 @@
-// 模型填的網址，送出去之前要過的那道閘。
+// 模型填的網址，送出去之前要過的那道檢查。
 //
 //   node gate.mjs http://127.0.0.1:9010/latest/meta-data/    # 印 deny
 //   node gate.mjs http://127.0.0.1:9011/                     # 印 allow

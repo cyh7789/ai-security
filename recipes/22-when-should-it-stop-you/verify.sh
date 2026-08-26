@@ -14,9 +14,9 @@ command -v node >/dev/null || { echo "這份要 Node 才能跑，先裝 Node 再
 
 PASS=0; FAIL=0; SKIP=0
 case_() { printf '\n=== %s ===\n' "$1"; }
-ok()   { printf '  [OK]   %s\n' "$1"; PASS=$((PASS+1)); }
-bad()  { printf '  [FAIL] %s\n' "$1"; FAIL=$((FAIL+1)); }
-skip() { printf '  [SKIP] %s\n' "$1"; SKIP=$((SKIP+1)); }
+ok()   { printf '  通過   %s\n' "$1"; PASS=$((PASS+1)); }
+bad()  { printf '  沒過   %s\n' "$1"; FAIL=$((FAIL+1)); }
+skip() { printf '  沒有結論 %s\n' "$1"; SKIP=$((SKIP+1)); }
 
 # ── 1 表裡的每一支都真的存在 ──────────────────────────
 case_ "1 levels.tsv 列的 recipe 都在"
@@ -56,41 +56,41 @@ else
 fi
 
 # ── 4 缺口樁那個 job 不能跟防線混在一起 ─────────────────
-# 兩種紅的正確處置相反：缺口樁紅了就是去改期望值，
-# 防線紅了改期望值等於把防線關掉。走同一個 job 會把後者訓練成前者。
+# 兩種沒過的正確處置相反：缺口樁沒過就是去改期望值，
+# 防線沒過還去改期望值等於把防線關掉。走同一個 job 會把後者訓練成前者。
 case_ "4 21 的防線與缺口樁是兩個 job"
 if [ ! -f "${WF}" ]; then
   skip "找不到 ${WF}"
 elif grep -q '^  regression-line:' "${WF}" && grep -q '^  gap-stake:' "${WF}"; then
   ok "regression-line 與 gap-stake 分開"
 else
-  bad "21 沒有拆成兩個 job：兩種紅會走同一封通知"
+  bad "21 沒有拆成兩個 job：兩種沒過會走同一封通知"
 fi
 
 # ── 5 B 級不准用 continue-on-error ────────────────────
-# 那個旗標把紅燈顯示成綠燈。不擋合併跟看不見是兩回事。
-case_ "5 沒有人用 continue-on-error 把紅燈藏起來"
+# 那個旗標把沒過顯示成通過。不擋合併跟看不見是兩回事。
+case_ "5 沒有人用 continue-on-error 把沒過藏起來"
 if [ ! -f "${WF}" ]; then
   skip "找不到 ${WF}"
 elif grep -nE '^[^#]*continue-on-error' "${WF}" | grep -qv '^\s*[0-9]*:\s*#'; then
   # 只看真的設定行。workflow 的註解裡就寫著「不用 continue-on-error」，
-  # 掃註解會讓這一條永遠紅。
+  # 掃註解會讓這一條永遠沒過。
   bad "workflow 裡有 continue-on-error：$(grep -nE '^[^#]*continue-on-error' "${WF}" | head -2 | tr '\n' ' ')"
 else
   ok "沒有 continue-on-error"
 fi
 
 # ── 6 離開碼公約 ──────────────────────────────────────
-case_ "6 離開碼公約的閘自己是綠的"
+case_ "6 離開碼公約那道檢查自己是通過的"
 if bash check-convention.sh > /tmp/r22-conv.out 2>&1; then
   ok "$(tail -1 /tmp/r22-conv.out)"
 else
-  bad "check-convention.sh 報紅：$(grep '\[FAIL\]' /tmp/r22-conv.out | head -2 | tr '\n' ' ')"
+  bad "check-convention.sh 判沒過：$(grep '^  沒過' /tmp/r22-conv.out | head -2 | tr '\n' ' ')"
 fi
 
-# ── 7 那個閘會咬 ──────────────────────────────────────
-# 沒紅過的檢查不算數。把 01 的收尾改回 exit 0，第 6 條該紅。
-case_ "7 把 01 改回 exit 0，公約的閘會紅"
+# ── 7 那道檢查抓得到 ──────────────────────────────────
+# 沒有真的失敗過的檢查不算數。把 01 的收尾改回 exit 0，第 6 條該沒過。
+case_ "7 把 01 改回 exit 0，公約那道檢查會沒過"
 T=../01-frontend-api-key/verify.sh
 BAK=$(mktemp)
 cp "${T}" "${BAK}"
@@ -104,19 +104,19 @@ assert s.count(old) == 1, "01 的收尾不是預期的樣子"
 p.write_text(s.replace(old, '全部跳過"; exit 0; }'))
 PY
 if bash check-convention.sh > /dev/null 2>&1; then
-  bad "01 跳過整支還回 0，公約的閘竟然沒抓到"
+  bad "01 跳過整支還回 0，公約那道檢查竟然沒抓到"
 else
-  ok "改回去就紅，還原之後綠"
+  ok "改回去就沒過，還原之後通過"
 fi
 restore7
 trap - EXIT INT TERM
-bash check-convention.sh > /dev/null 2>&1 || bad "還原之後閘還是紅的，01 沒有回到原樣"
+bash check-convention.sh > /dev/null 2>&1 || bad "還原之後那道檢查還是沒過，01 沒有回到原樣"
 
-printf '\n════════ %s 綠 / %s 紅 / %s 跳過 ════════\n' "${PASS}" "${FAIL}" "${SKIP}"
+printf '\n════════ 通過 %s／沒過 %s／沒有結論 %s ════════\n' "${PASS}" "${FAIL}" "${SKIP}"
 
 # 離開碼的意思，全 repo 一致（Day 22 定的）：
-#   0 綠，而且真的驗過了
-#   1 紅，這是你要它擋你的那種
+#   0 全部通過，而且真的驗過了
+#   1 有沒過的，這是你要它擋你的那種
 #   2 環境不到位或有節被跳過，沒有結論。跳過不是通過
 [ "${FAIL}" != 0 ] && exit 1
 [ "${SKIP}" != 0 ] && exit 2

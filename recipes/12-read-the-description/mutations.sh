@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# 把功能一個一個弄壞，看 verify.sh 有沒有轉紅。
+# 把功能一個一個弄壞，看 verify.sh 有沒有沒過。
 #
 #   bash mutations.sh
 #
-# 為什麼要有這支：一份全綠的 verify.sh 證明不了任何事，因為「這條檢查會不會失敗」
-# 跟「這條檢查現在通過」是兩個問題。Day 11 有六條閘門在正常路徑上是綠的，
-# 拿掉被驗的東西之後還是綠的，那六條從頭到尾沒有在驗東西。
+# 為什麼要有這支：一份全部通過的 verify.sh 證明不了任何事，因為「這條檢查會不會失敗」
+# 跟「這條檢查現在通過」是兩個問題。Day 11 有六條檢查在正常路徑上會過，
+# 拿掉被驗的東西之後還會過，那六條從頭到尾沒有在驗東西。
 #
 # 每一條都在複本上動手，原檔不碰。最後一條是**反向對照**：
-# 改一個不影響行為的地方，這時候 verify.sh 應該還是全綠。
-# 沒有這一條的話，「什麼都會讓它紅」跟「它咬得準」分不開。
+# 改一個不影響行為的地方，這時候 verify.sh 應該還是全部通過。
+# 沒有這一條的話，「什麼都會讓它沒過」跟「它抓得準」分不開。
 
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 BAD=0
 
-# 用 node 改檔，不用 sed：BSD 跟 GNU 的 sed 行為不同，而「替換沒套用卻被當成綠」
+# 用 node 改檔，不用 sed：BSD 跟 GNU 的 sed 行為不同，而「替換沒套用卻被當成通過」
 # 正好是這支要抓的那種假訊號。node 找不到目標字串的時候會直接喊。
 sub() { # sub <檔> <原字串> <新字串>
   node -e '
@@ -27,13 +27,13 @@ sub() { # sub <檔> <原字串> <新字串>
   ' "$1" "$2" "$3"
 }
 
-try() { # try <說明> <預期會紅的條號，空白分隔> <改法函式>
+try() { # try <說明> <預期會沒過的條號，空白分隔> <改法函式>
   local what="$1" expect="$2" fn="$3"
   local work; work=$(mktemp -d)/12
   mkdir -p "${work}"
   cp -R "${HERE}/." "${work}/" 2>/dev/null
   # 第 8 條要跟 Day 8 那支並排跑，複本裡沒有它的話那條會跳過，
-  # 而跳過在 verify.sh 眼裡是綠的，突變就會看起來像沒咬到。
+  # 而跳過在 verify.sh 眼裡會過，突變就會看起來像沒抓到。
   [ -d "${HERE}/../08-what-can-it-touch" ] && cp -R "${HERE}/../08-what-can-it-touch" "${work}/../" 2>/dev/null
   if ! (cd "${work}" && "${fn}"); then
     printf '  [壞掉] %s：改不下去\n' "${what}"; BAD=1; rm -rf "${work}"; return
@@ -41,15 +41,15 @@ try() { # try <說明> <預期會紅的條號，空白分隔> <改法函式>
   local red=""
   for n in ${expect}; do
     if (cd "${work}" && bash verify.sh "${n}" >/dev/null 2>&1); then
-      red="${red} 第${n}條沒紅"
+      red="${red} 第${n}條沒抓到"
     fi
   done
-  if [ -z "${red}" ]; then printf '  [咬到] %s → 第 %s 條轉紅\n' "${what}" "${expect}"
+  if [ -z "${red}" ]; then printf '  [抓到] %s → 第 %s 條沒過\n' "${what}" "${expect}"
   else printf '  [漏了] %s →%s\n' "${what}" "${red}"; BAD=1; fi
   rm -rf "${work}"
 }
 
-# 反向對照用：預期全綠。
+# 反向對照用：預期全部通過。
 control() {
   local what="$1" fn="$2"
   local work; work=$(mktemp -d)/12
@@ -60,14 +60,14 @@ control() {
     printf '  [壞掉] %s：改不下去\n' "${what}"; BAD=1; rm -rf "${work}"; return
   fi
   if (cd "${work}" && bash verify.sh >/dev/null 2>&1); then
-    printf '  [對照] %s → 還是全綠，符合預期\n' "${what}"
+    printf '  [對照] %s → 還是全部通過，符合預期\n' "${what}"
   else
-    printf '  [壞掉] %s → 不該紅卻紅了，代表 verify.sh 在咬不相干的東西\n' "${what}"; BAD=1
+    printf '  [壞掉] %s → 這一條不該被抓，卻被抓到了，代表 verify.sh 在抓不相干的東西\n' "${what}"; BAD=1
   fi
   rm -rf "${work}"
 }
 
-echo "════ 把功能弄壞，看 verify.sh 咬不咬得到 ════"
+echo "════ 把功能弄壞，看 verify.sh 抓不抓得到 ════"
 
 m1() { sub mcp-desc.cjs 'const desc = typeof t.description === "string" ? t.description : "";' \
   'const desc = (typeof t.description === "string" ? t.description : "").slice(0, 100);'; }
@@ -102,8 +102,8 @@ try "--quiet 照樣把描述全印出來" "14" m7
 m8() { sub README.md 'node skill-scan.cjs --quiet demo/tree' 'node skill-scan.cjs --quiet demo/does-not-exist-at-all/x.md'; }
 try "README 貼一條指到不存在路徑的指令" "15" m8
 
-# 第 12 條驗的是「判準失效」，所以要反過來咬：
-# 有人讓那兩份分開之後，文章那段判斷就不成立了，這條必須紅。
+# 第 12 條驗的是「判準失效」，所以要反過來驗：
+# 有人讓那兩份分開之後，文章那段判斷就不成立了，這條必須沒過。
 m9() { sub skill-scan.cjs '  const hit = IMPERATIVE.some((re) => re.test(d));' \
   '  const hit = IMPERATIVE.some((re) => re.test(d)) && !/id_rsa/.test(d);'; }
 try "加一條規則讓下毒那份不算命令句" "12" m9
@@ -118,7 +118,7 @@ m10() { sub mcp-desc.cjs '      cursor = res.nextCursor;
 try "只問第一頁，不跟 nextCursor" "16" m10
 
 # 外審抓到的第二個洞：用真假值判斷有沒有下一頁，空字串 cursor 就會被當成問完了。
-# stdio 與 http 各改一路，第 16 條都要紅（那條四種組合都跑）。
+# stdio 與 http 各改一路，第 16 條都要沒過（那條四種組合都跑）。
 m11() { sub mcp-desc.cjs '      more = Object.prototype.hasOwnProperty.call(res, "nextCursor");
       cursor = res.nextCursor;
       pages += 1;
@@ -145,5 +145,5 @@ c1() { sub skill-scan.cjs '// 以及統計那一段為什麼不是風險指標�
 control "只改一行註解" c1
 
 echo
-[ "${BAD}" = 0 ] && echo "全部咬到，而且反向對照沒有誤咬。" || echo "有漏的，上面標了。"
+[ "${BAD}" = 0 ] && echo "全部抓到，而且反向對照沒有誤抓。" || echo "有漏的，上面標了。"
 [ "${BAD}" = 0 ]

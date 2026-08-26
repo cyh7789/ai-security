@@ -1,21 +1,21 @@
-// 模型說要做某件事，跟那件事真的發生，中間的那道閘。這裡放三種。
+// 模型說要做某件事，跟那件事真的發生，中間的那道檢查。這裡放三種。
 //
 //   node gate.mjs intent    '{"intent":"查一下這張單","tool":"delete_order","args":{"id":1002}}'
 //   node gate.mjs external  '{"intent":"刪除訂單","tool":"delete_order","args":{"id":1002}}'  '幫我看一下 1002 這張訂單的狀況'
 //   node gate.mjs allowlist '{"intent":"刪除訂單","tool":"delete_order","args":{"id":1002}}'
 //
-// 三種閘的差別只有一個：判斷基準是從哪裡來的。
+// 三種檢查的差別只有一個：判斷基準是從哪裡來的。
 //   intent     兩端都是模型這一輪產生的字（宣稱的意圖、填的參數）
 //   external   動作還是模型提的，但准不准由模型碰不到的兩樣東西決定
 //              （使用者原本打的那句話、我寫死的清單）
-//   allowlist  Day 15 那道閘的形狀，看的是「這個工具、這個目標准不准碰」
+//   allowlist  Day 15 那道檢查的形狀，看的是「這個工具、這個目標准不准碰」
 import { fileURLToPath } from "node:url";
 
 // 高風險動作預設拒絕。這一份是人寫的，模型的輸出不會改到它。
 export const DENY_BY_DEFAULT = ["delete_order"];
 
 // 工具與目標的白名單：這個客服 agent 服務的就是這三張單，刪除也在它的職權內。
-// Day 15 那道閘擋的是「不該碰的目標」，而這一題裡目標完全合法。
+// Day 15 那道檢查擋的是「不該碰的目標」，而這一題裡目標完全合法。
 export const TOOL_ALLOWLIST = ["get_order", "delete_order"];
 export const TARGET_ALLOWLIST = [1001, 1002, 1003];
 
@@ -45,7 +45,7 @@ export function intentClass(call) {
   return { said: classify(String(call.intent ?? "")), doing: TOOL_CLASS[call.tool] ?? "unknown" };
 }
 
-// 一、意圖核對閘：模型宣稱的意圖，跟它實際要呼叫的工具，是不是同一類。
+// 一、意圖核對檢查：模型宣稱的意圖，跟它實際要呼叫的工具，是不是同一類。
 export function intentGate(call) {
   const said = classify(String(call.intent ?? ""));
   const doing = TOOL_CLASS[call.tool];
@@ -57,10 +57,10 @@ export function intentGate(call) {
   return { allow: true, code: "INTENT_MATCH", reason: `宣稱與實際都是 ${doing}` };
 }
 
-// 二、外部基準閘：高風險動作要在使用者「自己打的那句話」裡有依據。
+// 二、外部基準檢查：高風險動作要在使用者「自己打的那句話」裡有依據。
 // 它一樣讀 call.tool，所以不是「兩端都在模型外」；差別在決定准不准的那兩樣
 // 模型碰不到：userRequest 是進 prompt 之前就存在的字串，DENY_BY_DEFAULT 是版控裡的一行。
-// 模型這一輪宣稱了什麼，這道閘看不到。
+// 模型這一輪宣稱了什麼，這道檢查看不到。
 //
 // 比對規則只認關鍵字，是玩具等級：處理不了否定、同義詞、受詞，
 // 也不核對原話裡的編號跟 call.args.id 是不是同一個。真要上線得換成結構化授權。
@@ -75,7 +75,7 @@ export function externalGate(call, userRequest) {
   return { allow: true, code: "USER_BASIS_OK", reason: "使用者原始請求裡就有這個動作" };
 }
 
-// 三、白名單閘：Day 15 的形狀搬過來。這道閘沒有壞，它回答的是另一個問題。
+// 三、白名單檢查：Day 15 的形狀搬過來。這道檢查沒有壞，它回答的是另一個問題。
 export function allowlistGate(call) {
   if (!TOOL_ALLOWLIST.includes(call.tool)) {
     return { allow: false, code: "TOOL_NOT_ALLOWED", reason: `工具 ${call.tool} 不在清單上` };
@@ -86,7 +86,7 @@ export function allowlistGate(call) {
 }
 
 export const GATES = {
-  none: () => ({ allow: true, code: "NO_GATE", reason: "沒有閘" }),
+  none: () => ({ allow: true, code: "NO_GATE", reason: "沒有檢查" }),
   intent: (call) => intentGate(call),
   external: (call, req) => externalGate(call, req),
   allowlist: (call) => allowlistGate(call),

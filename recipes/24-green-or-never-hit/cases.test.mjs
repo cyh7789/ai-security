@@ -10,7 +10,7 @@
 // 骨架留在 recipe 23 沒有動，它記的是那一天的產出。
 //
 // 這裡不重新實作判準。判準只有一份，在 run.sh 裡，
-// 兩份的話它們會分岔，而分岔的那天測試還是綠的。
+// 兩份的話它們會分岔，而分岔的那天測試還會過。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -36,7 +36,7 @@ const state = (want, now) => (want === "擋" && now === "沒擋" ? "缺口" : wa
 for (const [id, path, one, , want, , now] of cases) {
   test(`${id}（${path}｜${state(want, now)}）${one}`, () => {
     // run.sh 的離開碼 1 是設計：清單上有已知的缺口。所以這裡不看它的離開碼，
-    // 看那一列的「結果」欄。用 execFileSync 的離開碼判會讓每一條都紅。
+    // 看那一列的「結果」欄。用 execFileSync 的離開碼判會讓每一條都沒過。
     let out;
     try {
       out = execFileSync("bash", [join(HERE, "run.sh"), id], { encoding: "utf8" });
@@ -50,7 +50,7 @@ for (const [id, path, one, , want, , now] of cases) {
     assert.equal(gotNow, now, `${id} 的紀錄欄跟 cases.tsv 對不上`);
     // 正面表列，不是逐個排除。第一版寫 notEqual(result, "對不上")，
     // 而「對不上」在那之後被拆成四個方向值，run.sh 再也沒印過它，
-    // 於是一條真的退步的防線照樣是綠的。排除式的斷言活不過值域的改動。
+    // 於是一條真的退步的防線照樣會過。排除式的斷言活不過值域的改動。
     assert.ok(
       ["符合", "缺口"].includes(result),
       `${id} 實測是「${actual}」，紀錄是「${now}」，結果是「${result}」`,
@@ -62,7 +62,7 @@ for (const [id, path, one, , want, , now] of cases) {
 const gaps = cases.filter(([, , , , w, , n]) => w === "擋" && n === "沒擋").length;
 const accepted = cases.filter(([, , , , w]) => w === "可接受").length;
 test(`收尾：${cases.length} 條裡有 ${gaps} 條是已知缺口、${accepted} 條是選擇不擋，只有 ${cases.length - gaps - accepted} 條真的擋住了`, () => {
-  assert.ok(gaps > 0, "一條基線案例都沒有。一份全綠的攻擊集分不出防得住跟根本沒打到。");
+  assert.ok(gaps > 0, "一條基線案例都沒有。一份全部通過的攻擊集分不出防得住跟根本沒打到。");
   // 攻擊集固定成檔案這件事，要跟來源對得上才算固定。
   execFileSync("node", [join(HERE, "collect.mjs"), "--check"], { encoding: "utf8" });
 });

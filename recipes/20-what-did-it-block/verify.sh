@@ -4,7 +4,7 @@
 #   bash verify.sh        # 全部
 #   bash verify.sh 3      # 只跑第 3 條
 #
-# 每一條問自己那句話：把行為弄壞（不是把字改掉），這條會不會轉紅？
+# 每一條問自己那句話：把行為弄壞（不是把字改掉），這條會不會沒過？
 set -u
 cd "$(dirname "$0")"
 ONLY="${1:-}"
@@ -12,18 +12,18 @@ command -v node >/dev/null || { echo "這份要 Node 才能跑，先裝 Node 再
 
 PASS=0; FAIL=0
 case_() { printf '\n=== %s ===\n' "$1"; }
-ok()   { printf '  [OK]   %s\n' "$1"; PASS=$((PASS+1)); }
-bad()  { printf '  [FAIL] %s\n' "$1"; FAIL=$((FAIL+1)); }
+ok()   { printf '  通過   %s\n' "$1"; PASS=$((PASS+1)); }
+bad()  { printf '  沒過   %s\n' "$1"; FAIL=$((FAIL+1)); }
 want() { [ -z "${ONLY}" ] || [ "${ONLY}" = "$1" ]; }
 
 TMP=$(mktemp -d)
 trap 'rm -rf "${TMP}" "${HERE_PY}"' EXIT
 TAB=$(printf '\t')
 # awk 不用在這裡：macOS 的 awk 拿中文當 -v 的值時 `$1==k` 每一列都成立，
-# 於是每一條檢查都會拿到整份輸出而且照樣有綠有紅（recipe 19 撞過）。
+# 於是每一條檢查都會拿到整份輸出而且照樣有的通過有的沒過（recipe 19 撞過）。
 col() { cut -f"$1"; }
 # drift 那張表的欄位取名字不取位置。這支自己就是在講「照欄號取值會讀到別的欄」，
-# 8/19 給 drift 加「輸入」欄的時候，第 8、9、16 條同時紅掉，紅的方式一模一樣。
+# 8/19 給 drift 加「輸入」欄的時候，第 8、9、16 條同時沒過，沒過的方式一模一樣。
 dcol() { python3 "${HERE_PY}" "$1" "$2" "$3"; }
 HERE_PY=$(mktemp)
 cat > "${HERE_PY}" <<'DCOLPY'
@@ -44,11 +44,11 @@ JOURNAL_NOW=FIXED node demo.mjs > "${TMP}/demo.out" 2>&1 || { echo "demo.mjs 跑
 cp journal.tsv "${TMP}/j1.tsv"
 # drift.out 在這裡就產生，不留在第 8 條裡面。
 # 留在裡面的話，單獨跑第 9、10、16 條會拿到空字串，而空字串餵進 grep 是會通過的
-# ——那幾條就變成「不管資料長怎樣都綠」。8/19 寫這支的時候第 16 條就是這樣假綠的。
+#，那幾條就變成「不管資料長怎樣都通過」。8/19 寫這支的時候第 16 條就是這樣假通過的。
 node drift.mjs > "${TMP}/drift.out"
 
 # ── 1 三筆固定輸入的判決，逐筆對 ──────────────────────────
-# 這條顧的是「判斷點還是原本那個判斷點」。任何一道閘的行為變了，這裡先紅。
+# 這條顧的是「判斷點還是原本那個判斷點」。任何一道檢查的行為變了，這裡先沒過。
 if want 1; then
   case_ "1 demo 三筆的判決"
   for want_line in \
@@ -67,7 +67,7 @@ fi
 
 # ── 2 放行的也要記 ───────────────────────────────────
 # 只記擋下來的那些是最省事的做法，也是漏網整類問題消失的原因。
-# 這條在 record() 只寫 deny 的時候會紅。
+# 這條在 record() 只寫 deny 的時候會沒過。
 if want 2; then
   case_ "2 紀錄裡放行與擋下都有"
   DEC=$(head -1 "${TMP}/j1.tsv" | tr '\t' '\n' | grep -n '^decision$' | cut -d: -f1)
@@ -110,7 +110,7 @@ fi
 
 # ── 5 版本號是算出來的，不是手填的 ──────────────────────
 # version-demo.sh 自己會核對「改了會變」與「還原之後回得去」，這裡跑它。
-# policyVersion 改成回傳固定字串的話，這條會紅。
+# policyVersion 改成回傳固定字串的話，這條會沒過。
 if want 5; then
   case_ "5 判準改一個字，版本號跟著變"
   if bash version-demo.sh > "${TMP}/ver.out" 2>&1; then
@@ -118,12 +118,12 @@ if want 5; then
     A=$(grep '^加一個詞' "${TMP}/ver.out" | col 3)
     ok "加一個詞之前 ${B}、之後 ${A}，還原之後回到 ${B}"
   else
-    bad "version-demo.sh 報紅：$(tail -2 "${TMP}/ver.out")"
+    bad "version-demo.sh 判沒過：$(tail -2 "${TMP}/ver.out")"
   fi
 fi
 
 # ── 6 誤擋那條是從應放行集撈的，不是抄一份 ─────────────────
-# 改 benign.jsonl 的 B5，demo 要跟著變。抄一份在 demo.mjs 裡的話這條會紅。
+# 改 benign.jsonl 的 B5，demo 要跟著變。抄一份在 demo.mjs 裡的話這條會沒過。
 # 8/20 從 B4 換成 B5：Day 21 把「騙」拿掉之後 B4 會放行，
 # 而這一格要的是「仍然被誤擋的那條」，不是「曾經被誤擋的那條」。
 if want 6; then
@@ -144,7 +144,7 @@ fi
 
 # ── 7 標注清單裡要有對得上現行判準的那一筆 ────────────────
 # 這條原本硬看 F1。判準在 Day 21 改過之後 F1 變成歷史標注，
-# 硬看它就變成「永遠紅」，而永遠紅的檢查跟永遠綠的一樣沒用。
+# 硬看它就變成「永遠沒過」，而永遠沒過的檢查跟永遠通過的一樣沒用。
 # 現在問的是正確的問題：現行判準版本下有沒有人工標注，那筆的指紋在不在紀錄裡。
 # 舊版標注留在檔案裡不影響這條，那正是 policy_version 這一欄要做到的事。
 if want 7; then
@@ -173,7 +173,7 @@ fi
 
 # ── 8 drift 的數字，用另一條路重算一次 ───────────────────
 # drift.mjs 自己會印 252 與 203。這裡用 python 逐檔 DictReader 重算，
-# 兩條路的數字不一樣就紅。drift 改成印寫死的數字的話，這條會紅。
+# 兩條路的數字不一樣就沒過。drift 改成印寫死的數字的話，這條會沒過。
 if want 8; then
   case_ "8 drift 的列數與不重複數，換一支程式重算得出來"
   DT=$(dcol "${TMP}/drift.out" 整批 列數)
@@ -201,7 +201,7 @@ PY
 fi
 
 # ── 9 長尾是假的：benign 那一臂列數等於不重複數 ──────────────
-# 這條是整份 recipe 的主張。它紅掉代表資料變了，那個主張要重講。
+# 這條是整份 recipe 的主張。它沒過代表資料變了，那個主張要重講。
 if want 9; then
   case_ "9 benign 那一臂，48 列 48 種"
   L=$(dcol "${TMP}/drift.out" benign 列數)
@@ -380,7 +380,7 @@ fi
 # 那跟整份 recipe「不同版本是兩把不同的尺」直接衝突。
 #
 # 第一版的檢查是 grep 原始碼有沒有 keyOf，所以「命中改對了、取值還在比 digest」
-# 這種改一半的 bug 照樣全綠（8/19 外審抓到）。這條改成造兩筆同指紋、
+# 這種改一半的 bug 照樣全部通過（8/19 外審抓到）。這條改成造兩筆同指紋、
 # 不同判準版本、不同判定的標注，看印出來的是哪一筆。
 if want 20; then
   case_ "20 同指紋不同判準版本的標注，取到的是當版那筆"
@@ -416,5 +416,5 @@ if want 21; then
     || bad "同一批紀錄兩次抽到不一樣的樣本"; }
 fi
 
-printf '\n%d 綠 %d 紅\n' "${PASS}" "${FAIL}"
+printf '\n通過 %d、沒過 %d\n' "${PASS}" "${FAIL}"
 [ "${FAIL}" = 0 ]

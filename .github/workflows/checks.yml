@@ -2,13 +2,13 @@ name: 檢查
 
 # 分級的正本是 recipes/22-when-should-it-stop-you/levels.tsv，不是這個檔。
 # 級別的意思：
-#   A 擋合併    紅了 = 這個 PR 弄壞了已經談好的東西
-#   B 只警告    照樣跑、照樣顯示紅，不進必要檢查。多半是環境的事
-#   C 缺口樁    釘的是現況，紅了 = 缺口狀態變了，要人重新做取捨
+#   A 擋合併    沒過 = 這個 PR 弄壞了已經談好的東西
+#   B 只警告    照樣跑、照樣顯示沒過，不進必要檢查。多半是環境的事
+#   C 缺口樁    釘的是現況，沒過 = 缺口狀態變了，要人重新做取捨
 #   D 定時      不綁 PR（在 nightly.yml）
 #
-# 離開碼公約（Day 22 定的，閘在 22/check-convention.sh）：
-#   0 綠而且真的驗過了    1 紅    2 環境不到位或有節被跳過，沒有結論
+# 離開碼公約（Day 22 定的，由 22/check-convention.sh 守著）：
+#   0 全部通過而且真的驗過了    1 有沒過的    2 環境不到位或有節被跳過，沒有結論
 
 on:
   pull_request:
@@ -23,9 +23,9 @@ jobs:
   # 一個 recipe 一個 job。這不只是為了平行：GitHub 每個 job 是獨立的 runner、
   # 獨立 checkout，而這 24 支裡有四個地方會寫別人的檔案
   # （21/verify.sh:21、21/shape-vs-behavior.sh:15、20/version-demo.sh:14、14/verify.sh:265）。
-  # 本機實測共用目錄平行跑 10 輪：18 紅 1、20 紅 7、21 紅 9；
-  # 各自一份完整 repo 複本平行跑 10 輪全綠（posts/day22 的 parallel.tsv 與 isolated.tsv）。
-  # 隔離的邊界是整個 repo 不是 recipe 目錄：只複製 recipes/ 的話 18 每輪都紅，
+  # 本機實測共用目錄平行跑 10 輪：18 沒過 1 次、20 沒過 7 次、21 沒過 9 次；
+  # 各自一份完整 repo 複本平行跑 10 輪全部通過（posts/day22 的 parallel.tsv 與 isolated.tsv）。
+  # 隔離的邊界是整個 repo 不是 recipe 目錄：只複製 recipes/ 的話 18 每輪都沒過，
   # 因為它要 repo 根目錄的 check-index.sh。
   blocking:
     name: A ${{ matrix.recipe }}
@@ -56,7 +56,7 @@ jobs:
     steps:
       # 整段歷史，不是預設的淺複製。recipe 25 的前四條要把舊 commit 的程式
       # 取出來重跑，而 fetch-depth 預設是 1，那幾個 commit 根本不在這個複本裡。
-      # 本機全綠而 CI 三條紅，就是這個差別。
+      # 本機全部通過而 CI 有三條沒過，就是這個差別。
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -65,35 +65,35 @@ jobs:
           cd "recipes/${{ matrix.recipe }}"
           # Actions 的 shell 是 bash -e，直接寫 `bash verify.sh` 再讀 $? 讀不到：
           # 非零會當場中止，下面整段分流從來不會執行（8/21 第一次跑就是這樣，
-          # 五個紅的 job 一個 summary 都沒印）。
+          # 五個沒過的 job 一個 summary 都沒印）。
           rc=0
           bash verify.sh || rc=$?
           case "${rc}" in
-            0) echo "${{ matrix.recipe }} 綠" >> "${GITHUB_STEP_SUMMARY}" ;;
+            0) echo "${{ matrix.recipe }} 通過" >> "${GITHUB_STEP_SUMMARY}" ;;
             2) echo "**${{ matrix.recipe }} 沒有結論**（環境不到位或有節被跳過）。跳過不是通過。" >> "${GITHUB_STEP_SUMMARY}" ;;
-            *) echo "**${{ matrix.recipe }} 紅**" >> "${GITHUB_STEP_SUMMARY}" ;;
+            *) echo "**${{ matrix.recipe }} 沒過**" >> "${GITHUB_STEP_SUMMARY}" ;;
           esac
           exit "${rc}"
 
-  # 21 拆成兩個 job，因為它的三條測試裡有兩種紅：
-  #   B4、d1 紅了 = 防線塌了，改期望值等於把防線關掉
-  #   b1  紅了 = 那個已知缺口的狀態變了，正確處置就是改期望值
-  # 走同一個離開碼、同一封通知，你會被訓練成「紅了就去改 expect」，
-  # 三週後遇到 B4 紅會用同一個手勢。
+  # 21 拆成兩個 job，因為它的三條測試裡有兩種沒過：
+  #   B4、d1 沒過 = 防線塌了，改期望值等於把防線關掉
+  #   b1  沒過 = 那個已知缺口的狀態變了，正確處置就是改期望值
+  # 走同一個離開碼、同一封通知，你會被訓練成「沒過就去改 expect」，
+  # 三週後遇到 B4 沒過會用同一個手勢。
   regression-line:
     name: A 21 的防線（B4、d1）
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       # 只跑防線那一類。8/21 這裡改過兩次：
-      #   一開始兩個 job 都跑整支 verify.sh，b1 的紅照樣污染這一個
-      #   接著讓 regress.mjs 用離開碼分 1／2，但那兩類可以同時紅，
-      #   而離開碼是互斥的，同時紅的時候缺口樁那個 job 什麼都看不到
+      #   一開始兩個 job 都跑整支 verify.sh，b1 沒過照樣污染這一個
+      #   接著讓 regress.mjs 用離開碼分 1／2，但那兩類可以同時沒過，
+      #   而離開碼是互斥的，同時沒過的時候缺口樁那個 job 什麼都看不到
       # 所以兩個 job 各跑各的那一類，不共用一個回傳值。
       - run: |
           cd recipes/21-did-it-come-back
           node regress.mjs --only 防線
-      # 突變測試（把修補拿掉會不會紅）跟還原檢查在整支裡，那些也要跑。
+      # 突變測試（把修補拿掉會不會判沒過）跟還原檢查在整支裡，那些也要跑。
       - run: cd recipes/21-did-it-come-back && bash verify.sh 3 && bash verify.sh 4 && bash verify.sh 8
 
   gap-stake:
@@ -116,11 +116,11 @@ jobs:
             } >> "${GITHUB_STEP_SUMMARY}"
             exit 1
           fi
-          echo "缺口樁 b1 還釘在原地（綠 = 那個缺口的狀態沒變）" >> "${GITHUB_STEP_SUMMARY}"
+          echo "缺口樁 b1 還釘在原地（通過 = 那個缺口的狀態沒變）" >> "${GITHUB_STEP_SUMMARY}"
 
-  # B 級不用 continue-on-error。那個旗標會把紅燈顯示成綠燈，
+  # B 級不用 continue-on-error。那個旗標會把沒過顯示成通過，
   # 三週之後沒人點進去看，跟按 skip 的差別只在誰按。
-  # 讓它紅，只是不列進分支保護的必要檢查。
+  # 讓它顯示沒過，只是不列進分支保護的必要檢查。
   advisory:
     name: B ${{ matrix.recipe }}
     runs-on: ubuntu-24.04
@@ -137,7 +137,7 @@ jobs:
       # 它會掉到預裝的完整版 Chrome，而完整版正是 8/21 在本機起不來的那個。
       # --path 不能省：不給的話它裝到工作目錄底下，而 05 找的是 ~/.cache/puppeteer。
       # 8/21 第一次跟第二次跑都裝錯位置，兩次都 fallback 到 runner 預裝的完整版 Chrome，
-      # 而那個在 Linux 上時好時壞（dbus 卡住），同一個 commit 一次綠一次紅。
+      # 而那個在 Linux 上時好時壞（dbus 卡住），同一個 commit 一次過一次沒過。
       - name: 裝 chrome-headless-shell
         if: matrix.recipe == '05-innerhtml-fake-green'
         run: |
@@ -149,7 +149,7 @@ jobs:
           ls -d "${HOME}"/.cache/puppeteer/chrome-headless-shell/*/ 
       # Ubuntu 23.10 之後預設用 AppArmor 擋掉非特權的 user namespace，
       # Chrome 的沙箱就起不來（FATAL: No usable sandbox!）。
-      # 05 拒絕用 --no-sandbox 換綠燈，所以這裡把 userns 開回來讓它真的跑得到。
+      # 05 拒絕用 --no-sandbox 換一個通過，所以這裡把 userns 開回來讓它真的跑得到。
       # 這一行只適合一次性的託管 runner：它關掉的是主機層級的限制。
       # 自架或長駐的 runner 不要照貼，那會影響同一台機器上的其他工作，
       # 那種環境要改用隔離的 runner，或另外配置 Chrome 的沙箱。
@@ -162,15 +162,15 @@ jobs:
           rc=0
           bash verify.sh || rc=$?
           case "${rc}" in
-            0) echo "${{ matrix.recipe }} 綠" >> "${GITHUB_STEP_SUMMARY}" ;;
+            0) echo "${{ matrix.recipe }} 通過" >> "${GITHUB_STEP_SUMMARY}" ;;
             2) echo "${{ matrix.recipe }} 沒有結論（環境不到位）。跳過不是通過。" >> "${GITHUB_STEP_SUMMARY}" ;;
-            *) echo "**${{ matrix.recipe }} 紅**" >> "${GITHUB_STEP_SUMMARY}" ;;
+            *) echo "**${{ matrix.recipe }} 沒過**" >> "${GITHUB_STEP_SUMMARY}" ;;
           esac
           exit "${rc}"
 
-  # 這道閘原本掛在 18-not-a-free-chatgpt/verify.sh:371 上，18 一沒跑它就不見了。
+  # 這道檢查原本掛在 18-not-a-free-chatgpt/verify.sh:371 上，18 一沒跑它就不見了。
   gates:
-    name: A 兩道全域的閘
+    name: A 兩道全域那道檢查
     runs-on: ubuntu-24.04
     steps:
       # gates 這個 job 也會跑 recipe 25 的 verify.sh（「跑完 repo 要是乾淨的」那一條），

@@ -15,14 +15,14 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 ONLY="${1:-}"
 PASS=0; FAIL=0; SKIP=0
 
-ok()   { printf '  [ OK ] %s\n' "$1"; PASS=$((PASS+1)); }
-bad()  { printf '  [FAIL] %s\n' "$1"; FAIL=$((FAIL+1)); }
-skip() { printf '  [SKIP] %s\n' "$1"; SKIP=$((SKIP+1)); }
+ok()   { printf '  通過   %s\n' "$1"; PASS=$((PASS+1)); }
+bad()  { printf '  沒過   %s\n' "$1"; FAIL=$((FAIL+1)); }
+skip() { printf '  沒有結論 %s\n' "$1"; SKIP=$((SKIP+1)); }
 sect() { printf '\n── %s ──\n' "$1"; }
 want() { [ -z "${ONLY}" ] || [ "${ONLY}" = "$1" ]; }
 
-# 節號打錯的話下面每一節都不跑，收尾算出 0 綠 0 紅 0 跳過然後結束碼 0。
-# 一份講假綠燈的東西最不能留的就是這種形狀。
+# 節號打錯的話下面每一節都不跑，收尾算出 通過 0、沒過 0、沒有結論 0，然後結束碼 0。
+# 一份講假通過的東西最不能留的就是這種形狀。
 case "${ONLY}" in
   ''|1|2|3|4|5|6|7) ;;
   *) printf '沒有第 %s 節。可用的是 1 到 7，或不給參數跑全部。\n' "${ONLY}"; exit 2 ;;
@@ -130,7 +130,7 @@ FAKEEOF
     chmod +x "${WS}/fake-claude"
 
     # 正對照：未遮蔽的那一路真的帶著 token。
-    # 少了這一條，下面那條「輸出裡沒有 token」在假 CLI 根本沒被呼叫的時候也會綠。
+    # 少了這一條，下面那條「輸出裡沒有 token」在假 CLI 根本沒被呼叫的時候也會通過。
     if "${WS}/fake-claude" | grep -q "${FAKE_A}"; then
       ok "正對照：未遮蔽的來源（假 CLI 的原始輸出）真的把 token 整串印出來"
     else
@@ -187,7 +187,7 @@ fs.writeFileSync(process.argv[4], JSON.stringify(cfg));
     done
     [ "${n}" = 0 ] && ok "全域是空的、七台都住在專案底下，七台全部列出來了"
 
-    # 負對照：不是每一列都印 ***。整欄寫死 *** 的腳本上面那幾條照樣會綠。
+    # 負對照：不是每一列都印 ***。整欄寫死 *** 的腳本上面那幾條照樣會通過。
     printf '%s' "${out}" | grep -E '^proj:demo-proj-two +sse +no +demo-e' >/dev/null \
       && ok "負對照：沒宣告變數的那台憑證欄印「no」，不是一律印 ***" \
       || bad "沒宣告變數的那台憑證欄不是「no」：$(printf '%s' "${out}" | grep demo-e)"
@@ -252,8 +252,8 @@ fs.writeFileSync(process.argv[4], JSON.stringify(cfg));
         && bad "執行檔路徑跑進範圍欄了：${absline}" \
         || ok "執行檔路徑沒有進範圍欄（絕對路徑的 npx 不算允許目錄）"
       # 要驗的是「allowed 出現在範圍欄」，不是「這一列有 allowed 這個字」。
-      # 掃整列的話，scope 就算變成 unknown 也會綠，因為 /srv/allowed 在
-      # 「啟動參數裡的路徑」那一欄照樣在。實測過那條會假綠。
+      # 掃整列的話，scope 就算變成 unknown 也會通過，因為 /srv/allowed 在
+      # 「啟動參數裡的路徑」那一欄照樣在。實測過那條會假通過。
       printf '%s' "${absline}" | grep -qE 'demo-abs[[:space:]]+\.\.\./allowed[[:space:]]' \
         && ok "它真正的允許目錄填在範圍欄裡" \
         || bad "範圍欄沒有填到真正的允許目錄：${absline}"
@@ -275,7 +275,7 @@ fs.writeFileSync(process.argv[4], JSON.stringify(cfg));
     ( cd "${WS}/home" && find . | sort ) > "${WS}/tree.before" 2>/dev/null
     cksum < "${WS}/home/.claude.json" > "${WS}/sum.before" 2>/dev/null
     # 快照拍不成（cp、find、cksum 有一個不在）的時候，下面那個比對一定不相等。
-    # 那要算跳過不算紅燈：紅燈的意思是被驗的東西壞了，不是這台機器少了工具。
+    # 那要算沒有結論不算沒過：沒過的意思是被驗的東西壞了，不是這台機器少了工具。
     if [ ! -s "${WS}/tree.before" ] || [ ! -s "${WS}/sum.before" ]; then
       skip "拍不出家目錄的快照（cp／find／cksum 少了一個），「只讀不寫」這條驗不了"
     else
@@ -401,7 +401,7 @@ fi
 
 # ── 3 ────────────────────────────────────────────────────
 if want 3; then
-sect "3 scan-descriptions.sh 對植入的描述紅、對乾淨的綠"
+sect "3 scan-descriptions.sh 對植入的描述判沒過、對乾淨的判通過"
 
   M=$(miss node)
   if [ -n "${M}" ]; then
@@ -515,7 +515,7 @@ sect "4 probe.sh 的四種結束碼分得開，而且收窄真的擋得住"
     # 守衛要看的註冊處，必須跟 probe.sh 實際會用的那個是同一個。
     # 原本這裡寫死 registry.npmjs.org，而 probe.sh 吃 PROBE_REGISTRY，
     # 於是用 PROBE_REGISTRY 指到一個連不到的位址時，守衛照樣說「問得到」，
-    # 整節不跳過，然後六條測試一起紅。紅的是量測方式不是程式。
+    # 整節不跳過，然後六條測試一起沒過。壞的是量測方式不是程式。
     REG_UNDER_TEST=${PROBE_REGISTRY:-https://registry.npmjs.org}
     HAVE_FS=0
     if [ -z "$(miss npx)" ]; then
@@ -535,7 +535,7 @@ sect "4 probe.sh 的四種結束碼分得開，而且收窄真的擋得住"
         bad "正常那一輪沒給 0（rc=${rc}）：$(printf '%s' "${out}" | tail -4)"
       fi
 
-      # 上游那句拒絕的原文。文章要引它，所以它變了要紅，不能默默改掉。
+      # 上游那句拒絕的原文。文章要引它，所以它變了要沒過，不能默默改掉。
       grep -q 'Access denied - path outside allowed directories' "${WS}/p.ok" \
         && ok "拒絕的原文還是「Access denied - path outside allowed directories」" \
         || bad "上游改了拒絕訊息，README 引的那句要重寫：$(grep -i denied "${WS}/p.ok" | head -1)"
@@ -567,11 +567,11 @@ sect "4 probe.sh 的四種結束碼分得開，而且收窄真的擋得住"
 
       # 兩種失敗的訊息不能重疊。這裡不比寫死的句子，比的是兩段結論的差集：
       # 一邊有、另一邊沒有的話才代表讀者分得出自己碰到的是哪一種。
-      # 寫死一句話去比的話，改措辭會假紅，換個措辭把 bug 種回去會假綠。
+      # 寫死一句話去比的話，改措辭會誤報，換個措辭把 bug 種回去會假通過。
       #
       # 只切「── 結論 ──」之後那一段。整份輸出拿去比是沒有鑑別力的：
       # 兩輪的區塊標題（寬範圍那一行、收窄後那一行）本來就不一樣，
-      # 兩種失敗就算講一模一樣的話，差集照樣非空（實測：這條檢查第一版就是這樣假綠的）。
+      # 兩種失敗就算講一模一樣的話，差集照樣非空（實測：這條檢查第一版就是這樣假通過的）。
       sent() { concl "$1" | tr '。' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -v '^$' | sort -u; }
       sent "${WS}/p.broken" > "${WS}/s.broken"
       sent "${WS}/p.leak" > "${WS}/s.leak"
@@ -611,7 +611,7 @@ VAREOF
 
     printf 'x{ 這一份故意不是合法的 JSON\n' > "${WS}/roots/demo-proj-broken/.mcp.json"
 
-    # 正對照。少了這兩條，下面那幾條「值沒印出來」在檔案根本沒被讀到的時候也會綠。
+    # 正對照。少了這兩條，下面那幾條「值沒印出來」在檔案根本沒被讀到的時候也會通過。
     grep -q "${FAKE_A}" "${WS}/roots/demo-proj-plain/.mcp.json" \
       && ok "正對照：那份假 .mcp.json 裡真的寫著一整串明文 token" \
       || bad "正對照掛了：假 .mcp.json 自己就沒有 token，下面幾條不算數"
@@ -766,8 +766,8 @@ POISONEOF
     mkdir -p "${WS}/skills-empty"
     out=$(bash "${HERE}/scan-descriptions.sh" --files "${WS}/skills-empty" 2>&1); rc=$?
     [ "${rc}" = 2 ] \
-      && ok "目錄裡一份 markdown 都沒有的時候結束碼 2，不是綠燈" \
-      || bad "空目錄回了 ${rc}，那顆綠燈的意思會被讀成「掃過了、乾淨」：${out}"
+      && ok "目錄裡一份 markdown 都沒有的時候結束碼 2，不是通過" \
+      || bad "空目錄回了 ${rc}，那顆通過的意思會被讀成「掃過了、乾淨」：${out}"
 
     out=$(bash "${HERE}/scan-descriptions.sh" --files 2>&1); rc=$?
     n=0
@@ -847,11 +847,11 @@ sect "7 demo/ 那批假設定跑得動（README 那一節的示範輸出就是�
 fi
 
 # ── 收 ───────────────────────────────────────────────────
-printf '\n════════ %s 綠 / %s 紅 / %s 跳過 ════════\n' "${PASS}" "${FAIL}" "${SKIP}"
+printf '\n════════ 通過 %s／沒過 %s／沒有結論 %s ════════\n' "${PASS}" "${FAIL}" "${SKIP}"
 if [ "${SKIP}" != 0 ]; then
   printf '有跳過的節，結束碼不會是 0。跳過不等於通過。\n'
 fi
-# 離開碼：0 綠、1 紅、2 沒有結論（Day 22 的公約）
+# 離開碼：0 全部通過、1 有沒過的、2 沒有結論（Day 22 的公約）
 [ "${FAIL}" != 0 ] && exit 1
 [ "${SKIP}" != 0 ] && exit 2
 exit 0

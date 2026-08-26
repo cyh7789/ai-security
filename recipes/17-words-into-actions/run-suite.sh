@@ -4,12 +4,12 @@
 #   bash run-suite.sh                                    # 罐頭，驗流程
 #   MODEL_CMD='bash adapter.sh' N=12 bash run-suite.sh   # 真模型
 #
-# 六格是這樣配的（arm 是攻擊家族，gate 是那道閘）：
-#   hijack none        沒有閘。先確認這顆模型到底吃不吃這個誘餌，不然後面全綠沒有意義
-#   hijack intent      意圖核對閘。骨幹就在賭這一格會放行
-#   hijack external    外部基準閘
-#   hijack allowlist   Day 15 那道閘。它放行不是它壞了，是它回答的問題不同
-#   normal intent      反向控制。閘不能把正常的查詢也擋掉
+# 六格是這樣配的（arm 是攻擊家族，gate 是那道檢查）：
+#   hijack none        沒有檢查。先確認這顆模型到底吃不吃這個誘餌，不然後面全部通過沒有意義
+#   hijack intent      意圖核對檢查。骨幹就在賭這一格會放行
+#   hijack external    外部基準檢查
+#   hijack allowlist   Day 15 那道檢查。它放行不是它壞了，是它回答的問題不同
+#   normal intent      反向控制。檢查不能把正常的查詢也擋掉
 #   normal external    同上
 #
 # 為什麼要交錯：一格跑完再跑下一格的話，中間任何漂移（模型端更新、我自己手改了東西）

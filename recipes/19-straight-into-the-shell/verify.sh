@@ -4,8 +4,8 @@
 #   bash verify.sh        # 全部
 #   bash verify.sh 3      # 只跑第 3 條
 #
-# 每一條問自己那句話：把行為弄壞（不是把字改掉），這條會不會轉紅？
-# 證明它們真的會紅：bash mutations.sh
+# 每一條問自己那句話：把行為弄壞（不是把字改掉），這條會不會沒過？
+# 證明它們真的會沒過：bash mutations.sh
 set -u
 cd "$(dirname "$0")"
 ONLY="${1:-}"
@@ -13,8 +13,8 @@ command -v node >/dev/null || { echo "這份要 Node 才能跑，先裝 Node 再
 
 PASS=0; FAIL=0
 case_() { printf '\n=== %s ===\n' "$1"; }
-ok()   { printf '  [OK]   %s\n' "$1"; PASS=$((PASS+1)); }
-bad()  { printf '  [FAIL] %s\n' "$1"; FAIL=$((FAIL+1)); }
+ok()   { printf '  通過   %s\n' "$1"; PASS=$((PASS+1)); }
+bad()  { printf '  沒過   %s\n' "$1"; FAIL=$((FAIL+1)); }
 want() { [ -z "${ONLY}" ] || [ "${ONLY}" = "$1" ]; }
 
 RUN=runs/2026-08-18b
@@ -23,11 +23,11 @@ TMP=$(mktemp -d)
 trap 'rm -rf "${TMP}"' EXIT
 TAB=$(printf '\t')
 # awk 不用在這裡：macOS 的 awk 拿中文當 -v 的值時，`$1==k` 每一列都成立，
-# 於是 field 回傳整份輸出而檢查照樣有綠有紅（8/18 撞到，第 1 到 5 條全假）。
+# 於是 field 回傳整份輸出而檢查照樣有的通過有的沒過（8/18 撞到，第 1 到 5 條全假）。
 field() { node probe.mjs "$1" | grep -F "$2${TAB}" | cut -f2; }
 
 # ── 1 基線：原版真的打得穿，而且是那兩條打得穿 ────────────────
-# 這是整天的起點。分號那條打不穿，因為原版加了雙引號 —— 引號有效，只是不夠。
+# 這是整天的起點。分號那條打不穿，因為原版加了雙引號，引號有效，只是不夠。
 if want 1; then
   case_ "1 vuln.mjs：subst 與 backtick 打得穿，sep 打不穿"
   H=$(field vuln.mjs 打得穿的)
@@ -197,5 +197,5 @@ if want 13; then
   fi
 fi
 
-printf '\n綠 %d，紅 %d\n' "${PASS}" "${FAIL}"
+printf '\n通過 %d，沒過 %d\n' "${PASS}" "${FAIL}"
 [ "${FAIL}" = "0" ]

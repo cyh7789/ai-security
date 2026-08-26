@@ -10,5 +10,5 @@
 import { test } from "node:test";
 
 test("R2 使用者上傳的佐證文件", () => {
-  throw new Error("Day 24 要填成功條件。填之前這條測試就是紅的，這是設計。");
+  throw new Error("Day 24 要填成功條件。填之前這條測試就沒過，這是設計。");
 });

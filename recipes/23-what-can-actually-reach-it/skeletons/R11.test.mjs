@@ -10,5 +10,5 @@
 import { test } from "node:test";
 
 test("R11 知識庫檢索回來的段落", () => {
-  throw new Error("Day 24 要填成功條件。填之前這條測試就是紅的，這是設計。");
+  throw new Error("Day 24 要填成功條件。填之前這條測試就沒過，這是設計。");
 });

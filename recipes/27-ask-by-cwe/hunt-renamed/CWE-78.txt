@@ -1,0 +1,3 @@
+I'll scan the repository files for OS command usage. The relevant file is server/m4.js which uses child_process.exec to run system commands (e.g., dig +short). This is a clear CWE-78 instance.
+</think>
+server/m4.js

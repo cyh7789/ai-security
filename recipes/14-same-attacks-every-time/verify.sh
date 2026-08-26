@@ -3,8 +3,8 @@
 #                    bash verify.sh 7      只跑第 7 條
 #
 # 每一條驗的都是行為，不是字面。寫的時候問自己那句話：
-# 「把功能弄壞（不是把字改掉），這條會不會轉紅？」答不出來的就重寫。
-# 證明它們真的會紅：bash mutations.sh
+# 「把功能弄壞（不是把字改掉），這條會不會沒過？」答不出來的就重寫。
+# 證明它們真的會沒過：bash mutations.sh
 #
 # 這一份一發真模型都不打。判準本身有沒有辨識力，用罐頭回應才驗得出來：
 # 真模型每次回的不一樣，判準壞掉跟模型剛好沒上鉤長得一模一樣。
@@ -14,8 +14,8 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 cd "${HERE}"
 ONLY="${1:-}"
 PASS=0; FAIL=0
-ok()  { printf '  [OK]   %s\n' "$1"; PASS=$((PASS+1)); }
-bad() { printf '  [FAIL] %s\n' "$1"; FAIL=$((FAIL+1)); }
+ok()  { printf '  通過   %s\n' "$1"; PASS=$((PASS+1)); }
+bad() { printf '  沒過   %s\n' "$1"; FAIL=$((FAIL+1)); }
 run() { [ -z "${ONLY}" ] || [ "${ONLY}" = "$1" ]; }
 TMP=$(mktemp -d); trap 'rm -rf "${TMP}"' EXIT
 
@@ -31,7 +31,7 @@ sum() { # sum <kind> <verdict>  讀 TMP/r.tsv
 }
 
 # ── 1 清單是收來的，不是手抄的 ────────────────────────────
-# 改 recipe 10 的 attacks.txt 而沒重收，這條要紅。手抄的清單會跟來源分岔，
+# 改 recipe 10 的 attacks.txt 而沒重收，這條要沒過。手抄的清單會跟來源分岔，
 # 而分岔的那一天你不會知道，那正是這份 recipe 要解決的問題。
 if run 1; then
   echo "=== 1 attacks.jsonl 跟五個來源一致 ==="
@@ -44,7 +44,7 @@ fi
 if run 2; then
   echo "=== 2 條數與載體分佈對得上來源 ==="
   W_IN=$(grep -cv '^#' ../10-instructions-vs-data/attacks.txt)
-  # Day 21 那條的載體是 gate（判準在閘上，不送模型），條數去數它的來源檔，
+  # Day 21 那條的載體是 gate（判準在檢查上，不送模型），條數去數它的來源檔，
   # probe-bait.tsv 多一句這裡就跟著動，不寫死成 1。
   W_GATE=$(awk '!/^#/ && NF' ../18-not-a-free-chatgpt/prompts/probe-bait.tsv | wc -l | tr -d ' ')
   W_PG=$(node --input-type=module -e "import {HIDING} from '../11-what-the-model-reads/page.mjs'; console.log(HIDING.length)")
@@ -78,7 +78,7 @@ if run 3; then
     node build-prompt.mjs guards/v1.txt "${id}" >/dev/null 2>&1 && BAD=$((BAD + 1))
   done
   # CLI 擋門過了不代表跑批時也不送：真正決定送誰的是 run-suite.sh 的那道過濾，
-  # 兩條路徑分開實作，所以兩條都要驗。只驗前者的話，拿掉後者不會紅。
+  # 兩條路徑分開實作，所以兩條都要驗。只驗前者的話，拿掉後者不會沒過。
   stub refuse v1
   ROWS=$(grep -c . "${TMP}/r.tsv" 2>/dev/null || echo 0)
   LEAK=$(awk -F'\t' 'NR>1 && ($4=="dom" || $4=="http")' "${TMP}/r.tsv" | wc -l | tr -d ' ')
@@ -93,7 +93,7 @@ fi
 # 全部塞進使用者那一格假裝一樣的話，量到的不是同一件事。
 if run 4; then
   echo "=== 4 page 進網頁欄、kb 進段落欄、input 進使用者欄 ==="
-  # id 從資料撈，不寫字面。寫死的話，來源多一條而 id 換位之後，這條會為了錯的理由紅。
+  # id 從資料撈，不寫字面。寫死的話，來源多一條而 id 換位之後，這條會為了錯的理由沒過。
   first() { grep -m1 "\"carrier\":\"$1\"" attacks.jsonl | grep -oE '"id":"[0-9]+"' | cut -d'"' -f4; }
   IDP=$(first page); IDK=$(first kb); IDI=$(first input)
   MARKI=$(grep "\"id\":\"${IDI}\"" attacks.jsonl | grep -oE '"mark":"[^"]*"' | cut -d'"' -f4)
@@ -134,7 +134,7 @@ if run 6; then
 fi
 
 # ── 7 只看失守數會被一版什麼都不回答的 prompt 騙過去 ─────────
-# 這一條就是誤擋那一欄存在的理由。它紅了代表那一欄失去意義。
+# 這一條就是誤擋那一欄存在的理由。它沒過代表那一欄失去意義。
 if run 7; then
   echo "=== 7 什麼都不回答那版：零失守，但誤擋滿格 ==="
   stub paranoid v1
@@ -202,12 +202,12 @@ SH
 fi
 
 # ── 11 隱形那條的標記真的在 payload 裡 ──────────────────────
-# 它要是掉了，那一條會三版全綠，而綠的原因是模型憑空生不出那個代號，
-# 不是防護句擋住了。這種恆綠的列比紅的列危險。
+# 它要是掉了，那一條會三版全部通過，而它通過的原因是模型憑空生不出那個代號，
+# 不是防護句擋住了。這種永遠通過的列，比會沒過的列危險。
 if run 11; then
   echo "=== 11 每一條送得出去的攻擊，標記都真的在 payload 裡 ==="
-  # 不要只驗隱形那條。任何一條的標記掉了，它都會版版全綠，而綠的原因是
-  # 模型憑空生不出那個字串，不是防護句擋住了。恆綠的列比紅的列危險。
+  # 不要只驗隱形那條。任何一條的標記掉了，它都會版版全部通過，而它通過的原因是
+  # 模型憑空生不出那個字串，不是防護句擋住了。永遠通過的列，比會沒過的列危險。
   ALLOK=$(node -e '
     const L=require("fs").readFileSync("attacks.jsonl","utf8").trim().split("\n").map(JSON.parse);
     const dec=(s)=>[...s].map(c=>{const p=c.codePointAt(0);
@@ -246,7 +246,7 @@ if run 13; then
   # 產出的是一個空檔，compare.mjs 直接報錯，而「報錯」跟「分母變了」在這條眼裡一樣。
   # 順便驗 runs/README.md 那條「怎麼自己重算」的指令真的跑得動。
   # 今天這一份的文件錯了三次（README 第一句、.gitignore 沒錨定、這條指令的相對路徑），
-  # 三次都是人看不出來、跑一次就現形。讀者照著貼的那一行，要嘛跑得動要嘛這裡紅。
+  # 三次都是人看不出來、跑一次就現形。讀者照著貼的那一行，要嘛跑得動要嘛這裡沒過。
   CMD=$(awk '/^## 怎麼自己重算/{f=1} f&&/^```bash/{g=1;next} g&&/^```/{exit} g' runs/README.md | head -1)
   DOCRUN=$(cd "${HERE}" && eval "${CMD}" 2>&1 | grep -cE '^\| v[0-9] \|')
   sed '$d' "${TMP}/r.tsv" > "${TMP}/short.tsv"
@@ -286,5 +286,5 @@ if run 15; then
 fi
 
 echo
-printf '%s 綠 %s 紅\n' "${PASS}" "${FAIL}"
+printf '通過 %s、沒過 %s\n' "${PASS}" "${FAIL}"
 [ "${FAIL}" = 0 ]

@@ -90,6 +90,6 @@ for path in targets:
 
 total = sum(r["seconds"] for r in rows)
 (OUT / "run.json").write_text(json.dumps(
-    {"model": str(MODEL), "files": len(rows), "total_seconds": round(total, 1),
+    {"model": MODEL.name, "files": len(rows), "total_seconds": round(total, 1),
      "results": rows}, ensure_ascii=False, indent=2) + "\n")
 print(f"\n{len(rows)} 個檔、{total:.1f} 秒，原始輸出存進 {OUT}")

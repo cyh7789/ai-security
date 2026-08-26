@@ -2,8 +2,8 @@
 # 故障注入：把腳本弄壞，看 verify.sh 會不會發現。
 #
 # 這一份自己說「憑證不會外流」「描述不會截斷」「降權真的生效」，
-# 而這三句話都只能用同一種方法證明：故意讓它們不成立，看驗證會不會紅。
-# 不會紅的那條檢查沒有價值。
+# 而這三句話都只能用同一種方法證明：故意讓它們不成立，看驗證會不會判沒過。
+# 不會沒過的那條檢查沒有價值。
 #
 # 這支不會動到你的檔案：每一種突變都複製到 mktemp -d 裡改，跑完刪掉。
 #
@@ -16,7 +16,7 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 PASS=0; FAIL=0; UNTESTED=0; N=0; RAN=0
 
 # 編號打錯的話每一種都被跳過，收尾算出「抓到 0 種 / 漏掉 0 種」然後結束碼 0。
-# 一份專門用來證明「這裡沒有假綠燈」的工具，自己就不能有這種形狀。
+# 一份專門用來證明「這裡沒有假通過」的工具，自己就不能有這種形狀。
 case "${ONLY}" in
   '') ;;
   *[!0-9]*) printf '種類編號要是數字，收到的是「%s」。\n' "${ONLY}" >&2; exit 2 ;;
@@ -36,23 +36,23 @@ run_case() {
       printf '  第 %s 種：突變寫不進去\n' "${N}"; rm -rf "${WS}"; FAIL=$((FAIL+1)); return; }
   done
   if cmp -s "${HERE}/${file}" "${WS}/${file}"; then
-    printf '  [無效] %-42s 突變沒改到任何一個字，這一條沒測到東西\n' "${desc}"
+    printf '  [無效] %-42s 突變沒改到任何一個字，這一條什麼都沒驗到\n' "${desc}"
     rm -rf "${WS}"; FAIL=$((FAIL+1)); return
   fi
   OUT=$(cd "${WS}" && bash verify.sh "${sect}" 2>&1)
-  REDS=$(printf '%s' "${OUT}" | grep -c '\[FAIL\]')
-  SKIPS=$(printf '%s' "${OUT}" | grep -c '\[SKIP\]')
+  REDS=$(printf '%s' "${OUT}" | grep -c '^  沒過')
+  SKIPS=$(printf '%s' "${OUT}" | grep -c '^  沒有結論')
   if [ "${REDS}" -gt 0 ]; then
-    printf '  [抓到] %-42s 第 %s 節 %s 個紅燈\n' "${desc}" "${sect}" "${REDS}"
+    printf '  [抓到] %-42s 第 %s 節 %s 個沒過\n' "${desc}" "${sect}" "${REDS}"
     PASS=$((PASS+1))
   elif [ "${SKIPS}" -gt 0 ]; then
-    # 那一節整節被跳過（沒 node、抓不到 filesystem server），沒有紅燈不代表突變沒被抓到。
-    # 算成漏掉會冤枉它，算成抓到就是這支自己在造假綠燈。兩個都不對，所以單獨報。
-    printf '  [沒測到] %-40s 第 %s 節整節跳過：%s\n' "${desc}" "${sect}" \
-      "$(printf '%s' "${OUT}" | grep -m1 '\[SKIP\]' | sed 's/^ *\[SKIP\] //')"
+    # 那一節整節被跳過（沒 node、抓不到 filesystem server），沒有一條沒過，不代表突變沒被抓到。
+    # 算成漏掉會冤枉它，算成抓到就是這支自己在造出假通過。兩個都不對，所以單獨報。
+    printf '  [沒有結論] %-38s 第 %s 節整節跳過：%s\n' "${desc}" "${sect}" \
+      "$(printf '%s' "${OUT}" | grep -m1 '^  沒有結論' | sed 's/^ *沒有結論 *//')"
     UNTESTED=$((UNTESTED+1))
   else
-    printf '  [漏掉] %-42s 第 %s 節 全綠，這是假綠燈\n' "${desc}" "${sect}"
+    printf '  [漏掉] %-42s 第 %s 節 全部通過，這是假通過\n' "${desc}" "${sect}"
     printf '%s\n' "${OUT}" | sed 's/^/         /'
     FAIL=$((FAIL+1))
   fi
@@ -142,8 +142,8 @@ run_case '抓到第一條就收工'                   3 desc-scan.cjs \
 run_case '沒問到當成乾淨'                     3 scan-descriptions.sh \
   's{  printf .沒問到就沒有掃到，結束碼 2。這不是「乾淨」。\\n.\n  exit 2}{  exit 0}'
 
-# 樣式表只有一份，所以拿掉一類的時候，MCP 那一路跟 --files 那一路要一起紅。
-# 兩份寫的話，補了一邊漏了另一邊，而畫面上只會看到一邊變綠。
+# 樣式表只有一份，所以拿掉一類的時候，MCP 那一路跟 --files 那一路要一起沒過。
+# 兩份寫的話，補了一邊漏了另一邊，而畫面上只會看到一邊變成通過。
 run_case '拿掉「標籤」那一類樣式（掃指示檔那一路）' 6 desc-scan.cjs \
   's{^  \["標籤".*\n}{}m'
 run_case '掃指示檔的時候不點出是哪一個檔'      6 desc-scan.cjs \
@@ -166,7 +166,7 @@ run_case '收窄那一輪只看 VERDICT，不看記號字串' 4 probe.sh \
   's{^if printf .%s. "\$\{body\}" \| grep -q "\$\{CANARY\}"; then$}{if [ "\$\{verdict\}" = "VERDICT=RPCERR" ]; then}m'
 run_case '跑完不清 /tmp/mcp-probe'            4 probe.sh \
   's{^trap cleanup EXIT$}{}m'
-# 只換掉第一句是不夠的：第二句還在，兩邊的差集就還是非空，檢查照樣綠。
+# 只換掉第一句是不夠的：第二句還在，兩邊的差集就還是非空，檢查照樣通過。
 # 這一條要把降權那一段整個換成探針壞了那一段，兩種失敗才真的講同一組話。
 run_case '兩種失敗講同一句話'                 4 probe.sh \
   's{  printf \x27降權沒生效：.*?結束碼 1。\\n\x27\n}{  printf \x27探針壞了：寬範圍也讀不到那個記號字串。\\n\x27\n  printf \x27這一輪沒有驗到「收窄有沒有效」：寬的讀不到，窄的當然也讀不到，第 3 步會假通過。\\n\x27\n  printf \x27先修環境（npx 抓不到套件、允許目錄給錯、檔案沒建起來都會走到這裡）。結束碼 3。\\n\x27\n}s'
@@ -185,6 +185,6 @@ if [ "${RAN}" -eq 0 ]; then
   exit 2
 fi
 
-printf '\n════════ 抓到 %s 種 / 漏掉 %s 種 / 沒測到 %s 種 ════════\n' "${PASS}" "${FAIL}" "${UNTESTED}"
-[ "${UNTESTED}" = 0 ] || printf '沒測到的那幾種這一輪沒有結論，不要當成通過。\n'
+printf '\n════════ 抓到 %s 種 / 漏掉 %s 種 / 沒有結論 %s 種 ════════\n' "${PASS}" "${FAIL}" "${UNTESTED}"
+[ "${UNTESTED}" = 0 ] || printf '沒有結論的那幾種不要當成通過。\n'
 [ "${FAIL}" = 0 ] && [ "${UNTESTED}" = 0 ]

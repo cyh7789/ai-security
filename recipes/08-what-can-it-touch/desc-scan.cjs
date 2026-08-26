@@ -116,7 +116,7 @@ function fromFiles(targets) {
     else files.push(t);
   }
 
-  // 路徑讀不到不能算成乾淨。打錯一個字就靜靜回 0 的話，那顆綠燈的意思是
+  // 路徑讀不到不能算成乾淨。打錯一個字就靜靜回 0 的話，那個通過的意思是
   // 「我什麼都沒掃」，而讀者會把它讀成「這批指示檔沒問題」。
   if (missing.length) {
     process.stdout.write("讀不到這個路徑：" + missing.join(" ") + "\n");

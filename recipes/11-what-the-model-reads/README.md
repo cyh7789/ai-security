@@ -8,7 +8,7 @@ node page-cli.mjs invisible | node extract.mjs      # 這一條四層裡有三�
 node page-cli.mjs invisible | node extract.mjs --show visible | node reveal.mjs
 bash verify.sh                                      # 二十條檢查，不連網、不呼叫模型
 bash run-attacks.sh --stub                          # 用罐頭回應跑一遍流程
-bash mutations.sh                                   # 十五種變化：十四種該轉紅，一種反向對照該照舊綠
+bash mutations.sh                                   # 十五種變化：十四種該沒過，一種反向對照該照舊通過
 ```
 
 只需要 `node` 與 `bash`（`mutations.sh` 另外用到 `python3`），**不下載任何套件**，預設不連網、不呼叫任何模型，那一頁是自己造的，不抓任何真實網站。
@@ -88,7 +88,7 @@ MODEL_CMD='bash adapter.sh' bash probe-context.sh
 
 **這份程式碼的 `text` 層有一行顯式的去註解**（`layers.mjs` 的 `noComment`），所以表上前兩列才都是「沒了」。**你手上那支如果只有一行 `replace(/<[^>]+>/g, "")`，第二列會留下來**：註解裡有一個 `>`，那個樣式就從那裡切開，後半段連著 `-->` 留在文字裡。
 
-`attacks.txt` 那條 `comment-gt` 就是為了這件事存在的。`mutations.sh` 的第一條變化把顯式的去註解拿掉，只有那條攻擊會讓 `verify.sh` 轉紅，第一列自己就消失了，看起來像沒事。
+`attacks.txt` 那條 `comment-gt` 就是為了這件事存在的。`mutations.sh` 的第一條變化把顯式的去註解拿掉，只有那條攻擊會讓 `verify.sh` 沒過，第一列自己就消失了，看起來像沒事。
 
 **擋掉隱形碼點不等於擋掉間接注入。** 表上第一列到第四列一個隱形字元都沒有。
 **過濾字元擋的是那個表示法，不是那件事。**

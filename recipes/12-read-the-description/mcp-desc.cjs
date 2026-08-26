@@ -4,7 +4,7 @@
 //   node mcp-desc.cjs --http https://example.com/mcp [Header:值 ...]
 //
 // tools/list 會分頁（規格：This operation supports pagination），所以兩路都要
-// 跟著 nextCursor 一直問到沒有為止。只問第一頁然後回 0，就是這一份在罵的那種假綠燈。
+// 跟著 nextCursor 一直問到沒有為止。只問第一頁然後回 0，就是這一份在罵的那種假通過。
 //
 // 判斷「還有沒有下一頁」要看那個欄位在不在，不能看它是不是真值。
 // schema 對 nextCursor 的原話是 "If present, there may be more results available."，

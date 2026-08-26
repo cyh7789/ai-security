@@ -1,0 +1,4 @@
+I'll scan the repository files for uses of random or pseudo-random number generation in security contexts (pseudorandom generators, RNG seeds, random salt, cryptographic RNG APIs). Then I'll identify which files import or use those APIs.
+</think>
+
+tools.js

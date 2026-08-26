@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # 這一天的檢查。跑：bash verify.sh
 #
-# 離開碼照 Day 22 那份公約：0 全綠、1 有紅、2 環境不到位或有節被跳過，沒有結論。
-# 順序是先判紅：有紅就是 1，因為那是有結論的（recipes/24 的收尾同一套寫法）。
+# 離開碼照 Day 22 那份公約：0 全部通過、1 有沒過的、2 環境不到位或有節被跳過，沒有結論。
+# 順序是先判有沒有沒過的：有就是 1，因為那是有結論的（recipes/24 的收尾同一套寫法）。
 #
 # 這一天的產出是一份「它能做到什麼」的聲明，而聲明最容易壞的方式是跟資料分岔。
 # 所以下面沒有一條在讀 POSITIONING.md 的形容詞，全部是拿 first-look/ 那份存檔
@@ -15,8 +15,8 @@ cd "$(dirname "$0")"
 export LC_ALL=C
 G=0; B=0; S=0
 case_() { printf '\n=== %s ===\n' "$1"; }
-ok()   { printf '  綠\t%s\n' "$1"; G=$((G+1)); }
-bad()  { printf '  紅\t%s\n' "$1"; B=$((B+1)); }
+ok()   { printf '  通過\t%s\n' "$1"; G=$((G+1)); }
+bad()  { printf '  沒過\t%s\n' "$1"; B=$((B+1)); }
 skip() { printf '  沒有結論\t%s\n' "$1"; S=$((S+1)); }
 
 MODEL="${ANTARES_MLX:-./antares-1b-mlx}"
@@ -54,7 +54,7 @@ sys.exit(0 if abs(s - d['total_seconds']) < 0.05 else 1)
 PY
 
 case_ "4 verdict.tsv 每一列的依據，逐字出自那個檔的存檔"
-# 這一條是這份核對唯一的支撐。憑印象寫「它好像有講到」在這裡會紅，
+# 這一條是這份核對唯一的支撐。憑印象寫「它好像有講到」在這裡會沒過，
 # 而那正是核對最容易出錯的地方：讀過一次輸出，之後就靠記憶回答。
 NB=""
 while IFS=$'\t' read -r _k file _item _cwe _v _mc _ml _al quote _rev; do
@@ -84,7 +84,7 @@ NR_=""
 while IFS=$'\t' read -r _k _f _i _c v _mc _ml _al _q rev; do
   [ "$v" = 沒指到 ] || continue
   [ -n "$rev" ] && [ "$rev" != - ] || { NR_="${NR_} (有列沒填反向關鍵字)"; continue; }
-  # 關鍵字是填表的人自己選的，不加約束的話填一個必不出現的字就永遠綠。
+  # 關鍵字是填表的人自己選的，不加約束的話填一個必不出現的字就永遠通過。
   # 它至少要真的是那個檔裡的東西：user_id 在 orders.js:18、err.message 在 files.js:14。
   grep -qF -- "$rev" "$PG/$_f" \
     || { NR_="${NR_} ${rev}(不在 ${_f} 的原始碼裡)"; continue; }
@@ -156,7 +156,7 @@ else
   fi
 fi
 
-printf '\n綠 %s、紅 %s、沒有結論 %s\n' "$G" "$B" "$S"
+printf '\n通過 %s、沒過 %s、沒有結論 %s\n' "$G" "$B" "$S"
 [ "$B" = 0 ] || exit 1
 [ "$S" = 0 ] || exit 2
 exit 0

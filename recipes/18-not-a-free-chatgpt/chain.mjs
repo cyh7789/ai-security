@@ -1,4 +1,4 @@
-// 一整條鏈跑一次：每一句過前三道閘，過得了的送模型，收回來的拼起來過第四道。
+// 一整條鏈跑一次：每一句過前三道檢查，過得了的送模型，收回來的拼起來過第四道。
 //
 //   node chain.mjs --arm split     # 五句分次問
 //   node chain.mjs --arm direct    # 同一個目標，一句話直接要求（反向控制）
@@ -86,10 +86,10 @@ resetRate();
 const rows = loadArm(arm);
 const pieces = [];
 let blocked = 0;
-let refused = 0;   // 過了閘、但模型自己不肯寫的句數
+let refused = 0;   // 過了檢查、但模型自己不肯寫的句數
 const err = (s) => process.stderr.write(`${s}\n`);
 
-err(`\n  ── 輸入側三道閘（${arm}，共 ${rows.length} 句）`);
+err(`\n  ── 輸入側三道檢查（${arm}，共 ${rows.length} 句）`);
 for (const { id, text } of rows) {
   let denial = null;
   for (const g of ORDER) {

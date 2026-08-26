@@ -4,7 +4,7 @@
 #   bash verify.sh        跑全部三個情境
 #   bash verify.sh 2      只跑第 2 個
 #
-# 全部在 mktemp -d 裡進行，不碰你的任何檔案，跑完自動清掉。
+# 整支跑在 mktemp -d 開的暫存目錄裡，不碰你的任何檔案，跑完自動刪掉。
 # 需要 node 與 npx（build 用 esbuild，它的 --define 就是 Vite 用來把
 # import.meta.env.VITE_* 換成字面值的同一個機制）。
 
@@ -12,9 +12,9 @@ set -u
 ONLY="${1:-}"
 PASS=0; FAIL=0; SKIP=0
 hdr()  { printf '\n\033[1m=== %s ===\033[0m\n' "$1"; }
-ok()   { printf '  \033[32m[OK]\033[0m   %s\n' "$1"; PASS=$((PASS+1)); }
-bad()  { printf '  \033[31m[FAIL]\033[0m %s\n' "$1"; FAIL=$((FAIL+1)); }
-skip() { printf '  \033[33m[SKIP]\033[0m %s\n' "$1"; SKIP=$((SKIP+1)); }
+ok()   { printf '  \033[32m通過\033[0m   %s\n' "$1"; PASS=$((PASS+1)); }
+bad()  { printf '  \033[31m沒過\033[0m %s\n' "$1"; FAIL=$((FAIL+1)); }
+skip() { printf '  \033[33m沒有結論\033[0m %s\n' "$1"; SKIP=$((SKIP+1)); }
 want() { [ -z "$ONLY" ] || [ "$ONLY" = "$1" ]; }
 
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -27,7 +27,7 @@ FAKE_KEY="sk-proj-8Kj2mNp4qR7sT9vXwYzA3bC5dE6fG1hI"
 
 ESB="npx --yes esbuild@0.24.0"
 # 沒網路的時候這支什麼都沒驗，所以離開碼是 2 不是 0。
-# 原本寫 0，意思變成「這台機器連不到 npm」＝綠燈，而 07 對同一件事給的是紅燈。
+# 原本寫 0，意思變成「這台機器連不到 npm」算通過，而 07 對同一件事是判沒過。
 $ESB --version >/dev/null 2>&1 || { echo "抓不到 esbuild（要網路），全部跳過"; exit 2; }
 
 # 把某一版的 api.js build 成瀏覽器會下載的那份檔案
@@ -125,7 +125,7 @@ build_skipped_note="（模擬：改完程式碼，但忘記重新 build）"
 printf '\n  方向一 %s\n' "$build_skipped_note"
 printf '  你以為在看新的，其實 dist 還是舊的：%s 個檔案含 sk-\n' "$(scan "$D")"
 [ "$(scan "$D")" != 0 ] \
-  && ok "假警報：程式碼已經修好，grep 卻還在紅。找不到原因是因為問題不在程式碼" \
+  && ok "假警報：程式碼已經修好，grep 卻還在報。找不到原因是因為問題不在程式碼" \
   || bad "沒重現陳舊產物"
 
 # 方向二：更危險。dist 是修好版留下的，原始碼卻被改回有洞的
@@ -134,7 +134,7 @@ build after "$D2"
 printf '\n  方向二（模擬：dist 是修好那版留下的，之後有人把 api.js 改回舊寫法）\n'
 printf '  原始碼有洞，但 dist 是乾淨的舊產物：%s 個檔案含 sk-\n' "$(scan "$D2")"
 [ "$(scan "$D2")" = 0 ] \
-  && ok "假通過，而且這個方向危險得多：檢查是綠的，洞在原始碼裡等著下次 build" \
+  && ok "假通過，而且這個方向危險得多：檢查說沒事，漏洞在原始碼裡等著下次 build" \
   || bad "沒重現這個方向"
 
 # 正確做法
@@ -147,11 +147,11 @@ printf '  清掉重 build 之後：%s 個檔案含 sk-\n' "$(scan "$D")"
 fi
 
 # ─────────────────────────────────────────────────────────────
-printf '\n════════ %s 綠 / %s 紅 / %s 跳過 ════════\n' "$PASS" "$FAIL" "$SKIP"
+printf '\n════════ 通過 %s／沒過 %s／沒有結論 %s ════════\n' "$PASS" "$FAIL" "$SKIP"
 
 # 離開碼的意思，全 repo 一致（Day 22 定的）：
-#   0 綠，而且真的驗過了
-#   1 紅，這是你要它擋你的那種
+#   0 全部通過，而且真的驗過了
+#   1 有沒過的，這是你要它擋你的那種
 #   2 環境不到位或有節被跳過，沒有結論。跳過不是通過
 [ "${FAIL}" != 0 ] && exit 1
 [ "${SKIP}" != 0 ] && exit 2
