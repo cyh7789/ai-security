@@ -55,7 +55,7 @@
 | 27 | [給它一個編號，要它挑檔案](recipes/27-ask-by-cwe/) | Day 27 | **可以跑了**（要 Apple Silicon 與 mlx-lm） |
 | 28 | [那張表是拿什麼跑出來的](recipes/28-what-was-it-run-with/) | Day 28 | **可以跑了**（五格對帳，一半的檢查不用模型） |
 | 29 | [單點都合理，組合起來卻失守](recipes/29-single-checks-combined/) | Day 29 | **可以跑了**（要 node 與 jsdom） |
-| 30 | 隨連載加入 | Day 30 | 未完成 |
+| 30 | [這些案例現在走不走得通](recipes/30-what-does-it-actually-cover/) | Day 30 | **可以跑了**（把前面幾份收成一張三欄表） |
 
 每一份都是 `bash recipes/<名字>/verify.sh`。一次跑全部：
 

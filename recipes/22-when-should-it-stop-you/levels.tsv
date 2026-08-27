@@ -42,3 +42,6 @@ recipe	級別	秒	為什麼
 25-not-graded-by-its-author	A	1	離線。before／after 對照紀錄。verify.sh 會把 before 那個 commit 的程式取出來重跑，需要 git 歷史（checkout 要抓得到那幾個 commit）
 26-what-low-looks-like	E	70	要 Apple Silicon 與 mlx-lm，GitHub 託管 runner 沒有。作者本機 2026-08-25 跑過 verify.sh 十條通過、mutations.sh 十五列全抓到（每列指名哪幾條該沒過）
 27-ask-by-cwe	E	170	跟 26 同一套環境，託管 runner 一樣跑不動。作者本機 2026-08-26 跑過 verify.sh 十五條通過、mutations.sh 二十列全抓到
+28-what-was-it-run-with	E	3	五格對帳。五條要那份權重才算得出 sha256，託管 runner 上沒有那份權重，整支回 2。作者本機 2026-08-27 跑過通過 7、沒有結論 5
+29-single-checks-combined	A	1	離線，但要 jsdom，所以矩陣裡多一步 npm ci。它證的是那條鏈在真的 HTML 引擎裡走得通、修法擋得下來，屬於該擋合併那一類
+30-what-does-it-actually-cover	A	13	離線。它會重跑 24 的 run.sh 與 14 的 verify.sh 再跟簽核比，所以慢，也所以要跟 29 一樣先 npm ci。它沒過的意思是有一組跟簽核對不上，不是有七條缺口
