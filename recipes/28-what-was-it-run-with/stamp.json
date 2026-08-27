@@ -8,8 +8,8 @@
     "值": "{\"bits\":4,\"group_size\":64,\"mode\":\"affine\"}"
   },
   "prompt": {
-    "來源": "hunt.py 的 PROMPT 樣板加上 cwes.tsv",
-    "sha256": "8cc003862258ce8abaa65b7ba28714c65f4302549df7eb3989df449eb21b36aa"
+    "來源": "hunt.py 的 PROMPT 樣板加上 cwes.tsv 的 13 列（只取實際餵給模型的編號、標題、描述三欄）",
+    "sha256": "40c43df3314f5dcd1175d5296906346d2affb62c21a59e3e8c27f65faa8b5f4e"
   },
   "script": {
     "檔": "hunt.py",
@@ -17,6 +17,15 @@
   },
   "corpus": {
     "來源": "playground/ 底下 7 個 .js，檔名與內容一起算",
+    "檔": [
+      "server/files.js",
+      "server/health.js",
+      "server/orders.js",
+      "server/tools.js",
+      "src/api.js",
+      "src/format.js",
+      "src/render.js"
+    ],
     "sha256": "920759aea0808a91d050e5e81b196db69e1c51d208175bbf30221279b5068536"
   }
 }

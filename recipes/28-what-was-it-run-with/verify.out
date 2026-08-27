@@ -21,7 +21,7 @@
   通過	被掃的檔案加一行：corpus 那格不合，script 與 prompt 不動
 
 === 8 corpus 收的檔案跟 hunt.py 掃的是同一組 ===
-  通過	兩邊都是 7 個 .js
+  通過	兩邊收的是同一組：server/files.js server/health.js server/orders.js server/tools.js src/api.js src/format.js src/render.js 
 
 === 9 缺東西是沒有結論，不是不合 ===
   通過	沒有成分表：rc=2

@@ -10,7 +10,7 @@ Day 26 那份 `POSITIONING.md` 結尾自己寫著：
 
 那四樣是人寫的散文，這一份把它變成腳本讀得懂的東西。前三樣直接對得上；「換掃描的語言」那樣要拆成兩格，因為改的可能是問法（腳本）也可能是被掃的那份程式碼本身。
 
-第五格是第二版才補的。第一版只記前四樣，於是改掉 `playground/` 裡任何一個 `.js`，五格全部通過，而被掃的程式碼是輸入裡最大的一塊。`verify.sh` 第 7 條就是在驗這件事。
+第五格是第二版才補的。第一版只記前四樣，於是改掉 `playground/` 裡任何一個 `.js`，四格全部通過，而被掃的程式碼是輸入裡最大的一塊。`verify.sh` 第 7 條就是在驗這件事。
 
 ## 跑
 
@@ -39,7 +39,11 @@ python3 stamp.py check <模型目錄> --cwes ../27-ask-by-cwe/cwes-firstdraft.ts
 
 提示樣板寫在 `hunt.py` 裡，類別描述在 `cwes.tsv`。整支 `hunt.py` 一起算最省事，但改一個註解會讓 `prompt` 那格跟著動，而「今天是提示變了還是程式變了」正是這張表要回答的。
 
-所以 `prompt` 那格只取 `PROMPT = """..."""` 那段樣板，加上 `cwes.tsv` 的內容；`script` 那格才是整支 `hunt.py`。`verify.sh` 第 6 條驗這件事：加一行註解，`script` 不合、`prompt` 不動。
+所以 `prompt` 那格只取 `PROMPT = """..."""` 那段樣板，加上 `cwes.tsv` 裡**模型真的讀得到的那三欄**（編號、標題、描述）；`script` 那格才是整支 `hunt.py`。
+
+第 2 欄那個人工答案 `hunt.py` 從來沒餵給模型（`for cid, answer, title, desc in rows` 之後只 format 了 `cid`、`title`、`desc`），所以整份檔案一起算是錯的：改一格答案、模型讀到的東西一個字都沒變，`prompt` 卻會報不合。那個方向最糟，它會讓人把一份其實有效的成績單丟掉重跑。
+
+`verify.sh` 第 6 條驗這件事：加一行註解，`script` 不合、`prompt` 不動。
 
 ## 雜湊在這裡不是防篡改
 

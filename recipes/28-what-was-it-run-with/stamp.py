@@ -52,27 +52,60 @@ def prompt_template(script):
     return m.group(1)
 
 
-def corpus_digest(root):
-    """被掃的那份程式碼也是輸入，而且是最大的一塊。
+def prompt_rows(cwes):
+    """只取實際餵給模型的那幾欄。
 
-    收檔的規則要跟 hunt.py 的 targets 一模一樣（`*.js`、排除 test），
-    不然這一格記的是另一組檔案。檔名一起算進去：Day 27 那組改名對照
-    餵給模型的內容就是檔名加內容，兩者都動得了答案。
+    hunt.py 是 `for cid, answer, title, desc in rows` 然後
+    `PROMPT.format(cid=cid, title=title, desc=desc, ...)`：第 2 欄那個人工答案
+    從來沒進過提示。整份檔案一起算的話，我改一格答案、模型讀到的東西一個字
+    都沒變，這一格卻報不合，而那個方向最糟：它會讓人把一份其實有效的成績單
+    丟掉重跑。註解與空白行同理。
+    """
+    rows = []
+    for line in cwes.read_text().splitlines():
+        if not line.strip() or line.startswith("#"):
+            continue
+        cols = line.split("\t")
+        if len(cols) < 4:
+            die(f"{cwes.name} 有一列不足四欄，跟 hunt.py 的解析對不起來")
+        cid, _answer, title, desc = cols[:4]
+        rows.append("\t".join((cid, title, desc)))
+    if not rows:
+        die(f"{cwes.name} 裡沒有資料列")
+    return rows
+
+
+def corpus_files(root):
+    """收檔的規則要跟 hunt.py 的 targets 一模一樣（`*.js`、排除 test）。
+
+    兩邊各寫一次的話，改一邊就靜默分岔：stamp 記的是 A 組、模型讀的是 B 組，
+    而對帳照樣說通過。這裡回傳清單而不是只回傳數量，因為「少收一個、
+    多收另一個」總數不變，只比數量看不出來。
     """
     if not root.is_dir():
         die(f"找不到被掃的目錄 {root}")
-    files = sorted(
+    return sorted(
         p for p in root.rglob("*.js") if p.is_file() and "test" not in p.parts
     )
+
+
+def corpus_digest(root):
+    """被掃的那份程式碼也是輸入，而且是最大的一塊。
+
+    檔名一起算進去：Day 27 那組改名對照餵給模型的內容就是檔名加內容，
+    兩者都動得了答案。
+    """
+    files = corpus_files(root)
     if not files:
         die(f"{root} 底下沒有 .js")
+    rels = [str(f.relative_to(root)) for f in files]
     h = hashlib.sha256()
-    for p in files:
-        h.update(str(p.relative_to(root)).encode())
+    for f, rel in zip(files, rels):
+        h.update(rel.encode())
         h.update(b"\0")
-        h.update(p.read_bytes())
+        h.update(f.read_bytes())
         h.update(b"\0")
-    return len(files), h.hexdigest()
+    return rels, h.hexdigest()
 
 
 def compose(model_dir, cwes, corpus):
@@ -83,15 +116,16 @@ def compose(model_dir, cwes, corpus):
         if not p.is_file():
             die(f"找不到 {p}")
 
-    n_files, corpus_sha = corpus_digest(corpus)
+    corpus_rels, corpus_sha = corpus_digest(corpus)
 
     quant = json.loads(config.read_text()).get("quantization")
     if quant is None:
         die(f"{config} 裡沒有 quantization 那格")
 
-    # 提示由兩截組成：樣板的骨架，加上餵進去的十三條類別描述。
+    # 提示由兩截組成：樣板的骨架，加上餵進去的那幾條類別描述。
     # 兩截各自都改得動答案，所以一起算成一格。
-    blob = prompt_template(script) + "\n" + cwes.read_text()
+    rows = prompt_rows(cwes)
+    blob = prompt_template(script) + "\n" + "\n".join(rows)
 
     return {
         "model": {
@@ -105,7 +139,8 @@ def compose(model_dir, cwes, corpus):
             "值": json.dumps(quant, sort_keys=True, separators=(",", ":")),
         },
         "prompt": {
-            "來源": f"{script.name} 的 PROMPT 樣板加上 {cwes.name}",
+            "來源": f"{script.name} 的 PROMPT 樣板加上 {cwes.name} 的 {len(rows)} 列"
+                    "（只取實際餵給模型的編號、標題、描述三欄）",
             "sha256": hashlib.sha256(blob.encode()).hexdigest(),
         },
         "script": {
@@ -113,7 +148,8 @@ def compose(model_dir, cwes, corpus):
             "sha256": sha256_file(script),
         },
         "corpus": {
-            "來源": f"{corpus.name}/ 底下 {n_files} 個 .js，檔名與內容一起算",
+            "來源": f"{corpus.name}/ 底下 {len(corpus_rels)} 個 .js，檔名與內容一起算",
+            "檔": corpus_rels,
             "sha256": corpus_sha,
         },
     }

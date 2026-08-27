@@ -105,9 +105,9 @@ run M4 "對帳改成永遠說不合" 沒過 2,3,4,5,6,7
 # 而「今天是提示變了還是程式變了」就分不出來了。
 python3 -c "
 p='stamp.py';s=open(p).read()
-a='    blob = prompt_template(script) + \"\\\\n\" + cwes.read_text()'
-assert a in s, '找不到 blob 那行'
-open(p,'w').write(s.replace(a,'    blob = script.read_text() + \"\\\\n\" + cwes.read_text()'))"
+a='blob = prompt_template(script)'
+assert a in s, '找不到 blob 那行的呼叫'
+open(p,'w').write(s.replace(a,'blob = script.read_text()'))"
 # 第 2 條跟著沒過，因為 stamp.json 那格是用舊算法記的，換了算法就對不上。
 run M5 "提示那格改成整支腳本一起算" 沒過 2,6,7
 
@@ -142,13 +142,25 @@ assert a in s, '找不到 CELLS 那行'
 open(p,'w').write(s.replace(a,'CELLS = (\"model\", \"quant\", \"prompt\", \"script\")'))"
 run M9 "stamp.py 不再比 corpus 那格" 沒過 3,7
 
-# 收檔規則跟 hunt.py 分岔：stamp 記的是另一組檔案，對帳照樣說通過。
+# 收檔規則跟 hunt.py 分岔，而且總數不變：漏掉 health.js、多收 test/setup.js。
+# 只比數量的話這一條會矇混過去，playground/test/setup.js 就在那裡等著。
 python3 -c "
 p='stamp.py';s=open(p).read()
 a='p for p in root.rglob(\"*.js\") if p.is_file() and \"test\" not in p.parts'
 assert a in s, '找不到收檔那行'
-open(p,'w').write(s.replace(a,'p for p in root.rglob(\"*.js\") if p.is_file() and \"test\" not in p.parts and \"health\" not in p.name'))"
-run M10 "corpus 少收一個檔，跟 hunt.py 分岔" 沒過 2,3,8
+open(p,'w').write(s.replace(a,'p for p in root.rglob(\"*.js\") if p.is_file() and \"health\" not in p.name'))"
+run M10 "corpus 換一組檔案，總數還是七個" 沒過 2,3,8
+
+# 提示那格算了模型讀不到的欄位。人工答案欄 hunt.py 從來沒餵給模型，
+# 改它會讓 prompt 誤報不合，而那個方向最糟：把有效的成績單丟掉重跑。
+python3 -c "
+p='stamp.py';s=open(p).read()
+a='.join(rows)'
+assert a in s, '找不到 join(rows)'
+open(p,'w').write(s.replace(a,'.join([cwes.read_text()])'))"
+# 第 6、7 條跟著沒過：它們驗的是「動別的東西時 prompt 不動」，
+# 而 stamp.json 存的是新算法的值，換回舊算法整個 prompt 格就對不上了。
+run M11 "提示那格改回整份 cwes.tsv" 沒過 2,6,7
 
 # 反向對照：改一個不影響任何判定的地方，應該照樣全部通過。
 # 沒有它，「什麼都會讓它沒過」跟「它抓得準」分不開。

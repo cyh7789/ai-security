@@ -145,24 +145,24 @@ fi
 case_ "8 corpus 收的檔案跟 hunt.py 掃的是同一組"
 # 兩邊的收檔規則各寫一次，改一邊就靜默失效：stamp 記的是 A 組、模型讀的是 B 組，
 # 而對帳照樣說通過。
-HAVE=$(cd "$PG" && find . -name '*.js' -not -path './test/*' | wc -l | tr -d ' ')
-# 要比的是「這支現在會收幾個」，不是 stamp.json 存著的那個數字。
-# 讀存檔的話，收檔規則改掉而沒重記，這一條會拿舊值替它掩護。
+#
+# 比的是排序後的完整清單，不是檔案數。只比數量的話，「少收一個、多收另一個」
+# 總數不變就矇混過去，而那是真的構造得出來的：playground/test/setup.js 就在那裡。
+# 也不讀 stamp.json 存著的值，收檔規則改掉而沒重記，讀存檔會拿舊值替它掩護。
+HAVE=$(cd "$PG" && find . -name '*.js' -not -path './test/*' | sed 's|^\./||' | sort | tr '\n' ' ')
 if [ ! -r "$MODEL/config.json" ]; then
   skip "找不到模型（$MODEL），現算不了"
 else
   python3 stamp.py record "$MODEL" "$FAKE/corpus-probe.json" >/dev/null 2>&1
   SAID=$(python3 -c "
-import json, re, sys
-s = json.load(open(sys.argv[1]))['corpus']['來源']
-m = re.search(r'(\d+) 個 \.js', s)
-print(m.group(1) if m else '')" "$FAKE/corpus-probe.json")
-  if [ -z "$SAID" ]; then
-    bad "corpus 那格的來源欄沒寫檔案數"
+import json, sys
+print(' '.join(json.load(open(sys.argv[1]))['corpus'].get('檔', [])) + ' ')" "$FAKE/corpus-probe.json")
+  if [ "$SAID" = " " ]; then
+    bad "corpus 那格沒有檔案清單"
   elif [ "$HAVE" = "$SAID" ]; then
-    ok "兩邊都是 ${HAVE} 個 .js"
+    ok "兩邊收的是同一組：${HAVE}"
   else
-    bad "stamp 現在會收 ${SAID} 個、hunt.py 那組規則數出 ${HAVE} 個"
+    bad "stamp 收的是 ${SAID}／hunt.py 那組規則收的是 ${HAVE}"
   fi
 fi
 
