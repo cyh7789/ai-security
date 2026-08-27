@@ -14,5 +14,9 @@
   "script": {
     "檔": "hunt.py",
     "sha256": "60d6d37dff737d6b72ecd83466801ec9e809870c49cce96ae1bc8dd701ff3d7b"
+  },
+  "corpus": {
+    "來源": "playground/ 底下 7 個 .js，檔名與內容一起算",
+    "sha256": "920759aea0808a91d050e5e81b196db69e1c51d208175bbf30221279b5068536"
   }
 }

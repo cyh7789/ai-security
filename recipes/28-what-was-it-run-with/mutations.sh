@@ -28,11 +28,13 @@ MODEL="${ANTARES_MLX:-./antares-1b-mlx}"
 IDX=../../README.md
 BACKUP=$(mktemp -d)
 cp stamp.py stamp.json "${BACKUP}/"
+cp ../../playground/src/api.js "${BACKUP}/api.js"
 cp "$IDX" "${BACKUP}/README.md"
 cp ../27-ask-by-cwe/cwes-firstdraft.tsv "${BACKUP}/"
 restore() {
   cp "${BACKUP}/stamp.py" "${BACKUP}/stamp.json" .
   cp "${BACKUP}/README.md" "$IDX"
+  cp "${BACKUP}/api.js" ../../playground/src/api.js
   cp "${BACKUP}/cwes-firstdraft.tsv" ../27-ask-by-cwe/
 }
 trap 'restore; rm -rf "$BACKUP"' EXIT
@@ -66,19 +68,21 @@ printf '編號\t突變\t期望\t得到\t結果\n'
 # 而 check 照樣印得出三行通過。
 python3 -c "
 import json;p='stamp.json';d=json.load(open(p));del d['quant'];json.dump(d,open(p,'w'))"
-# 第 2、3、6 條跟著沒過，因為那三條拿現行的 stamp.json 去對帳，
+# 第 2、3、6、7 條跟著沒過，因為那幾條拿現行的 stamp.json 去對帳，
 # 而少一格會判成「這份成分表跟現在這支對不起來」。
-run M1 "成分表少掉 quant 那格" 沒過 1,2,3,6
+run M1 "成分表少掉 quant 那格" 沒過 1,2,3,6,7
 
 # 對帳最經典的假通過：把某一格的比較拿掉。四格裡少比一格，
 # verify.sh 的第 2 條照樣全部通過，只有那一格自己的專屬檢查看得出來。
 python3 -c "
 p='stamp.py';s=open(p).read()
-a='for key in (\"model\", \"quant\", \"prompt\", \"script\"):'
-assert a in s
-open(p,'w').write(s.replace(a,'for key in (\"model\", \"prompt\", \"script\"):'))"
-# 第 1 條抓不到這一條，它看的是成分表有沒有四格，而成分表沒被動過。
-# 抓到的是第 4 條那個專門驗 quant 的，還有第 3、5 條那兩條在點名四格判定的。
+a='CELLS = (\"model\", \"quant\", \"prompt\", \"script\", \"corpus\")'
+assert a in s, '找不到 CELLS 那行'
+open(p,'w').write(s.replace(a,'CELLS = (\"model\", \"prompt\", \"script\", \"corpus\")'))"
+# 第 1、2 條都抓不到這一條。第 1 條看的是成分表有沒有五格，而成分表沒被動過；
+# 第 2 條期望 rc=0，而少比一格剩下四格全對，rc 就是 0。
+# 少比一格的假通過是靜默的，只有那一格自己的專屬檢查（第 4 條）與逐格點名的
+# 第 3、5 條看得出來。這就是為什麼每一格都要有自己那一條。
 run M2 "stamp.py 不再比 quant 那格" 沒過 3,4,5
 
 python3 -c "
@@ -86,7 +90,7 @@ p='stamp.py';s=open(p).read()
 a='    if a == b:'
 assert a in s
 open(p,'w').write(s.replace(a,'    if True:'))"
-run M3 "對帳改成永遠說對得上" 沒過 3,4,5,6
+run M3 "對帳改成永遠說對得上" 沒過 3,4,5,6,7
 
 # 反過來的假訊號：永遠說不合。第 2 條會抓到，而它是唯一一條期望「全部通過」的。
 python3 -c "
@@ -95,7 +99,7 @@ a='    if a == b:'
 assert a in s
 open(p,'w').write(s.replace(a,'    if False:'))"
 # 第 7 條抓不到：它驗的是缺東西時走不走 die()，而 die() 沒被動到。
-run M4 "對帳改成永遠說不合" 沒過 2,3,4,5,6
+run M4 "對帳改成永遠說不合" 沒過 2,3,4,5,6,7
 
 # 邊界那條：把提示樣板換成整支腳本一起算。這樣改註解會讓 prompt 跟著動，
 # 而「今天是提示變了還是程式變了」就分不出來了。
@@ -105,7 +109,7 @@ a='    blob = prompt_template(script) + \"\\\\n\" + cwes.read_text()'
 assert a in s, '找不到 blob 那行'
 open(p,'w').write(s.replace(a,'    blob = script.read_text() + \"\\\\n\" + cwes.read_text()'))"
 # 第 2 條跟著沒過，因為 stamp.json 那格是用舊算法記的，換了算法就對不上。
-run M5 "提示那格改成整支腳本一起算" 沒過 2,6
+run M5 "提示那格改成整支腳本一起算" 沒過 2,6,7
 
 # 缺東西被當成不合。這個方向比漏抓嚴重：一台沒有模型的機器會看到整張表全部沒過，
 # 而其實一格都沒比到。
@@ -114,7 +118,7 @@ p='stamp.py';s=open(p).read()
 a='    sys.exit(2)'
 assert a in s
 open(p,'w').write(s.replace(a,'    sys.exit(1)',1))"
-run M6 "缺東西的離開碼從 2 改成 1" 沒過 7
+run M6 "缺東西的離開碼從 2 改成 1" 沒過 9
 
 # 換描述之前那一輪的表被改成跟現在這張一樣。第 3 條那個示範就沒東西撐著了，
 # 而「換一段描述，答案就變了」這句話文章跟 README 都寫著。
@@ -128,7 +132,23 @@ run M7 "換描述前那張表被改成跟現在一樣" 沒過 3
 python3 -c "
 p='../../README.md';L=open(p).read().splitlines(True)
 open(p,'w').writelines([l for l in L if not l.startswith('| 28 |')])"
-run M8 "索引表少掉這一份 recipe" 沒過 8
+run M8 "索引表少掉這一份 recipe" 沒過 10
+
+# corpus 那格不再比：改被掃的程式碼就沒有東西抓得到，而那正是第一版的洞。
+python3 -c "
+p='stamp.py';s=open(p).read()
+a='CELLS = (\"model\", \"quant\", \"prompt\", \"script\", \"corpus\")'
+assert a in s, '找不到 CELLS 那行'
+open(p,'w').write(s.replace(a,'CELLS = (\"model\", \"quant\", \"prompt\", \"script\")'))"
+run M9 "stamp.py 不再比 corpus 那格" 沒過 3,7
+
+# 收檔規則跟 hunt.py 分岔：stamp 記的是另一組檔案，對帳照樣說通過。
+python3 -c "
+p='stamp.py';s=open(p).read()
+a='p for p in root.rglob(\"*.js\") if p.is_file() and \"test\" not in p.parts'
+assert a in s, '找不到收檔那行'
+open(p,'w').write(s.replace(a,'p for p in root.rglob(\"*.js\") if p.is_file() and \"test\" not in p.parts and \"health\" not in p.name'))"
+run M10 "corpus 少收一個檔，跟 hunt.py 分岔" 沒過 2,3,8
 
 # 反向對照：改一個不影響任何判定的地方，應該照樣全部通過。
 # 沒有它，「什麼都會讓它沒過」跟「它抓得準」分不開。

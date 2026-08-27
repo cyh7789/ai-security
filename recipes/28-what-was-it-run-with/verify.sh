@@ -34,25 +34,25 @@ verdict() {  # verdict <格名> <check 的輸出>
 }
 
 # ─────────────────────────────────────────────────────────────
-case_ "1 成分表存在，四格齊全"
+case_ "1 成分表存在，五格齊全"
 if [ ! -f stamp.json ]; then
   bad "沒有 stamp.json，先跑 python3 stamp.py record <模型目錄>"
 else
   MISS=$(python3 -c "
 import json
 was = json.load(open('stamp.json'))
-print(' '.join(k for k in ('model','quant','prompt','script') if k not in was))")
-  [ -z "$MISS" ] && ok "model、quant、prompt、script 四格都在" \
+print(' '.join(k for k in ('model','quant','prompt','script','corpus') if k not in was))")
+  [ -z "$MISS" ] && ok "model、quant、prompt、script、corpus 五格都在" \
     || bad "成分表少了這幾格：$MISS"
 fi
 
-case_ "2 對真的模型跑一次，四格對得上"
+case_ "2 對真的模型跑一次，五格對得上"
 if [ ! -r "$MODEL/config.json" ]; then
   skip "找不到模型（$MODEL），這一條驗不掉。設 ANTARES_MLX 指過去"
 else
   OUT=$(python3 stamp.py check "$MODEL" 2>&1); RC=$?
   if [ "$RC" = 0 ]; then
-    ok "四格都通過，rc=0"
+    ok "五格都通過，rc=0"
   else
     bad "rc=$RC，輸出：$(printf '%s' "$OUT" | tr '\n' '｜')"
   fi
@@ -68,11 +68,11 @@ elif [ ! -r "$REC27/cwes-firstdraft.tsv" ]; then
 else
   OUT=$(python3 stamp.py check "$MODEL" --cwes "$REC27/cwes-firstdraft.tsv" 2>&1); RC=$?
   P=$(verdict prompt "$OUT"); M=$(verdict model "$OUT")
-  Q=$(verdict quant "$OUT"); SC=$(verdict script "$OUT")
-  if [ "$RC" = 1 ] && [ "$P" = 沒過 ] && [ "$M$Q$SC" = 通過通過通過 ]; then
-    ok "prompt 那格不合、另外三格照樣通過，rc=1"
+  Q=$(verdict quant "$OUT"); SC=$(verdict script "$OUT"); C=$(verdict corpus "$OUT")
+  if [ "$RC" = 1 ] && [ "$P" = 沒過 ] && [ "$M$Q$SC$C" = 通過通過通過通過 ]; then
+    ok "prompt 那格不合、另外四格照樣通過，rc=1"
   else
-    bad "rc=$RC，四格判定是 model=$M quant=$Q prompt=$P script=$SC"
+    bad "rc=$RC，五格判定是 model=$M quant=$Q prompt=$P script=$SC corpus=$C"
   fi
 fi
 
@@ -120,7 +120,53 @@ else
   fi
 fi
 
-case_ "7 缺東西是沒有結論，不是不合"
+case_ "7 被掃的程式碼改了，corpus 那格抓得到"
+# 這一格是第二版才補的。第一版只有四格，沒有它，改掉 playground 裡任何一個 .js
+# 都會全部通過，而被掃的程式碼是輸入裡最大的一塊。
+PG=../../playground
+VICTIM=$PG/src/api.js
+if [ ! -r "$MODEL/config.json" ]; then
+  skip "找不到模型（$MODEL），這一條驗不掉"
+elif [ ! -w "$VICTIM" ]; then
+  bad "改不動 $VICTIM，這一條驗不掉"
+else
+  cp "$VICTIM" "$FAKE/api.js.bak"
+  printf '\n// 這一行是 verify.sh 暫時加的，跑完會拿掉\n' >> "$VICTIM"
+  OUT=$(python3 stamp.py check "$MODEL" 2>&1); RC=$?
+  cp "$FAKE/api.js.bak" "$VICTIM"
+  C=$(verdict corpus "$OUT"); SC=$(verdict script "$OUT"); P=$(verdict prompt "$OUT")
+  if [ "$RC" = 1 ] && [ "$C" = 沒過 ] && [ "$SC$P" = 通過通過 ]; then
+    ok "被掃的檔案加一行：corpus 那格不合，script 與 prompt 不動"
+  else
+    bad "rc=$RC，corpus=$C script=$SC prompt=$P"
+  fi
+fi
+
+case_ "8 corpus 收的檔案跟 hunt.py 掃的是同一組"
+# 兩邊的收檔規則各寫一次，改一邊就靜默失效：stamp 記的是 A 組、模型讀的是 B 組，
+# 而對帳照樣說通過。
+HAVE=$(cd "$PG" && find . -name '*.js' -not -path './test/*' | wc -l | tr -d ' ')
+# 要比的是「這支現在會收幾個」，不是 stamp.json 存著的那個數字。
+# 讀存檔的話，收檔規則改掉而沒重記，這一條會拿舊值替它掩護。
+if [ ! -r "$MODEL/config.json" ]; then
+  skip "找不到模型（$MODEL），現算不了"
+else
+  python3 stamp.py record "$MODEL" "$FAKE/corpus-probe.json" >/dev/null 2>&1
+  SAID=$(python3 -c "
+import json, re, sys
+s = json.load(open(sys.argv[1]))['corpus']['來源']
+m = re.search(r'(\d+) 個 \.js', s)
+print(m.group(1) if m else '')" "$FAKE/corpus-probe.json")
+  if [ -z "$SAID" ]; then
+    bad "corpus 那格的來源欄沒寫檔案數"
+  elif [ "$HAVE" = "$SAID" ]; then
+    ok "兩邊都是 ${HAVE} 個 .js"
+  else
+    bad "stamp 現在會收 ${SAID} 個、hunt.py 那組規則數出 ${HAVE} 個"
+  fi
+fi
+
+case_ "9 缺東西是沒有結論，不是不合"
 # 這兩件事混在一起的話，一台沒有模型的機器會把整張表印成不合，
 # 而其實一格都沒比到。反過來也一樣糟：把缺檔當成通過。
 mkfake 4 weights-v1
@@ -138,7 +184,7 @@ rm -f "$FAKE/model.safetensors"
 python3 stamp.py check "$FAKE" "$FAKE/stamp.json" >/dev/null 2>&1
 [ "$?" = 2 ] && ok "權重檔不見了：rc=2" || bad "權重檔不見時的離開碼不是 2"
 
-case_ "8 索引表收了這一份"
+case_ "10 索引表收了這一份"
 if grep -q '28-what-was-it-run-with' ../../README.md; then
   ok "README 的索引表有這一列"
 else

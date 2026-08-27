@@ -53,7 +53,7 @@
 | 25 | [這份成績單不能由生它的人打](recipes/25-not-graded-by-its-author/) | [Day 25](https://ithelp.ithome.com.tw/articles/10404931) | **可以跑了** |
 | 26 | [「低」長什麼樣](recipes/26-what-low-looks-like/) | [Day 26](https://ithelp.ithome.com.tw/articles/10405051) | **可以跑了**（要 Apple Silicon 與 mlx-lm） |
 | 27 | [給它一個編號，要它挑檔案](recipes/27-ask-by-cwe/) | Day 27 | **可以跑了**（要 Apple Silicon 與 mlx-lm） |
-| 28 | [那張表是拿什麼跑出來的](recipes/28-what-was-it-run-with/) | Day 28 | **可以跑了**（對帳本身不用模型） |
+| 28 | [那張表是拿什麼跑出來的](recipes/28-what-was-it-run-with/) | Day 28 | **可以跑了**（五格對帳，一半的檢查不用模型） |
 | 29– | 隨連載加入 | Day 29–30 | 未完成 |
 
 每一份都是 `bash recipes/<名字>/verify.sh`。一次跑全部：

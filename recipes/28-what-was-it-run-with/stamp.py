@@ -52,13 +52,38 @@ def prompt_template(script):
     return m.group(1)
 
 
-def compose(model_dir, cwes):
+def corpus_digest(root):
+    """被掃的那份程式碼也是輸入，而且是最大的一塊。
+
+    收檔的規則要跟 hunt.py 的 targets 一模一樣（`*.js`、排除 test），
+    不然這一格記的是另一組檔案。檔名一起算進去：Day 27 那組改名對照
+    餵給模型的內容就是檔名加內容，兩者都動得了答案。
+    """
+    if not root.is_dir():
+        die(f"找不到被掃的目錄 {root}")
+    files = sorted(
+        p for p in root.rglob("*.js") if p.is_file() and "test" not in p.parts
+    )
+    if not files:
+        die(f"{root} 底下沒有 .js")
+    h = hashlib.sha256()
+    for p in files:
+        h.update(str(p.relative_to(root)).encode())
+        h.update(b"\0")
+        h.update(p.read_bytes())
+        h.update(b"\0")
+    return len(files), h.hexdigest()
+
+
+def compose(model_dir, cwes, corpus):
     weights = model_dir / "model.safetensors"
     config = model_dir / "config.json"
     script = RECIPE27 / "hunt.py"
     for p in (weights, config, script, cwes):
         if not p.is_file():
             die(f"找不到 {p}")
+
+    n_files, corpus_sha = corpus_digest(corpus)
 
     quant = json.loads(config.read_text()).get("quantization")
     if quant is None:
@@ -87,6 +112,10 @@ def compose(model_dir, cwes):
             "檔": script.name,
             "sha256": sha256_file(script),
         },
+        "corpus": {
+            "來源": f"{corpus.name}/ 底下 {n_files} 個 .js，檔名與內容一起算",
+            "sha256": corpus_sha,
+        },
     }
 
 
@@ -95,19 +124,23 @@ ap.add_argument("action", choices=["record", "check"])
 ap.add_argument("model_dir")
 ap.add_argument("stamp", nargs="?", default=str(HERE / "stamp.json"))
 ap.add_argument("--cwes", default=str(RECIPE27 / "cwes.tsv"))
+ap.add_argument("--corpus", default=str(RECIPE27.parents[1] / "playground"))
 args = ap.parse_args()
+
+CELLS = ("model", "quant", "prompt", "script", "corpus")
 
 model_dir = Path(args.model_dir)
 if not (model_dir / "config.json").is_file():
     die(f"{model_dir} 裡沒有 config.json，這不是一個 MLX 模型目錄")
 
-now = compose(model_dir, Path(args.cwes))
+now = compose(model_dir, Path(args.cwes), Path(args.corpus))
 stamp = Path(args.stamp)
 
 if args.action == "record":
     stamp.write_text(json.dumps(now, ensure_ascii=False, indent=2) + "\n")
-    print(f"四格記進 {stamp.name}：")
-    for k, v in now.items():
+    print(f"{len(CELLS)} 格記進 {stamp.name}：")
+    for k in CELLS:
+        v = now[k]
         print(f"  {k}\t{v.get('sha256') or v['值']}")
     sys.exit(0)
 
@@ -116,7 +149,7 @@ if not stamp.is_file():
 was = json.loads(stamp.read_text())
 
 bad = []
-for key in ("model", "quant", "prompt", "script"):
+for key in CELLS:
     if key not in was:
         die(f"{stamp.name} 裡沒有 {key} 那格，這份成分表跟現在這支對不起來")
     a = was[key].get("sha256") or was[key].get("值")
@@ -124,12 +157,14 @@ for key in ("model", "quant", "prompt", "script"):
     if a == b:
         print(f"  通過\t{key}\t{b}")
     else:
-        print(f"  沒過\t{key}\t當初 {a}／現在 {b}")
+        # 「表上」是 stamp.json 記著的，「實測」是現在算出來的。
+        # 寫「當初／現在」在回頭對舊資料時字面剛好跟事實相反。
+        print(f"  沒過\t{key}\t表上 {a}／實測 {b}")
         bad.append(key)
 
 if bad:
     print(f"\n{len(bad)} 格對不上：{'、'.join(bad)}。"
           f"上一輪那些數字是別的條件跑出來的，重跑之前不要拿來比。")
     sys.exit(1)
-print("\n四格都對得上，這一輪跟成分表記的是同一組條件。")
+print(f"\n{len(CELLS)} 格都對得上，這一輪跟成分表記的是同一組條件。")
 sys.exit(0)
