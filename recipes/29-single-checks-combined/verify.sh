@@ -141,7 +141,20 @@ else
   EDGES=$(python3 edges.py "$PG" | tr '\n' '|')
   [ "$EDGES" = "src/render.js -> src/api.js|" ] \
     || { bad "七個檔之間的邊不是只有那一條，是：${EDGES:-無}"; M=1; }
-  [ "$M" = 0 ] && ok "兩對都不是真的資料流，而唯一那條引用它沒指出來"
+  # 單次執行推不出「它做不到」。同一個問法重跑十次的雜湊存在 repeat.tsv，
+  # 十次要全部一致，而且要跟現在這份存檔對得上。
+  R=chain-ask/repeat.tsv
+  if [ ! -r "$R" ]; then
+    bad "沒有 repeat.tsv，那一輪只跑過一次"; M=1
+  else
+    H=$(shasum -a 256 "$CA" | cut -d' ' -f1)
+    NR=$(grep -c '^run' "$R")
+    SAME=$(awk '$1 ~ /^run/ {print $2}' "$R" | sort -u | wc -l | tr -d ' ')
+    [ "$NR" -ge 10 ] || { bad "repeat.tsv 只有 $NR 次，不夠推出「它做不到」"; M=1; }
+    [ "$SAME" = 1 ] || { bad "十次重跑的輸出不一致（$SAME 種），結論要改寫成分布"; M=1; }
+    grep -qF "$H" "$R" || { bad "repeat.tsv 記的雜湊跟現在這份存檔對不上"; M=1; }
+  fi
+  [ "$M" = 0 ] && ok "兩對都不是真的資料流、唯一那條它沒指出來，同一問法重跑十次逐位元相同"
 fi
 
 # ─────────────────────────────────────────────────────────────

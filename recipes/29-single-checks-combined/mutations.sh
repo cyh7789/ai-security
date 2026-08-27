@@ -41,6 +41,7 @@ cp chain-exec.mjs "$BACKUP/chain-exec.mjs"
 cp "$IDX" "$BACKUP/README.md"
 cp chain-ask/answer.txt "$BACKUP/answer.txt"
 cp "$PG/src/format.js" "$BACKUP/format.js"
+cp chain-ask/repeat.tsv "$BACKUP/repeat.tsv"
 restore() {
   cp "$BACKUP/render.js" "$PG/src/render.js"
   cp "$BACKUP/api.js" "$PG/src/api.js"
@@ -50,6 +51,7 @@ restore() {
   cp "$BACKUP/README.md" "$IDX"
   cp "$BACKUP/answer.txt" chain-ask/answer.txt
   cp "$BACKUP/format.js" "$PG/src/format.js"
+  cp "$BACKUP/repeat.tsv" chain-ask/repeat.tsv
 }
 trap 'restore; rm -rf "$BACKUP"' EXIT
 
@@ -158,6 +160,15 @@ import pathlib
 p = pathlib.Path('chain-ask/answer.txt'); s = p.read_text()
 p.write_text(s + 'src/render.js -> src/api.js | model output | reaches innerHTML\n')"
 run M9 "存檔裡多出它指到那條鏈" 沒過 9
+
+# 十次重跑的紀錄被改成不一致。第 9 條的結論靠「同一問法十次都一樣」，
+# 不一致就要改寫成分布，不能繼續寫成「它做不到」。
+python3 -c "
+import pathlib
+p = pathlib.Path('chain-ask/repeat.tsv'); L = p.read_text().splitlines(True)
+L[-1] = L[-1].replace(L[-1].split(chr(9))[1].strip(), '0' * 64)
+p.write_text(''.join(L))"
+run M12 "十次重跑的紀錄變成不一致" 沒過 9
 
 # 多長出一條檔對檔的引用。第 9 條斷言的是邊集合恰好等於那一條，
 # 所以多一條也要沒過，不能只會抓「那一條不見了」。
