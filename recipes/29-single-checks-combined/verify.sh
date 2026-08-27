@@ -122,6 +122,31 @@ else
   bad "README 的索引表沒有這一份 recipe"
 fi
 
+case_ "9 直接問它組合，它給的兩對都不是真的資料流"
+# 前兩輪是逐檔問與逐類問，兩種問法都預設答案落在單一位置上，
+# 所以「它看不到組合」有可能是問法決定的。這一條守的是把那個變因拿掉的那一輪。
+CA=chain-ask/answer.txt
+if [ ! -r "$CA" ]; then
+  skip "還沒跑過 chain-ask.py（要本機模型），這一條驗不掉"
+else
+  M=0
+  grep -qF 'server/files.js -> server/tools.js' "$CA" \
+    || { bad "存檔裡沒有那一對，文章引的東西不在"; M=1; }
+  grep -qF 'server/files.js -> src/format.js' "$CA" \
+    || { bad "存檔裡沒有第二對"; M=1; }
+  grep -qF 'src/render.js -> src/api.js' "$CA" \
+    && { bad "它其實有指出那條鏈，文章那個論點不成立"; M=1; }
+  # 它指的那兩個檔沒有任何別的檔引用，所以那兩對的資料流不存在。
+  for f in tools format; do
+    N=$(grep -rl "\./$f" "$PG"/src "$PG"/server 2>/dev/null | grep -v "/$f\.js$" | wc -l | tr -d ' ')
+    [ "$N" = 0 ] || { bad "有 $N 個檔引用 $f.js，那一對的資料流其實存在"; M=1; }
+  done
+  # 而唯一那條檔對檔的引用，正是它沒指出來的那一條。
+  grep -qF 'import { ask } from "./api.js";' "$PG/src/render.js" \
+    || { bad "render.js 沒有引用 api.js，唯一那條引用不在了"; M=1; }
+  [ "$M" = 0 ] && ok "兩對都不是真的資料流，而唯一那條引用它沒指出來"
+fi
+
 # ─────────────────────────────────────────────────────────────
 printf '\n通過 %s、沒過 %s、沒有結論 %s\n' "$G" "$B" "$S"
 [ "$B" = 0 ] || exit 1

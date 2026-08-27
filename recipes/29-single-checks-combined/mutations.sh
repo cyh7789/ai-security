@@ -39,6 +39,7 @@ cp "$REC26/first-look/src_render.js.txt" "$BACKUP/f26.txt"
 cp "$REC27/hunt/CWE-79.txt" "$BACKUP/f27.txt"
 cp chain-exec.mjs "$BACKUP/chain-exec.mjs"
 cp "$IDX" "$BACKUP/README.md"
+cp chain-ask/answer.txt "$BACKUP/answer.txt"
 restore() {
   cp "$BACKUP/render.js" "$PG/src/render.js"
   cp "$BACKUP/api.js" "$PG/src/api.js"
@@ -46,6 +47,7 @@ restore() {
   cp "$BACKUP/f27.txt" "$REC27/hunt/CWE-79.txt"
   cp "$BACKUP/chain-exec.mjs" chain-exec.mjs
   cp "$BACKUP/README.md" "$IDX"
+  cp "$BACKUP/answer.txt" chain-ask/answer.txt
 }
 trap 'restore; rm -rf "$BACKUP"' EXIT
 
@@ -146,6 +148,23 @@ p = pathlib.Path('$IDX')
 L = [l for l in p.read_text().splitlines(True) if not l.startswith('| 29 |')]
 p.write_text(''.join(L))"
 run M8 "索引表少掉這一份 recipe" 沒過 8
+
+# 那一輪的存檔裡多出「它其實指到了那條鏈」。這是這一天最想防的假訊號：
+# 論點整段建立在「它沒指出來」上，存檔一旦相反，第 9 條就該立刻沒過。
+python3 -c "
+import pathlib
+p = pathlib.Path('chain-ask/answer.txt'); s = p.read_text()
+p.write_text(s + 'src/render.js -> src/api.js | model output | reaches innerHTML\n')"
+run M9 "存檔裡多出它指到那條鏈" 沒過 9
+
+# 唯一那條檔對檔的引用被拿掉。第 9 條的後半靠它，第 1 條不受影響（sink 那行還在）。
+python3 -c "
+import pathlib
+p = pathlib.Path('$PG/src/render.js'); s = p.read_text()
+a = 'import { ask } from \"./api.js\";'
+assert a in s
+p.write_text(s.replace(a, 'const ask = async (q) => q;'))"
+run M10 "render.js 不再引用 api.js" 沒過 9
 
 # 反向對照：改一個不影響任何判定的地方，應該照樣全部通過。
 # 沒有它，「什麼都會讓它沒過」跟「它抓得準」分不開。

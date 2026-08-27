@@ -1,0 +1,4 @@
+server/files.js -> server/tools.js | uploads/filename | reads arbitrary uploaded file contents into memory and executes system commands
+</think>
+
+server/files.js -> src/format.js | any formatPrice input (cents, currency) | formatPrice performs sensitive number formatting/rounding on untrusted values

@@ -1,0 +1,23 @@
+{
+  "model": "antares-1b-mlx",
+  "model_sha256": "40659615c63f596296491c79f2d6b7bf71cdcaf8888c092d69d05ddc2b1210d8",
+  "quant": {
+    "group_size": 64,
+    "bits": 4,
+    "mode": "affine"
+  },
+  "prompt_sha256": "46f82132793fdfff5d6736bec149c8d167f9bb519c7cf754554159c936aac273",
+  "script_sha256": "bea6b172b2b35b7dd162c12950c7f33ba6efe222d059480cbc7b445ad698c139",
+  "corpus_sha256": "179af959b13b36388c5919ac6f67966af03b197cb868fe971763dea8cd46e3bf",
+  "files": [
+    "server/files.js",
+    "server/health.js",
+    "server/orders.js",
+    "server/tools.js",
+    "src/api.js",
+    "src/format.js",
+    "src/render.js"
+  ],
+  "seconds": 8.0,
+  "peak": "2.027 GB"
+}
