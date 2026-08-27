@@ -317,6 +317,31 @@ const add = (o) => {
   });
 }
 
+// Day 29：同一個 sink，換一條路進來。Day 5 那兩條的 payload 是使用者在輸入框打的，
+// 這一條是模型自己吐的，因為它讀了被汙染的外部內容（Day 11 那條路）。
+// carrier 標 model 不標 dom，因為差別就在這裡：輸入側那些檢查在這條路上一道都沒被觸發。
+{
+  const f = need(R("29-single-checks-combined/attack-set.md"), "Day 29 那一條");
+  const src = readFileSync(f, "utf8");
+  // 格式跟 Day 5 那份一樣：編號後接 payload，payload 後面接兩格以上的空白或換行。
+  const m = src.match(/^01\s+(\S(?:[^\s]|\s(?!\s))*)/m);
+  if (!m) {
+    console.error("recipe 29 的 attack-set.md 裡找不到第 01 條");
+    process.exit(2);
+  }
+  add({
+    key: "29-model-output",
+    day: 29,
+    carrier: "model",
+    kind: "attack",
+    judge: "dom",
+    mark: null,
+    payload: m[1],
+    source: "recipes/29-single-checks-combined/attack-set.md",
+    note: "跟 05-01 同一個 sink、同一種 payload，差別在來源：那兩條假設攻擊者在輸入框打字，這一條假設模型自己吐出來。判準要用真的 HTML 引擎跑（recipe 29 的 chain-exec.mjs），只比對字串分不出「印出來了」跟「執行了」。",
+  });
+}
+
 rows.sort((a, b) => a.id.localeCompare(b.id));
 const out = rows.map((r) => JSON.stringify(r)).join("\n") + "\n";
 const target = join(HERE, "attacks.jsonl");
