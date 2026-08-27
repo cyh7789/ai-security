@@ -16,9 +16,19 @@
 #
 # 「重跑」那一欄寫「（沒有）」的列，就是沒測。沒有重跑指令的東西不會有結果，
 # 它只會在下次有人問「這個測過了嗎」的時候被答成「應該有吧」。
+# 有指令但這次跑回 2（環境不到位）也是沒測，那跟沒有指令是兩種沒測，
+# 第 28 天那支在託管機器上就是這一種。
 #
-組	展開	來源	重跑	簽核	一句話
-攻防案例	逐列	24-green-or-never-hit/cases.tsv	bash recipes/24-green-or-never-hit/run.sh	9/7/0	十六條案例，每條有期望有實測。run.sh 會把「現在」重新量一次再跟紀錄對帳
-輸入側回歸	整支	14-same-attacks-every-time	bash recipes/14-same-attacks-every-time/verify.sh	1/0/0	二十二條攻擊集加五條應放行集。判準那端是罐頭模型，所以它守的是防護 prompt 沒被改壞，不是任何一個真模型的行為
-鏈的出口那半	整支	29-single-checks-combined/chain-exec.mjs	node recipes/29-single-checks-combined/chain-exec.mjs	1/0/0	模型的回答進 innerHTML 那一段，jsdom 上打過，修法也擋過
-整條鏈	一列	（沒有）	（沒有）	0/0/1	從被汙染的外部內容，經過模型、經過 api.js，一路到畫面。第 29 天只打了最後那一段，前面兩步一次都沒有執行過
+# 「成分表」那一欄回答第 28 天問的那句：這一列的結果是拿什麼跑出來的。兩個值：
+#   不適用  這一組的判準不看模型說了什麼。程式狀態、離開碼、DOM 節點，換一份模型不會變
+#   需要    這一組要真的打一次模型，所以得記得住是哪一份權重、哪一版提示、哪一版腳本
+# 「需要」卻拿不出成分表的列，簽核只能是沒測。verify.sh 第 9 條守這件事。
+#
+# 這一欄現在的樣子本身就是一個結果：四組裡三組寫「不適用」。
+# 成分表管得到的第 26、27 天那兩輪，一輪都不在這張表上，它們在 uncovered.tsv。
+#
+組	展開	來源	重跑	成分表	簽核	一句話
+攻防案例	逐列	24-green-or-never-hit/cases.tsv	bash recipes/24-green-or-never-hit/run.sh	不適用	9/7/0	十六條案例，每條有期望有實測。run.sh 會把「現在」重新量一次再跟紀錄對帳
+輸入側回歸	整支	14-same-attacks-every-time	bash recipes/14-same-attacks-every-time/verify.sh	不適用	1/0/0	二十二條攻擊集加五條應放行集。判準那端是罐頭模型，所以它守的是防護 prompt 沒被改壞，不是任何一個真模型的行為
+鏈的出口那半	整支	29-single-checks-combined/chain-exec.mjs	node recipes/29-single-checks-combined/chain-exec.mjs	不適用	1/0/0	模型的回答進 innerHTML 那一段，jsdom 上打過，修法也擋過
+整條鏈	一列	（沒有）	（沒有）	需要	0/0/1	從被汙染的外部內容，經過模型、經過 api.js，一路到畫面。第 29 天只打了最後那一段，前面兩步一次都沒有執行過

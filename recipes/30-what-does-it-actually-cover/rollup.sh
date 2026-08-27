@@ -26,10 +26,24 @@ for f in "$STD" "$UNC"; do
 done
 
 # 一組一組算。每一組回三個數字：過了 沒過 沒測。
-measure() {
-  case "$1" in
+#
+# 跑的是 standard.tsv「重跑」欄那一行字，不是寫死在這裡的指令。
+# 第一版是寫死的，那一欄只是給人看的說明，於是「表上寫的」跟「實際跑的」可以分岔
+# 而沒有任何東西會叫（2026-08-28 外部審查抓到）。判準檔說得出口卻不是入口，
+# 那一欄就只是註解，而這個系列從第 5 天起就在講這種假通過。
+measure() {  # $1=組名 $2=重跑欄那一行字
+  local g="$1" cmd="$2" OUT RC N P F
+  # 沒有重跑指令的東西不會有結果。這一列永遠是沒測，直到有人寫得出那條指令。
+  [ "$cmd" = '（沒有）' ] && { echo "0 0 1"; return 0; }
+  # 環境不到位要判沒有結論，不能判沒過：跑不動跟沒防住是兩回事。
+  case "$cmd" in
+    node\ *)
+      command -v node >/dev/null 2>&1 || { echo "0 0 1"; return 2; }
+      (cd "$ROOT" && node -e "import('jsdom')" >/dev/null 2>&1) || { echo "0 0 1"; return 2; } ;;
+  esac
+  OUT=$(cd "$ROOT" && eval "$cmd" 2>/dev/null); RC=$?
+  case "$g" in
     攻防案例)
-      OUT=$(cd "$ROOT/recipes/24-green-or-never-hit" && bash run.sh 2>/dev/null); RC=$?
       [ "$RC" = 2 ] && { echo "0 0 0"; return 2; }
       N=$(printf '%s\n' "$OUT" | grep -c '^C[0-9]')
       P=$(printf '%s\n' "$OUT" | grep -c '	符合$')
@@ -41,16 +55,12 @@ measure() {
       [ "$((P+F))" = "$N" ] && [ "$N" -ge 1 ] || { echo "0 0 0"; return 2; }
       echo "$P $F 0"; return 0 ;;
     輸入側回歸)
-      (cd "$ROOT/recipes/14-same-attacks-every-time" && bash verify.sh >/dev/null 2>&1); RC=$?
       case "$RC" in
         0) echo "1 0 0"; return 0 ;;
         2) echo "0 0 1"; return 2 ;;
         *) echo "0 1 0"; return 0 ;;
       esac ;;
     鏈的出口那半)
-      command -v node >/dev/null 2>&1 || { echo "0 0 1"; return 2; }
-      (cd "$ROOT" && node -e "import('jsdom')" >/dev/null 2>&1) || { echo "0 0 1"; return 2; }
-      OUT=$(cd "$ROOT/recipes/29-single-checks-combined" && node chain-exec.mjs 2>&1)
       # 兩句都要在：有洞版真的成立（對照組），修好版擋下來（要驗的那一半）。
       # 只看修好版的話，一支什麼都不做的 render 也會過。
       if printf '%s' "$OUT" | grep -qF 'XSS 成立' \
@@ -58,9 +68,6 @@ measure() {
         echo "1 0 0"; return 0
       fi
       echo "0 1 0"; return 0 ;;
-    整條鏈)
-      # 沒有重跑指令的東西不會有結果。這一列永遠是沒測，直到有人寫得出那條指令。
-      echo "0 0 1"; return 0 ;;
     *)
       echo "0 0 0"; return 2 ;;
   esac
@@ -70,7 +77,7 @@ rows() { grep -v '^[[:space:]]*#' "$1" | grep -v '^[[:space:]]*$' | tail -n +2; 
 
 if [ "${1:-}" = "--list" ]; then
   printf '評分標準（standard.tsv）\n\n'
-  rows "$STD" | while IFS="$(printf '\t')" read -r g e s r sign why; do
+  rows "$STD" | while IFS="$(printf '\t')" read -r g e s r stamp sign why; do
     printf '  %s\t簽核 %s\t重跑：%s\n' "$g" "$sign" "$r"
   done
   printf '\n沒進表的東西（uncovered.tsv）\n\n'
@@ -84,9 +91,9 @@ TP=0; TF=0; TU=0; BAD=0; UNK=0
 # 每一欄自己帶標籤，不排版對齊：printf 的欄寬數的是位元組，中文組名一長
 # 整張表就歪掉，而歪掉的表會讓人不想讀。
 printf '\n表：本系列固定案例的通過狀況\n\n'
-while IFS="$(printf '\t')" read -r g expand src rerun sign why; do
+while IFS="$(printf '\t')" read -r g expand src rerun stamp sign why; do
   [ -n "$g" ] || continue
-  GOT=$(measure "$g"); MRC=$?
+  GOT=$(measure "$g" "$rerun"); MRC=$?
   set -- $GOT
   P=$1; F=$2; U=$3
   MINE="$P/$F/$U"

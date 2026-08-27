@@ -108,7 +108,7 @@ import pathlib
 p = pathlib.Path('standard.tsv'); s = p.read_text()
 assert '\t0/0/1\t' in s
 p.write_text(s.replace('\t0/0/1\t', '\t1/0/0\t'))"
-run M2 "把沒測那一列簽成過了" 沒過 2,3
+run M2 "把沒測那一列簽成過了" 沒過 2,3,9
 
 # 反過來：有重跑指令卻簽成沒測，等於寫了指令沒跑。
 python3 -c "
@@ -126,6 +126,16 @@ a = 'bash recipes/24-green-or-never-hit/run.sh'
 assert a in s
 p.write_text(s.replace(a, 'bash recipes/24-green-or-never-hit/nope.sh'))"
 run M4 "重跑指令指到不存在的檔" 沒過 4
+
+# 重跑欄換成另一支存在的腳本。第 4 節只驗路徑在不在，擋不掉這種換法；
+# 擋得掉它的是「rollup 真的去跑那一欄」，所以這一列守的是那件事，不是路徑存不存在。
+python3 -c "
+import pathlib
+p = pathlib.Path('standard.tsv'); s = p.read_text()
+a = 'bash recipes/14-same-attacks-every-time/verify.sh'
+assert a in s
+p.write_text(s.replace(a, 'bash recipes/24-green-or-never-hit/run.sh'))"
+run M12 "重跑欄換成另一支存在的腳本" 沒過 2
 
 # 沒測清單被清空。一張只列測過的東西的表，跟一張全部都測過的表長得一樣。
 python3 -c "
@@ -190,6 +200,25 @@ p = pathlib.Path('../../README.md'); s = p.read_text()
 out = [l for l in s.splitlines() if 'recipes/30-what-does-it-actually-cover/' not in l]
 p.write_text('\n'.join(out) + '\n')"
 run M11 "README 的索引表少了 30 那列" 沒過 8
+
+# 一列說它的結果要靠某一份模型，卻沒有成分表也沒簽成沒測。第 28 天問的那句
+# 落到每一列上就是這一條：答不出「拿什麼跑出來的」，那個結果不能算數。
+python3 -c "
+import pathlib
+p = pathlib.Path('standard.tsv'); s = p.read_text()
+a = '\t不適用\t9/7/0\t'
+assert a in s
+p.write_text(s.replace(a, '\t需要\t9/7/0\t'))"
+run M13 "一列改成要靠模型，卻沒簽成沒測" 沒過 9
+
+# 成分表欄填一個不在那兩個值裡的東西。
+python3 -c "
+import pathlib
+p = pathlib.Path('standard.tsv'); s = p.read_text()
+a = '\t不適用\t1/0/0\t'
+assert a in s
+p.write_text(s.replace(a, '\t再說\t1/0/0\t', 1))"
+run M14 "成分表欄填一個沒定義的值" 沒過 9
 
 # 反向對照：改一個不影響任何判定的地方，應該照樣全部通過。
 # 沒有它，「什麼都會讓它沒過」跟「它抓得準」分不開。
