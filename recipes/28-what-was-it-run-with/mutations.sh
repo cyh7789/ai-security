@@ -20,7 +20,7 @@ export LC_ALL=C
 
 MODEL="${ANTARES_MLX:-./antares-1b-mlx}"
 [ -r "$MODEL/config.json" ] || {
-  echo "找不到模型（$MODEL）。第 2、3、6 條要真的對一次帳，沒有模型驗不掉，沒有結論。" >&2
+  echo "找不到模型（$MODEL）。第 2、3、6、7、8 節要真的對一次帳，沒有模型驗不掉，沒有結論。" >&2
   echo "設 ANTARES_MLX 指過去。" >&2
   exit 2
 }
@@ -72,7 +72,7 @@ import json;p='stamp.json';d=json.load(open(p));del d['quant'];json.dump(d,open(
 # 而少一格會判成「這份成分表跟現在這支對不起來」。
 run M1 "成分表少掉 quant 那格" 沒過 1,2,3,6,7
 
-# 對帳最經典的假通過：把某一格的比較拿掉。四格裡少比一格，
+# 對帳最經典的假通過：把某一格的比較拿掉。五格裡少比一格，
 # verify.sh 的第 2 條照樣全部通過，只有那一格自己的專屬檢查看得出來。
 python3 -c "
 p='stamp.py';s=open(p).read()
@@ -80,7 +80,7 @@ a='CELLS = (\"model\", \"quant\", \"prompt\", \"script\", \"corpus\")'
 assert a in s, '找不到 CELLS 那行'
 open(p,'w').write(s.replace(a,'CELLS = (\"model\", \"prompt\", \"script\", \"corpus\")'))"
 # 第 1、2 條都抓不到這一條。第 1 條看的是成分表有沒有五格，而成分表沒被動過；
-# 第 2 條期望 rc=0，而少比一格剩下四格全對，rc 就是 0。
+# 第 2 條期望 rc=0，而少比一格剩下的全對，rc 就是 0。
 # 少比一格的假通過是靜默的，只有那一格自己的專屬檢查（第 4 條）與逐格點名的
 # 第 3、5 條看得出來。這就是為什麼每一格都要有自己那一條。
 run M2 "stamp.py 不再比 quant 那格" 沒過 3,4,5

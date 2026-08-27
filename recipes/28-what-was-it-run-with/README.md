@@ -55,10 +55,10 @@ python3 stamp.py check <模型目錄> --cwes ../27-ask-by-cwe/cwes-firstdraft.ts
 
 ```bash
 bash verify.sh        # 十節，快照在 verify.out
-bash mutations.sh     # 把每一條各弄壞一次，十一條全要抓到
+bash mutations.sh     # 把每一條各弄壞一次，十二條全要抓到
 ```
 
-`verify.sh` 第 2、3、6、7、8 條需要真的模型，設 `ANTARES_MLX` 指過去。對帳邏輯跟權重內容無關，其餘幾條用一個幾位元組的假模型目錄就驗得掉。
+`verify.sh` 第 2、3、6、7、8 節需要真的模型，設 `ANTARES_MLX` 指過去。對帳邏輯跟權重內容無關，所以第 4、5、9 節用一個幾位元組的假模型目錄就驗得掉，第 1、10 節連那個都不用。
 
 ## 還沒蓋到的
 
