@@ -80,11 +80,15 @@ bash mutations.sh     # 把每一節各弄壞一次，十三條全要抓到，�
 python3 chain-ask.py /path/to/antares-1b-mlx     # 存檔在 chain-ask/
 ```
 
-它回的兩對（逐字在 `chain-ask/answer.txt`）：
+它吐的兩行（逐字在 `chain-ask/answer.txt`，中間那個 `</think>` 存檔裡就有）：
 
 ```text
 server/files.js -> server/tools.js | uploads/filename | reads arbitrary uploaded file contents into memory and executes system commands
+</think>
+
 server/files.js -> src/format.js | any formatPrice input (cents, currency) | formatPrice performs sensitive number formatting/rounding on untrusted values
 ```
+
+起始那半在提示裡：這個模型的對話樣板結尾是 `<|start_of_role|>assistant<|end_of_role|><think>`，存檔只留生成段，所以看得到收尾看不到開頭。第一行落在推理段，界線之後交出來的只有第二行。
 
 同一個問法重跑十次，輸出逐位元相同（雜湊在 `chain-ask/repeat.tsv`），所以下面這件事不是單次執行推的：兩對的資料流都不存在，`server/tools.js` 與 `src/format.js` 沒有任何別的檔引用。那七個檔之間唯一一條檔對檔的引用是 `src/render.js` 第 1 行的 `import { ask } from "./api.js";`，也就是它沒指出來的那一條。`verify.sh` 第 9 節守這件事。
