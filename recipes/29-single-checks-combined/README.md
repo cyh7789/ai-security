@@ -65,7 +65,7 @@ Day 5 那篇教過：`innerHTML` 會把字串當成標記解析，`textContent` 
 
 ```bash
 bash verify.sh        # 九節，快照在 verify.out
-bash mutations.sh     # 把每一節各弄壞一次，十一條全要抓到，快照在 mutations.out
+bash mutations.sh     # 把每一節各弄壞一次，十二條全要抓到，快照在 mutations.out
 ```
 
 第 3 節需要 node 與 jsdom，第 9 節需要 `chain-ask/` 那一輪的存檔（已經附在這裡）。其餘幾節不用裝東西，但要整份 clone 在原位：第 7 節讀 `recipes/05-innerhtml-fake-green/`，第 8 節讀根目錄 README 的索引表，少了它們會判沒過，不是跳過。

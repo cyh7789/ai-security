@@ -136,14 +136,11 @@ else
     || { bad "存檔裡沒有第二對"; M=1; }
   grep -qF 'src/render.js -> src/api.js' "$CA" \
     && { bad "它其實有指出那條鏈，文章那個論點不成立"; M=1; }
-  # 它指的那兩個檔沒有任何別的檔引用，所以那兩對的資料流不存在。
-  for f in tools format; do
-    N=$(grep -rl "\./$f" "$PG"/src "$PG"/server 2>/dev/null | grep -v "/$f\.js$" | wc -l | tr -d ' ')
-    [ "$N" = 0 ] || { bad "有 $N 個檔引用 $f.js，那一對的資料流其實存在"; M=1; }
-  done
-  # 而唯一那條檔對檔的引用，正是它沒指出來的那一條。
-  grep -qF 'import { ask } from "./api.js";' "$PG/src/render.js" \
-    || { bad "render.js 沒有引用 api.js，唯一那條引用不在了"; M=1; }
+  # 數的是「邊」，不是「有引用語句的檔案數」。後者會把 orders.js 引用外部的 db
+  # 也算進去，印出一個跟結論打架的數字（外部審查在這裡指出檢查沒真的守住）。
+  EDGES=$(python3 edges.py "$PG" | tr '\n' '|')
+  [ "$EDGES" = "src/render.js -> src/api.js|" ] \
+    || { bad "七個檔之間的邊不是只有那一條，是：${EDGES:-無}"; M=1; }
   [ "$M" = 0 ] && ok "兩對都不是真的資料流，而唯一那條引用它沒指出來"
 fi
 

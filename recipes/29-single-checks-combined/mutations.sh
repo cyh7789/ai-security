@@ -40,6 +40,7 @@ cp "$REC27/hunt/CWE-79.txt" "$BACKUP/f27.txt"
 cp chain-exec.mjs "$BACKUP/chain-exec.mjs"
 cp "$IDX" "$BACKUP/README.md"
 cp chain-ask/answer.txt "$BACKUP/answer.txt"
+cp "$PG/src/format.js" "$BACKUP/format.js"
 restore() {
   cp "$BACKUP/render.js" "$PG/src/render.js"
   cp "$BACKUP/api.js" "$PG/src/api.js"
@@ -48,6 +49,7 @@ restore() {
   cp "$BACKUP/chain-exec.mjs" chain-exec.mjs
   cp "$BACKUP/README.md" "$IDX"
   cp "$BACKUP/answer.txt" chain-ask/answer.txt
+  cp "$BACKUP/format.js" "$PG/src/format.js"
 }
 trap 'restore; rm -rf "$BACKUP"' EXIT
 
@@ -156,6 +158,14 @@ import pathlib
 p = pathlib.Path('chain-ask/answer.txt'); s = p.read_text()
 p.write_text(s + 'src/render.js -> src/api.js | model output | reaches innerHTML\n')"
 run M9 "存檔裡多出它指到那條鏈" 沒過 9
+
+# 多長出一條檔對檔的引用。第 9 條斷言的是邊集合恰好等於那一條，
+# 所以多一條也要沒過，不能只會抓「那一條不見了」。
+python3 -c "
+import pathlib
+p = pathlib.Path('$PG/src/format.js'); s = p.read_text()
+p.write_text('import { ask } from \"./api.js\";\n' + s)"
+run M11 "多長出一條檔對檔的引用" 沒過 9
 
 # 唯一那條檔對檔的引用被拿掉。第 9 條的後半靠它，第 1 條不受影響（sink 那行還在）。
 python3 -c "
