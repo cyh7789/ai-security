@@ -1,0 +1,18 @@
+{
+  "model": {
+    "檔": "antares-1b-mlx/model.safetensors",
+    "sha256": "40659615c63f596296491c79f2d6b7bf71cdcaf8888c092d69d05ddc2b1210d8"
+  },
+  "quant": {
+    "來源": "config.json 的 quantization",
+    "值": "{\"bits\":4,\"group_size\":64,\"mode\":\"affine\"}"
+  },
+  "prompt": {
+    "來源": "hunt.py 的 PROMPT 樣板加上 cwes.tsv",
+    "sha256": "8cc003862258ce8abaa65b7ba28714c65f4302549df7eb3989df449eb21b36aa"
+  },
+  "script": {
+    "檔": "hunt.py",
+    "sha256": "60d6d37dff737d6b72ecd83466801ec9e809870c49cce96ae1bc8dd701ff3d7b"
+  }
+}
