@@ -46,7 +46,7 @@ NU=$(rows "$UNC" | grep -c .)
 while IFS="$(printf '\t')" read -r item kind src why; do
   [ -n "$item" ] || continue
   [ -n "$why" ] || { bad "「$item」沒有寫為什麼沒進去"; M=1; }
-  case "$kind" in 量錯對象|沒人打過) ;; *) bad "「$item」的類是「${kind}」，不在那兩個值裡"; M=1 ;; esac
+  case "$kind" in 量錯對象|沒有案例) ;; *) bad "「$item」的類是「${kind}」，不在那兩個值裡"; M=1 ;; esac
 done <<EOF
 $(rows "$UNC")
 EOF
@@ -111,7 +111,7 @@ EOF
 fi
 
 if want 5; then
-case_ "5 被掃描過卻沒人打過的那幾支，數字是數出來的"
+case_ "5 掃描清單跟重跑入口提到的檔名不是同一批，差幾支是數出來的"
 STAMP=$ROOT/recipes/28-what-was-it-run-with/stamp.json
 if [ ! -r "$STAMP" ]; then
   skip "找不到成分表，掃描過哪幾支檔比不了"
@@ -127,7 +127,8 @@ print('\n'.join(json.load(open('$STAMP'))['corpus']['檔']))")
   HIT=0; MISS=0
   for f in $FILES; do
     b=$(basename "$f")
-    # 一支檔算被打過，條件是 standard.tsv 某一組的重跑指令跑到的程式裡提到它。
+    # 這裡只問一件事：這個檔名有沒有出現在那幾支腳本的字面裡。
+    # 它不是執行追蹤，命中註解也算命中，所以下面的措辭一律講「提到」不講「打過」。
     if grep -rqF "$b" $(rows "$STD" | cut -f4 | grep -oE 'recipes/[0-9a-z./-]+\.(mjs|sh)' | sed "s|^|$ROOT/|") 2>/dev/null; then
       HIT=$((HIT+1))
     else
@@ -141,12 +142,12 @@ print(cn[n] if n<=10 else str(n))")
 n=int('$TOTAL'); cn=['零','一','二','三','四','五','六','七','八','九','十']
 print(cn[n] if n<=10 else str(n))")
   M=0
-  [ "$MISS" -ge 1 ] || { bad "算出來每一支都被打過了，那 uncovered.tsv 那一列就該刪掉"; M=1; }
+  [ "$MISS" -ge 1 ] || { bad "算出來每一支的檔名都被提到了，那 uncovered.tsv 那一列就該刪掉"; M=1; }
   grep -qF "那七支 .js" "$UNC" || { bad "uncovered.tsv 沒寫語料是七支"; M=1; }
   [ "$TOTAL" = 7 ] || { bad "成分表的語料現在是 ${TOTAL} 支，uncovered.tsv 還寫七支"; M=1; }
-  grep -qF "其餘${CN}支" "$UNC" \
-    || { bad "uncovered.tsv 寫的數字跟算出來的對不上，算出來是${CN}支沒被打過"; M=1; }
-  [ "$M" = 0 ] && ok "語料${TCN}支，被打到的 ${HIT} 支，沒人打過的${CN}支"
+  grep -qF "其餘${CN}支一次都沒被提到" "$UNC" \
+    || { bad "uncovered.tsv 寫的數字跟算出來的對不上，算出來是${CN}支沒被提到"; M=1; }
+  [ "$M" = 0 ] && ok "語料${TCN}支，重跑入口提到的 ${HIT} 支，沒提到的${CN}支"
 fi
 fi
 
